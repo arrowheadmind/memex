@@ -25,6 +25,7 @@ import (
 
 const (
 	seedMessage    = "conformance: seed"
+	seedDate       = "2026-01-10T12:00:00+00:00" // author and committer date of src/ seeds
 	commandTimeout = 120 * time.Second
 	// unreachableOrigin is a non-routable address reached through git's own HTTP helper, so
 	// the attempt hangs until memex's network_timeout instead of failing fast (SPEC §15).
@@ -116,7 +117,8 @@ func runAll(memex, casesDir string, keep bool, filters []string) (int, error) {
 type sandbox struct {
 	root, home, store, bin, config string
 	env                            []string
-	seed                           string // hash of the seed commit, "" without store/
+	seed                           string            // hash of the seed commit, "" without store/
+	srcs                           map[string]string // src/<name> repositories, by name
 }
 
 func newSandbox(memex, git string, unreachable bool) (*sandbox, error) {
@@ -283,6 +285,16 @@ func runCase(dir, memex, git, version string) (problems []string, tmp string, er
 			return nil, tmp, err
 		}
 	}
+	if err := s.seedSources(dir); err != nil {
+		return nil, tmp, err
+	}
+	// home/ holds files copied into the temporary HOME (SPEC §15), for commands that read
+	// files outside the store, such as import --leak and the leak scan.
+	if exists(filepath.Join(dir, "home")) {
+		if err := copyTree(filepath.Join(dir, "home"), s.home); err != nil {
+			return nil, tmp, err
+		}
+	}
 	if b, err := os.ReadFile(filepath.Join(dir, "env")); err == nil {
 		for _, line := range strings.Split(string(b), "\n") {
 			if line == "" {
@@ -329,7 +341,56 @@ func runCase(dir, memex, git, version string) (problems []string, tmp string, er
 
 // paths replaces <STORE> and <HOME> in an env value or argument (SPEC §15).
 func (s *sandbox) paths(text string) string {
-	return strings.NewReplacer("<STORE>", s.store, "<HOME>", s.home).Replace(text)
+	text = strings.NewReplacer("<STORE>", s.store, "<HOME>", s.home).Replace(text)
+	for name, dir := range s.srcs {
+		text = strings.ReplaceAll(text, "<SRC:"+name+">", dir)
+	}
+	return text
+}
+
+// seedSources builds one git repository per directory under the case's src/ (SPEC §15):
+// the files are committed with a fixed author and date, so that ids, blame dates and commit
+// hashes are the same on every run. The empty store directory is removed when the case has
+// no store/, so that a command may create it.
+func (s *sandbox) seedSources(caseDir string) error {
+	entries, err := os.ReadDir(filepath.Join(caseDir, "src"))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	s.srcs = map[string]string{}
+	env := append(append([]string(nil), s.env...),
+		"GIT_AUTHOR_DATE="+seedDate, "GIT_COMMITTER_DATE="+seedDate)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		dir := filepath.Join(s.root, "src", e.Name())
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		if err := copyTree(filepath.Join(caseDir, "src", e.Name()), dir); err != nil {
+			return err
+		}
+		for _, a := range [][]string{{"init", "-q"}, {"add", "-A"}, {"commit", "-q", "--allow-empty", "-m", seedMessage}} {
+			cmd := exec.Command("git", a...)
+			cmd.Path = filepath.Join(s.bin, "git")
+			cmd.Dir = dir
+			cmd.Env = env
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("src %s: git %s: %v\n%s", e.Name(), strings.Join(a, " "), err, out)
+			}
+		}
+		s.srcs[e.Name()] = dir
+	}
+	if !exists(filepath.Join(caseDir, "store")) {
+		if err := os.Remove(s.store); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error) {

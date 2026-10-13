@@ -133,6 +133,12 @@ func dispatch(args []string, stdout, stderr io.Writer) (int, *usageError) {
 			return 0, cmdErr(problem)
 		}
 		return runCheck(env, a, cmdErr)
+	case "import":
+		a, problem := parseCommand(cmd, rest, env)
+		if problem != "" {
+			return 0, cmdErr(problem)
+		}
+		return runImport(env, a, cmdErr)
 	default:
 		return 0, cmdErr(fmt.Sprintf("command %q is not implemented yet", cmd.Name))
 	}
@@ -170,6 +176,24 @@ func runCheck(env *commands.Env, a *args, cmdErr func(string) *usageError) (int,
 		o.Limit = n
 	}
 	return commands.Check(env, o), nil
+}
+
+func runImport(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	if len(a.positionals) == 0 {
+		return 0, cmdErr("missing FORMAT; the only format is brain-v3")
+	}
+	if a.positionals[0] != "brain-v3" {
+		return 0, cmdErr(fmt.Sprintf("unknown format %q; the only format is brain-v3", a.positionals[0]))
+	}
+	if len(a.positionals) < 2 {
+		return 0, cmdErr("missing SRC")
+	}
+	out, ok := a.value("--out")
+	if !ok {
+		return 0, cmdErr("missing --out")
+	}
+	o := commands.ImportOptions{Sources: a.positionals[1:], Out: out, Leaks: a.values["--leak"], Version: version}
+	return commands.Import(env, o), nil
 }
 
 // wantsHelp reports whether --help or -h appears among the options (before any "--").
