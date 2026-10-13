@@ -86,6 +86,11 @@ func (e *Error) Error() string {
 // otherwise the whole process group is killed when it expires, so that an ssh child does not
 // linger.
 func (g *Git) Run(timeout time.Duration, args ...string) (string, error) {
+	return g.RunInput(timeout, nil, args...)
+}
+
+// RunInput is Run with stdin as git's standard input.
+func (g *Git) RunInput(timeout time.Duration, stdin []byte, args ...string) (string, error) {
 	ctx := context.Background()
 	if timeout > 0 {
 		var cancel context.CancelFunc
@@ -100,6 +105,9 @@ func (g *Git) Run(timeout time.Duration, args ...string) (string, error) {
 	cmd.WaitDelay = time.Second
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
+	if stdin != nil {
+		cmd.Stdin = bytes.NewReader(stdin)
+	}
 	err := cmd.Run()
 	if err == nil {
 		return out.String(), nil

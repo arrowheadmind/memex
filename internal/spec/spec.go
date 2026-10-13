@@ -469,3 +469,13 @@ func LookupType(s string) *Type {
 	}
 	return nil
 }
+
+// LookupDirectory returns the type whose directory is dir, or nil.
+func LookupDirectory(dir string) *Type {
+	for i := range Types {
+		if Types[i].Directory == dir {
+			return &Types[i]
+		}
+	}
+	return nil
+}
