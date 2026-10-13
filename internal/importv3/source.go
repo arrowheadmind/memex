@@ -97,47 +97,29 @@ func run(g *gitx.Git, args ...string) (string, error) {
 
 func (s *Source) run(args ...string) (string, error) { return run(s.git, args...) }
 
-// LineRangeDay dates a line unit (SPEC §13.3): the earlier of
-//   - the commit in `git log -L<a>,<b>:<path>` that created the range (the newest commit
-//     whose hunk has an empty old side), or the oldest commit of that log when none does;
-//     this follows the lines through edits, so an edited row keeps its date;
-//   - the oldest commit of `git log -S<text>` for the unit's first line, which a move inside
-//     the file does not touch, so a moved backlog item keeps its date.
-func (s *Source) LineRangeDay(p string, a, b int, firstLine string) (string, error) {
-	out, err := s.run("log", fmt.Sprintf("-L%d,%d:%s", a, b, p), "--format=%x00%aI", s.Commit)
-	if err != nil {
-		return "", err
-	}
-	byL := ""
-	for _, block := range strings.Split(out, "\x00")[1:] {
-		date := block[:10]
-		byL = date
-		if created := hunkCreates.MatchString(block); created {
-			break
-		}
-	}
-	byS := ""
-	if strings.TrimSpace(firstLine) != "" {
-		out, err := s.run("log", "-S"+firstLine, "--format=%aI", s.Commit, "--", p)
+// KeyDay dates a line unit (SPEC §13.3): the author date of the oldest commit of
+// `git log -S<key> -- <path>`. When -S finds nothing (the text was edited since), the blame
+// date of the unit's first line is used and byBlame is true.
+func (s *Source) KeyDay(p, key string, firstLine int) (day string, byBlame bool, err error) {
+	if strings.TrimSpace(key) != "" {
+		out, err := s.run("log", "-S"+key, "--format=%aI", s.Commit, "--", p)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
-		lines := nonEmptyLines(out)
-		if len(lines) > 0 {
-			byS = lines[len(lines)-1][:10]
+		if lines := nonEmptyLines(out); len(lines) > 0 {
+			return lines[len(lines)-1][:10], false, nil
 		}
 	}
-	switch {
-	case byL == "" && byS == "":
-		return s.FirstDay(p)
-	case byL == "" || (byS != "" && byS < byL):
-		return byS, nil
+	days, err := s.BlameDays(p)
+	if err != nil {
+		return "", false, err
 	}
-	return byL, nil
+	if firstLine < len(days) && days[firstLine] != "" {
+		return days[firstLine], true, nil
+	}
+	day, err = s.FirstDay(p)
+	return day, true, err
 }
-
-// hunkCreates matches a -L hunk whose old side is empty: the lines did not exist before.
-var hunkCreates = regexp.MustCompile(`(?m)^@@ -\d+,0 \+\d+(,\d+)? @@`)
 
 var dateLine = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T`)
 
@@ -245,7 +227,10 @@ var blameTZ = regexp.MustCompile(`(?m)^author-tz ([+-]\d{4})$`)
 // BlameDays returns, per line (1-based index into the slice; index 0 unused), the author
 // date of the commit that last touched the line.
 func (s *Source) BlameDays(p string) ([]string, error) {
-	if b, ok := s.blames[p]; ok {
+	s.mu.Lock()
+	b, ok := s.blames[p]
+	s.mu.Unlock()
+	if ok {
 		return b, nil
 	}
 	out, err := s.run("blame", "--line-porcelain", s.Commit, "--", p)
@@ -281,7 +266,9 @@ func (s *Source) BlameDays(p string) ([]string, error) {
 			days[len(days)-1] = dayOf(in.t, in.tz)
 		}
 	}
+	s.mu.Lock()
 	s.blames[p] = days
+	s.mu.Unlock()
 	return days, nil
 }
 

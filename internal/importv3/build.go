@@ -165,36 +165,32 @@ func (im *Importer) resolveDates() error {
 	return nil
 }
 
-// dateLineUnit dates one line unit: the oldest commit of `git log -L` over its lines or of
-// `git log -S` for its first line, whichever is earlier (SPEC §13.3).
+// dateLineUnit dates one line unit by the oldest commit of `git log -S` for its first
+// line's key, else by blame (SPEC §13.3).
 func (im *Importer) dateLineUnit(u *Unit) error {
-	lo, hi := u.Lines[0], u.Lines[0]
+	first := u.Lines[0]
 	for _, n := range u.Lines {
-		if n < lo {
-			lo = n
-		}
-		if n > hi {
-			hi = n
+		if n < first {
+			first = n
 		}
 	}
-	first := ""
-	for _, l := range u.BodyLines {
-		if strings.TrimSpace(l) != "" {
-			first = l
-			break
-		}
+	f := im.fileOf(u)
+	if f == nil {
+		d, err := u.Src.FirstDay(u.File)
+		u.Date = d
+		return err
 	}
-	if len(u.TitleLines) > 0 {
-		first = ""
-		if f := im.fileOf(u); f != nil {
-			first = f.Lines[u.TitleLines[0]-1]
-		}
-	}
-	d, err := u.Src.LineRangeDay(u.File, lo, hi, first)
+	key := searchKey(f.Lines[first-1])
+	d, byBlame, err := u.Src.KeyDay(u.File, key, first)
 	if err != nil {
 		return err
 	}
 	u.Date = d
+	if byBlame {
+		im.mu.Lock()
+		im.report.DatedByBlame = append(im.report.DatedByBlame, fmt.Sprintf("%s:%s:%d", u.Src.Basename, u.File, first))
+		im.mu.Unlock()
+	}
 	return nil
 }
 

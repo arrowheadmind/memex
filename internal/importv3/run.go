@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/arrowheadmind/memex/internal/check"
@@ -53,6 +54,7 @@ type Importer struct {
 	fullRe      *regexp.Regexp
 	wrappedRe   *regexp.Regexp
 	datingCost  time.Duration
+	mu          sync.Mutex // guards report fields written by the dating workers
 }
 
 var brainRepoRe = regexp.MustCompile(`(?m)^- \*\*BRAIN_REPO\*\*: *(.+)$`)
@@ -132,6 +134,7 @@ func Run(o Options) (*Report, error) {
 		u.Body = im.rewriteLinks(u, strings.Join(u.BodyLines, "\n"))
 	}
 	im.report.Links.Unresolved = im.unresolvedList()
+	sort.Strings(im.report.DatedByBlame)
 	if o.Stderr != nil {
 		fmt.Fprintf(o.Stderr, "memex: dated line units in %.1fs\n", im.datingCost.Seconds())
 	}

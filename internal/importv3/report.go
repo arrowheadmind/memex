@@ -65,6 +65,8 @@ type Report struct {
 	AliasDropped   []string
 	RowShape       []string
 	ShortBody      []string
+	DatedByBlame   []string
+	MarkersRemoved []rewriteRec
 	Leaks          []string
 	Warnings       []countRec
 	Problems       []string
@@ -185,6 +187,8 @@ func (r *Report) JSON() []byte {
 		{Key: "aliases_dropped", Value: strs(r.AliasDropped)},
 		{Key: "row_shape", Value: strs(r.RowShape)},
 		{Key: "short_body", Value: strs(r.ShortBody)},
+		{Key: "dated_by_blame", Value: strs(r.DatedByBlame)},
+		{Key: "markers_removed", Value: rewriteArray(r.MarkersRemoved)},
 		{Key: "leaks", Value: strs(r.Leaks)},
 		{Key: "warnings", Value: countArray(r.Warnings)},
 		{Key: "problems", Value: strs(r.Problems)},
