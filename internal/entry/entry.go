@@ -263,8 +263,8 @@ func fieldValue(def *spec.Field, v any) (any, *Problem) {
 		return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
 	case spec.KindInteger:
 		n := v.(int64)
-		if n < 1 {
-			return bad("must be at least 1, not %d", n)
+		if n < 1 || n > MaxReviewDays {
+			return bad("must be between 1 and %d", MaxReviewDays)
 		}
 		return n, nil
 	case spec.KindBoolean:
@@ -452,6 +452,9 @@ func ContentMeasure(body string) int {
 	}
 	return n
 }
+
+// MaxReviewDays bounds review_days (SPEC §5.3), a hundred years.
+const MaxReviewDays = 36500
 
 // MinContent is the smallest content measure a new body may have (SPEC §5.6).
 const MinContent = 80

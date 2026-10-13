@@ -119,7 +119,7 @@ func TestReadIndex(t *testing.T) {
 	}
 	run("init", "-q")
 	run("add", "-A")
-	idx, changed, err := ReadIndex(g)
+	idx, changed, err := ReadIndex(root, g)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestReadIndex(t *testing.T) {
 	os.Remove(filepath.Join(root, "notes.md"))
 	run("add", "-A")
 	os.WriteFile(filepath.Join(root, "rules/2026-01-15-a.md"), []byte("unstaged"), 0o644)
-	idx, changed, err = ReadIndex(g)
+	idx, changed, err = ReadIndex(root, g)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,8 +142,9 @@ func TestReadIndex(t *testing.T) {
 	if b, _ := idx.ReadFile("rules/2026-01-15-a.md"); string(b) != "staged" {
 		t.Errorf("index content %q", b)
 	}
-	if !idx.Exists("files/2026-01-15-a") || !idx.Exists("files/2026-01-15-a/x.png") || idx.Exists("notes.md") {
-		t.Error("Exists")
+	if idx.Locate("files/2026-01-15-a") != Inside || idx.Locate("files/2026-01-15-a/x.png") != Inside ||
+		idx.Locate("notes.md") != Missing || idx.Locate("files/../../x") != Outside {
+		t.Error("Locate")
 	}
 	l, err := Enumerate(idx)
 	if err != nil {

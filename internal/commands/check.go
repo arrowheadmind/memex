@@ -33,19 +33,19 @@ func Check(e *Env, o CheckOptions) int {
 	var staged []string
 	if o.Staged {
 		g := gitx.New(root, 0, gitx.Staged())
-		idx, changed, err := store.ReadIndex(g)
+		idx, changed, err := store.ReadIndex(root, g)
 		if err != nil {
 			return e.fail(spec.ExitUsage, "check --staged needs the store's git index: %v", err)
 		}
-		if !idx.Exists(store.ManifestFile) {
+		if len(changed) > 0 && !idx.Exists(store.ManifestFile) {
 			return e.fail(spec.ExitUsage, "check --staged: %s is not in the git index", store.ManifestFile)
 		}
 		tree, staged = idx, changed
-		if staged == nil {
-			staged = []string{}
-		}
 	}
-	findings, err := check.Run(tree, today, staged)
+	var findings []check.Finding
+	if !o.Staged || len(staged) > 0 { // nothing staged, an empty index included: nothing to check
+		findings, err = check.Run(tree, today, staged)
+	}
 	var fe *store.FormatError
 	if errors.As(err, &fe) {
 		return e.fail(spec.ExitUsage, "%s", fe.Msg)

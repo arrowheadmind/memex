@@ -30,9 +30,19 @@ type Tree interface {
 	Children(dir string) ([]Item, error)
 	// ReadFile returns the bytes of a file.
 	ReadFile(p string) ([]byte, error)
-	// Exists reports whether a file or directory exists at p.
-	Exists(p string) bool
+	// Locate resolves p, following symbolic links, and says whether it names a regular file
+	// or a directory whose real path is inside the store (SPEC §6, E-FILE-LINK).
+	Locate(p string) Location
 }
+
+// Location is the result of Tree.Locate.
+type Location int
+
+const (
+	Inside  Location = iota // a regular file or directory inside the store
+	Missing                 // nothing there, a dangling link, or something else
+	Outside                 // resolves to a path outside the store
+)
 
 // WorkTree is the store's working tree on disk.
 type WorkTree struct{ Root string }
@@ -55,14 +65,29 @@ func (w WorkTree) ReadFile(p string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(w.Root, filepath.FromSlash(p)))
 }
 
-// Exists implements Tree.
-func (w WorkTree) Exists(p string) bool {
-	_, err := os.Lstat(filepath.Join(w.Root, filepath.FromSlash(p)))
-	return err == nil
+// Locate implements Tree.
+func (w WorkTree) Locate(p string) Location {
+	real, err := filepath.EvalSymlinks(filepath.Join(w.Root, filepath.FromSlash(p)))
+	if err != nil {
+		return Missing
+	}
+	root, err := filepath.EvalSymlinks(w.Root)
+	if err != nil {
+		return Missing
+	}
+	if rel, err := filepath.Rel(root, real); err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
+		return Outside
+	}
+	info, err := os.Stat(real)
+	if err != nil || !(info.Mode().IsRegular() || info.IsDir()) {
+		return Missing
+	}
+	return Inside
 }
 
 // IndexTree is the snapshot of the store held in the git index (GIT_INDEX_FILE when set).
 type IndexTree struct {
+	root  string // the store root, to recognise absolute links into the store
 	files map[string]indexFile
 	dirs  map[string][]Item
 }
@@ -74,12 +99,12 @@ type indexFile struct {
 
 // ReadIndex loads every path of the index with its contents, and returns the paths that are
 // added or modified relative to HEAD (every path when there is no HEAD).
-func ReadIndex(g *gitx.Git) (*IndexTree, []string, error) {
+func ReadIndex(root string, g *gitx.Git) (*IndexTree, []string, error) {
 	out, err := g.Run("ls-files", "--stage", "-z")
 	if err != nil {
 		return nil, nil, err
 	}
-	t := &IndexTree{files: map[string]indexFile{}, dirs: map[string][]Item{}}
+	t := &IndexTree{root: root, files: map[string]indexFile{}, dirs: map[string][]Item{}}
 	var objects []string
 	for _, rec := range strings.Split(out, "\x00") {
 		if rec == "" {
@@ -200,7 +225,59 @@ func (t *IndexTree) ReadFile(p string) ([]byte, error) {
 	return f.data, nil
 }
 
-// Exists implements Tree.
+// maxLinkHops bounds symbolic-link resolution, as the kernel's ELOOP does.
+const maxLinkHops = 40
+
+// Locate implements Tree. Symbolic links in the index are resolved against the index.
+func (t *IndexTree) Locate(p string) Location {
+	parts := strings.Split(p, "/")
+	var resolved []string
+	for hops := 0; len(parts) > 0; {
+		part := parts[0]
+		parts = parts[1:]
+		switch part {
+		case "", ".":
+			continue
+		case "..":
+			if len(resolved) == 0 {
+				return Outside
+			}
+			resolved = resolved[:len(resolved)-1]
+			continue
+		}
+		cur := path.Join(append(slices.Clone(resolved), part)...)
+		f, ok := t.files[cur]
+		if !ok || f.mode != "120000" {
+			resolved = append(resolved, part)
+			continue
+		}
+		if hops++; hops > maxLinkHops {
+			return Missing
+		}
+		target := string(f.data)
+		if path.IsAbs(target) {
+			rel, ok := strings.CutPrefix(target, t.root+"/")
+			if !ok {
+				return Outside
+			}
+			resolved, target = nil, rel
+		}
+		parts = append(strings.Split(target, "/"), parts...)
+	}
+	final := path.Join(resolved...)
+	if final == "" {
+		return Inside
+	}
+	if f, ok := t.files[final]; ok && (f.mode == "100644" || f.mode == "100755") {
+		return Inside
+	}
+	if _, ok := t.dirs[final]; ok {
+		return Inside
+	}
+	return Missing
+}
+
+// Exists reports whether a file or directory is at p in the index.
 func (t *IndexTree) Exists(p string) bool {
 	_, isFile := t.files[p]
 	_, isDir := t.dirs[p]

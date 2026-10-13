@@ -81,7 +81,7 @@ func TestParseFields(t *testing.T) {
 		}
 	}
 	_, ps = parse(t, "reference", "title = \"T\"\nstatus = \"active\"\ncreated = 2026-01-15\nreview_days = 0\n")
-	if got := codes(ps); got != "E-FIELD-VALUE review_days must be at least 1, not 0\nE-FIELD-MISSING missing required field \"verified\"" {
+	if got := codes(ps); got != "E-FIELD-VALUE review_days must be between 1 and 36500\nE-FIELD-MISSING missing required field \"verified\"" {
 		t.Errorf("reference: %s", got)
 	}
 	_, ps = parse(t, "journal", "title = \"T\"\nstatus = \"raw\"\ncreated = 2026-01-15\nbody_sha256 = \"ABC\"\n")

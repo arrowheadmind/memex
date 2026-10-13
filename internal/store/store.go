@@ -154,6 +154,9 @@ func Enumerate(t Tree) (*Layout, error) {
 				return nil, err
 			}
 			for _, o := range items {
+				if strings.HasPrefix(o.Name, ".") {
+					continue // dot-files and dot-directories are ignored, as at the top level
+				}
 				if !o.Dir {
 					l.Findings = append(l.Findings, Finding{"files/" + o.Name, "E-FILES-OWNER",
 						"not a directory; attachments go in files/<id>/"})

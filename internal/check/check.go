@@ -3,6 +3,7 @@ package check
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"slices"
 	"strings"
@@ -233,11 +234,22 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 	}
 	for _, r := range fileRefs {
 		line := p.bodyLine + r.Line - 1
-		clean := path.Clean(r.Path)
-		switch {
-		case clean != r.Path && clean+"/" != r.Path:
+		dest := r.Path
+		if i := strings.IndexAny(dest, "#?"); i >= 0 {
+			dest = dest[:i]
+		}
+		if decoded, err := url.PathUnescape(dest); err == nil {
+			dest = decoded
+		}
+		clean := path.Clean(dest)
+		if clean != dest && clean+"/" != dest {
 			c.add(p.Path, "E-FILE-LINK", "%s on line %d is not a plain path under files/; write it without . or ..", r.Path, line)
-		case !c.tree.Exists(clean):
+			continue
+		}
+		switch c.tree.Locate(clean) {
+		case store.Outside:
+			c.add(p.Path, "E-FILE-LINK", "%s on line %d is outside the store", r.Path, line)
+		case store.Missing:
 			c.add(p.Path, "E-FILE-LINK", "%s on line %d does not exist", r.Path, line)
 		}
 	}
@@ -257,7 +269,7 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 		c.add(p.Path, "W-NO-SUMMARY", "no summary; add one sentence that tells a reader whether to open the entry: memex set %s summary=<sentence>", p.ID)
 	}
 	if n := entry.ContentMeasure(p.body); n < entry.MinContent {
-		c.add(p.Path, "W-SHORT-BODY", "body content measure %d is below %d", n, entry.MinContent)
+		c.add(p.Path, "W-SHORT-BODY", "body content measure %d is below %d; edit the file, then memex save", n, entry.MinContent)
 	}
 	if p.Type.Name == "reference" {
 		verified, ok := f.Date("verified")
