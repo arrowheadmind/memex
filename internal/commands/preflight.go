@@ -32,9 +32,19 @@ type PreflightOptions struct {
 }
 
 // lastFetch is the modification time of the store's FETCH_HEAD, which every git fetch
-// rewrites, in RFC 3339 UTC, or "never".
+// rewrites, in RFC 3339 UTC, or "never". The store root must be the top of its own
+// repository: a store directory inside another repository has never been fetched itself.
 func lastFetch(root string) string {
-	p, err := gitx.New(root, 0).Run("rev-parse", "--git-path", "FETCH_HEAD")
+	g := gitx.New(root, 0)
+	top, err := g.Run("rev-parse", "--show-toplevel")
+	if err != nil {
+		return "never"
+	}
+	real, err := filepath.EvalSymlinks(root)
+	if err != nil || filepath.Clean(strings.TrimSuffix(top, "\n")) != filepath.Clean(real) {
+		return "never"
+	}
+	p, err := g.Run("rev-parse", "--git-path", "FETCH_HEAD")
 	if err != nil {
 		return "never"
 	}
