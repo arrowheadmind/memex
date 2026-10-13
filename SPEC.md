@@ -1424,6 +1424,7 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. `<STORE>` and `<HOME>` in a value are replaced by the paths they name in `expect/stdout`. |
 | `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
 | `stdin` | Standard input (optional; empty if absent) |
+| `git` | Optional. git arguments, one per line, run as `git -C <store> <args>` with the runner's environment (the case's `env` included) after the previous step and before this step's `cmd`, so that a case can stage changes for `check --staged`. `<STORE>` and `<HOME>` are replaced as in `env`. A git step that fails fails the case. |
 | `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
 | `expect/exit` | Expected exit code |
 | `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex`. Regular files are compared by relative path, bytes and executable bit. Directories are not compared: an empty directory is ignored on both sides, because a case directory kept in git cannot hold one |
