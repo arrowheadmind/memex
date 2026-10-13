@@ -22,23 +22,25 @@ func normalize(s string) string {
 	return b.String()
 }
 
-// isTokenRune reports whether r is of general category L* or N* (SPEC §8.2 step 3).
-func isTokenRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsNumber(r) }
+// isTokenRune reports whether r is of general category L*, N* or M* (SPEC §8.2 step 3).
+// After Mn removal only Mc and Me marks remain in normalized text; they keep scripts such as
+// Devanagari whole.
+func isTokenRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsMark(r) }
 
-// Tokens tokenizes s by SPEC §8.2: the maximal runs of L* or N* code points of the
+// Tokens tokenizes s by SPEC §8.2: the maximal runs of L*, N* or M* code points of the
 // normalized text.
 func Tokens(s string) []string {
 	return strings.FieldsFunc(normalize(s), func(r rune) bool { return !isTokenRune(r) })
 }
 
-// origToken is a token located in original text (SPEC §8.5 step 3): code point offsets of a
-// maximal L*/N* run of the original, and that run's normalized form.
+// origToken is a run located in original text (SPEC §8.5 step 3): code point offsets of a
+// maximal L*/N*/M* run of the original, and the tokens of its normalized form (usually one).
 type origToken struct {
 	start, end int // code point indexes, end exclusive
-	norm       string
+	norm       []string
 }
 
-// origTokens locates the tokens of the original text rs.
+// origTokens locates the runs of the original text rs.
 func origTokens(rs []rune) []origToken {
 	var toks []origToken
 	for i := 0; i < len(rs); {
@@ -50,7 +52,7 @@ func origTokens(rs []rune) []origToken {
 		for j < len(rs) && isTokenRune(rs[j]) {
 			j++
 		}
-		toks = append(toks, origToken{i, j, normalize(string(rs[i:j]))})
+		toks = append(toks, origToken{i, j, Tokens(string(rs[i:j]))})
 		i = j
 	}
 	return toks

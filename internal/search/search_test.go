@@ -19,6 +19,7 @@ func TestTokens(t *testing.T) {
 		{"Café au lait", []string{"cafe", "au", "lait"}},
 		{"Cafés", []string{"cafes"}}, // a combining mark is removed, not a separator
 		{"ﬁle-system", []string{"file", "system"}},
+		{"हिन्दी भाषा", []string{"हिनदी", "भाषा"}}, // the virama (Mn) goes, the vowel signs (Mc) stay
 		{"nix_build 2026-01-15", []string{"nix", "build", "2026", "01", "15"}},
 		{"ÉCOLE", []string{"ecole"}},
 		{"", nil},
@@ -111,6 +112,8 @@ func TestSnippet(t *testing.T) {
 	cases := []struct{ line, query, want string }{
 		{"  the Café is open  ", "cafe", "the **Café** is open"},
 		{"a ﬁle here", "file", "a **ﬁle** here"},
+		{"Les Cafe\u0301s", "cafe", "Les **Cafe\u0301s**"}, // the mark stays in the run
+		{"½ cup", "2", "**½** cup"},                        // ½ normalizes to the tokens 1 and 2
 		{"run nix build now", `"nix build"`, "run **nix** **build** now"},
 		{"nix then build", `"nix build"`, "<nil>"},
 		{"caches and cache", "cach", "**caches** and **cache**"},
@@ -138,7 +141,7 @@ func TestSnippetWindow(t *testing.T) {
 	// A matching token cut by the right edge is dropped from the window.
 	line = strings.Repeat("b", 50) + " cache " + strings.Repeat("c", 110) + " cacheX tail of the line"
 	got = snippetOf(line, "cache")
-	want := "…" + strings.Repeat("b", 39) + " **cache** " + strings.Repeat("c", 110) + " …"
+	want := "…" + strings.Repeat("b", 39) + " **cache** " + strings.Repeat("c", 110) + "…"
 	if got != want {
 		t.Errorf("right cut:\n%q, want\n%q", got, want)
 	}
@@ -168,8 +171,8 @@ func TestScore(t *testing.T) {
 	if len(hits) != 2 || hits[0].Entry != a {
 		t.Fatalf("hits %v", hits)
 	}
-	// N=2, n=2: idf = max(ln(0.5/2.5), 1e-6) = 1e-6. |a|=4, |b|=6, avgdl=5.
-	idf := 1e-6
+	// N=2, n=2: idf = ln(1 + 0.5/2.5). |a|=4, |b|=6, avgdl=5.
+	idf := math.Log(1 + 0.5/2.5)
 	fa, fb := 10.0, 1.0
 	sa := idf * fa * 2.2 / (fa + 1.2*(0.25+0.75*4/5)) * 1.5
 	sb := idf * fb * 2.2 / (fb + 1.2*(0.25+0.75*6/5)) * 0.8

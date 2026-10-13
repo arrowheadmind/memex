@@ -112,7 +112,7 @@ func (c *Corpus) Search(items []Item) []Hit {
 	idf := make([]float64, len(items))
 	for q := range items {
 		n := float64(counts[q])
-		idf[q] = math.Max(math.Log((N-n+0.5)/(n+0.5)), 1e-6)
+		idf[q] = math.Log(1 + (N-n+0.5)/(n+0.5))
 	}
 	var out []Hit
 	for i, d := range c.docs {

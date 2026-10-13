@@ -67,40 +67,42 @@ func MakeSnippet(body string, items []Item) *Snippet {
 	return nil
 }
 
-// matching returns the tokens of the original line rs that match an item: a term's matching
-// tokens, and every token of each phrase occurrence. They are in line order.
+// matching returns the runs of the original line rs that match an item (SPEC §8.5 step 3): a
+// run matches when a token of its normalized form matches a term or belongs to an occurrence
+// of a phrase in the line's sequence of run tokens. They are in line order.
 func matching(rs []rune, items []Item) []origToken {
-	toks := origTokens(rs)
-	hit := make([]bool, len(toks))
+	runs := origTokens(rs)
+	var stream []string // the tokens of every run, in order
+	var owner []int     // the run of each stream token
+	for i, r := range runs {
+		for _, t := range r.norm {
+			stream = append(stream, t)
+			owner = append(owner, i)
+		}
+	}
+	hit := make([]bool, len(runs))
 	for _, it := range items {
 		if !it.Phrase {
-			for i, t := range toks {
-				if it.matchToken(t.norm) {
-					hit[i] = true
+			for k, t := range stream {
+				if it.matchToken(t) {
+					hit[owner[k]] = true
 				}
 			}
 			continue
 		}
-		k := len(it.Tokens)
-		for i := 0; i+k <= len(toks); i++ {
-			ok := true
-			for j, p := range it.Tokens {
-				if toks[i+j].norm != p {
-					ok = false
-					break
-				}
-			}
-			if ok {
-				for j := range k {
-					hit[i+j] = true
+		n := len(it.Tokens)
+		for k := 0; k+n <= len(stream); k++ {
+			if phraseAt(stream, k, it.Tokens) {
+				for j := range n {
+					hit[owner[k+j]] = true
 				}
 			}
 		}
 	}
 	var out []origToken
-	for i, t := range toks {
+	for i, r := range runs {
 		if hit[i] {
-			out = append(out, t)
+			out = append(out, r)
 		}
 	}
 	return out
@@ -116,16 +118,24 @@ func window(rs []rune, items []Item) *Snippet {
 		}
 		start = min(start, len(rs)-SnippetWidth)
 		end = start + SnippetWidth
-		// A matching token cut by an edge is dropped from the window.
+		// A matching run cut by an edge is dropped from the window, with the whitespace that
+		// the drop leaves at that edge.
+		droppedStart, droppedEnd := false, false
 		for _, m := range marks {
 			if m.start < start && m.end > start {
-				start = m.end
+				start, droppedStart = m.end, true
 			}
 			if m.start < end && m.end > end {
-				end = m.start
+				end, droppedEnd = m.start, true
 			}
 		}
-		end = max(end, start) // only a matching token longer than the window can cross both
+		end = max(end, start) // only a matching run longer than the window can cross both
+		for droppedStart && start < end && unicode.IsSpace(rs[start]) {
+			start++
+		}
+		for droppedEnd && end > start && unicode.IsSpace(rs[end-1]) {
+			end--
+		}
 	}
 	s := &Snippet{text: rs[start:end], prefix: start > 0, suffix: end < len(rs)}
 	for _, m := range marks {

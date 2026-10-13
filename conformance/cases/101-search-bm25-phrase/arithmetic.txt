@@ -12,7 +12,7 @@ Tokens per document, by field (title, keywords+summary, tags, aliases, body):
 
 N = 5, avgdl = 36 / 5 = 7.2
 n("binary cache") = 2 (G1, G2); n(nix) = 2 (G1, G3)
-idf = ln((5 - 2 + 0.5) / (2 + 0.5)) = ln(1.4) = 0.336472237
+idf = ln(1 + (5 - 2 + 0.5) / (2 + 0.5)) = ln(2.4) = 0.875468737
 
 Phrase hits are occurrences of the consecutive tokens `binary cache` in one field:
   f("binary cache", G1) = 10*1 (title) + 1*1 (body) = 11
@@ -20,12 +20,12 @@ Phrase hits are occurrences of the consecutive tokens `binary cache` in one fiel
   f(nix, G1) = 1 (body); f(nix, G3) = 10 (title)
 
 term(f, |D|) = idf * f * 2.2 / (f + 1.2 * (0.25 + 0.75 * |D| / avgdl))
-  G1: term(11, 13) = 8.142628 / (11 + 1.2*1.604167) = 0.629990571
-      term(1, 13)  = 0.740239 / (1 + 1.2*1.604167)  = 0.253073135
-      score = (0.629990571 + 0.253073135) * 1.5 (rule) = 1.32459556  -> 1.324596
-  G3: term(10, 5)  = 7.402389 / (10 + 1.2*0.770833) = 0.677564229
-      score = 0.677564229 * 0.8 (journal) = 0.542051383  -> 0.542051
-  G2: term(1, 12)  = 0.740239 / (1 + 1.2*1.5)      = 0.264371043
-      score = 0.264371043 * 1.3 (reference) = 0.343682356  -> 0.343682
+  G1: term(11, 13) = 21.186343 / (11 + 1.2*1.604167) = 1.63917551
+      term(1, 13)  = 1.926031 / (1 + 1.2*1.604167)   = 0.658472213
+      score = (1.63917551 + 0.658472213) * 1.5 (rule) = 3.44647158  -> 3.446472
+  G3: term(10, 5)  = 19.260312 / (10 + 1.2*0.770833) = 1.76295764
+      score = 1.76295764 * 0.8 (journal) = 1.41036611  -> 1.410366
+  G2: term(1, 12)  = 1.926031 / (1 + 1.2*1.5)        = 0.687868294
+      score = 0.687868294 * 1.3 (reference) = 0.894228782  -> 0.894229
 
 G3 has no snippet: its only match is in the title.
