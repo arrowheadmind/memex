@@ -1,15 +1,75 @@
 package importv3
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/arrowheadmind/memex/internal/slug"
 )
 
-// emptyRepos are INDEX/BRAIN_REPO values that named the workspace, not a repository.
-var emptyRepos = map[string]bool{"programming": true, "unknown": true, "root": true, "all": true, "global": true}
+var leadingDateSlug = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(-|$)`)
+
+// idFor is slug.ID with one more rule (SPEC §13.3): a slug that begins with a date loses
+// that prefix, so an id never carries two dates; the heading's date stays in the title.
+func idFor(date, title string) string {
+	sl := slug.Slug(title)
+	if m := leadingDateSlug.FindString(sl); m != "" {
+		sl = sl[len(m):]
+	}
+	if sl == "" {
+		sl = "entry"
+	}
+	id := date + "-" + sl
+	if len(id) <= slug.MaxIDLength {
+		return id
+	}
+	sum := sha256.Sum256([]byte(title))
+	return strings.TrimRight(id[:111], "-") + "-" + hex.EncodeToString(sum[:])[:8]
+}
+
+// dropDuplicates marks a secondary-SRC unit whose kept-stem id would collide with a primary
+// unit of identical body as dropped (SPEC §13.3), before anything depends on the owner set.
+func (im *Importer) dropDuplicates() {
+	type key struct{ stem, date string }
+	primary := map[key]*Unit{}
+	for _, u := range im.units {
+		if !u.Secondary && u.Stem != "" && slug.ValidID(u.Stem) && u.Stem[:10] == u.Date {
+			primary[key{u.Stem, u.Date}] = u
+		}
+	}
+	for _, u := range im.units {
+		if !u.Secondary || u.Stem == "" || !slug.ValidID(u.Stem) || u.Stem[:10] != u.Date {
+			continue
+		}
+		if p, ok := primary[key{u.Stem, u.Date}]; ok && strings.Join(p.BodyLines, "\n") == strings.Join(u.BodyLines, "\n") {
+			u.Kind = "dropped"
+			im.report.Duplicates = append(im.report.Duplicates, dupRec{Source: u.Src.Basename + ":" + u.File, DuplicateOf: p.Stem})
+		}
+	}
+}
+
+// emptyRepoWords are INDEX/BRAIN_REPO values that name no repository (SPEC §13.3). A value
+// equal to the basename of a SRC's parent directory (the workspace) means empty as well.
+var emptyRepoWords = map[string]bool{"unknown": true, "root": true, "all": true, "global": true}
+
+func (im *Importer) emptyRepo(v string) bool {
+	if emptyRepoWords[v] {
+		return true
+	}
+	for _, s := range im.srcs {
+		if tagify(filepath.Base(filepath.Dir(s.Abs))) == v {
+			return true
+		}
+	}
+	return false
+}
 
 // journalStatus maps a source status value to a journal status and a was-* tag.
 func journalStatus(v string) (status, was string) {
@@ -50,9 +110,14 @@ func planStatus(v string) (status, was string) {
 	}
 }
 
+// datingWorkers is how many git processes date line units at once. The result does not
+// depend on it; it only bounds the wall-clock cost of `git log -L` on a large brain.
+const datingWorkers = 8
+
 // resolveDates fills the date of every unit (SPEC §13.3 common rules) and the verified date
-// of reference docs.
+// of reference docs. Line units are dated concurrently.
 func (im *Importer) resolveDates() error {
+	var lineUnits []*Unit
 	for _, u := range im.units {
 		if u.Kind == "doc" && u.Verified == "" {
 			last, err := u.Src.LastDay(u.File)
@@ -68,24 +133,7 @@ func (im *Importer) resolveDates() error {
 		case "leak":
 			u.Date = im.today
 		case "km-row", "km-section", "c-row", "c-section", "always", "task":
-			days, err := u.Src.BlameDays(u.File)
-			if err != nil {
-				return err
-			}
-			min := ""
-			for _, n := range u.Lines {
-				if n < len(days) && days[n] != "" && (min == "" || days[n] < min) {
-					min = days[n]
-				}
-			}
-			if min == "" {
-				d, err := u.Src.FirstDay(u.File)
-				if err != nil {
-					return err
-				}
-				min = d
-			}
-			u.Date = min
+			lineUnits = append(lineUnits, u)
 		default:
 			d, err := u.Src.FirstDay(u.File)
 			if err != nil {
@@ -94,6 +142,59 @@ func (im *Importer) resolveDates() error {
 			u.Date = d
 		}
 	}
+	started := time.Now()
+	errs := make([]error, len(lineUnits))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, datingWorkers)
+	for i, u := range lineUnits {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int, u *Unit) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			errs[i] = im.dateLineUnit(u)
+		}(i, u)
+	}
+	wg.Wait()
+	im.datingCost = time.Since(started)
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// dateLineUnit dates one line unit: the oldest commit of `git log -L` over its lines or of
+// `git log -S` for its first line, whichever is earlier (SPEC §13.3).
+func (im *Importer) dateLineUnit(u *Unit) error {
+	lo, hi := u.Lines[0], u.Lines[0]
+	for _, n := range u.Lines {
+		if n < lo {
+			lo = n
+		}
+		if n > hi {
+			hi = n
+		}
+	}
+	first := ""
+	for _, l := range u.BodyLines {
+		if strings.TrimSpace(l) != "" {
+			first = l
+			break
+		}
+	}
+	if len(u.TitleLines) > 0 {
+		first = ""
+		if f := im.fileOf(u); f != nil {
+			first = f.Lines[u.TitleLines[0]-1]
+		}
+	}
+	d, err := u.Src.LineRangeDay(u.File, lo, hi, first)
+	if err != nil {
+		return err
+	}
+	u.Date = d
 	return nil
 }
 
@@ -139,7 +240,6 @@ func (im *Importer) resolveStatuses() {
 // -3 suffixes for collisions, and the -<repo> rule for secondary sources (SPEC §13.3).
 func (im *Importer) assignIDs() {
 	im.ids = map[string]*Unit{}
-	bodyOf := func(u *Unit) string { return strings.Join(u.BodyLines, "\n") }
 	// stems: a stem is kept only by the first unit, in order, that has it and whose stem is a
 	// valid id whose date part equals the unit's date
 	stemTaken := map[string]bool{}
@@ -162,7 +262,7 @@ func (im *Importer) assignIDs() {
 		if u.ID != "" || u.Secondary || u.Kind == "dropped" {
 			continue
 		}
-		base := slug.ID(u.Date, u.Title)
+		base := idFor(u.Date, u.Title)
 		u.ID = im.uniqueID(base, "")
 		im.ids[u.ID] = u
 		if u.Stem != "" && u.Stem != u.ID && slug.ValidID(u.Stem) {
@@ -175,15 +275,9 @@ func (im *Importer) assignIDs() {
 		}
 		base := u.Stem
 		if base == "" || !slug.ValidID(base) || base[:10] != u.Date {
-			base = slug.ID(u.Date, u.Title)
+			base = idFor(u.Date, u.Title)
 		}
-		if other, ok := im.ids[base]; ok {
-			if bodyOf(other) == bodyOf(u) {
-				u.Kind = "dropped"
-				u.ID = ""
-				im.report.Duplicates = append(im.report.Duplicates, dupRec{Source: u.Src.Basename + ":" + u.File, DuplicateOf: other.ID})
-				continue
-			}
+		if _, ok := im.ids[base]; ok {
 			base = im.uniqueID(base, "-"+tagify(u.Src.Basename))
 		} else {
 			base = im.uniqueID(base, "")

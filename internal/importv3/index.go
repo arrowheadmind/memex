@@ -118,7 +118,11 @@ func (im *Importer) applyIndexRow(u *Unit, row *indexRow, f *fileRec) {
 			u.Summary = summary
 		}
 	}
+	headerTags := len(u.Tags) > 0 // the file's own Context line gave tags: the row's do not apply
 	for ci, cell := range []string{row.Tags, row.Context} {
+		if headerTags {
+			break
+		}
 		cell = strings.TrimSpace(cell)
 		if cell == "manual" {
 			im.report.Index.Placeholders++
@@ -143,7 +147,7 @@ func (im *Importer) applyIndexRow(u *Unit, row *indexRow, f *fileRec) {
 			u.Tags = append(u.Tags, n)
 		}
 	}
-	if repo := tagify(row.Repo); repo != "" && !emptyRepos[repo] {
+	if repo := tagify(row.Repo); repo != "" && !im.emptyRepo(repo) && len(u.Repos) == 0 {
 		u.Repos = []string{repo}
 	}
 	st := statusValue(row.St)

@@ -224,11 +224,11 @@ func (im *Importer) account() {
 		}
 		sorted := append([]int(nil), u.Lines...)
 		sort.Ints(sorted)
-		// source: the heading text that became the title, then the unit's body lines in order
+		// source: the heading text that became the title, with the prefix, date and markers
+		// removed at their known positions, then the unit's body lines in order
 		var src strings.Builder
-		for _, n := range u.TitleLines {
-			_, text := heading(f.Lines[n-1])
-			src.WriteString(text + "\n")
+		if len(u.TitleLines) > 0 {
+			src.WriteString(u.TitleSource + "\n")
 		}
 		for _, n := range sorted {
 			if (f.Attr[n-1] == attrUnit || f.Attr[n-1] == attrRemainder) && f.UnitOf[n-1] == u.Order {
@@ -236,28 +236,25 @@ func (im *Importer) account() {
 			}
 		}
 		s := compareText(src.String())
-		for _, r := range u.Removed {
-			s = strings.Replace(s, compareText(r), "", 1)
-		}
 		for _, e := range u.Extra {
 			s += compareText(e)
 		}
-		// output: the title, then the written body with link rewrites mapped back
+		// output: the title, then the written body with link rewrites mapped back and the
+		// generated labels removed where they were put
 		var out string
 		if u.TitleInText {
 			out = compareText(u.Title)
 		}
-		if u.CompareBody != nil {
-			out += compareText(*u.CompareBody)
-		} else {
-			body := u.Body
-			for _, r := range im.report.Links.Rewritten {
-				if r.Entry == u.ID {
-					body = strings.Replace(body, r.To, r.From, 1)
-				}
+		body := u.Body
+		for _, r := range im.report.Links.Rewritten {
+			if r.Entry == u.ID {
+				body = strings.Replace(body, r.To, r.From, 1)
 			}
-			out += compareText(body)
 		}
+		for _, label := range u.Labels {
+			body = strings.Replace(body, label, "", 1)
+		}
+		out += compareText(body)
 		if u.IndexPrefix != "" {
 			out += compareText(strings.TrimPrefix(u.IndexPrefix, "**Index summary:** "))
 		}

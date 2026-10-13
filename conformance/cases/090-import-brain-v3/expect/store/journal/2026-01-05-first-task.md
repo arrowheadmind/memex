@@ -3,11 +3,12 @@ title = "First task"
 status = "raw"
 created = 2026-01-05
 summary = "Older duplicate row"
-tags = ["dup"]
+tags = ["nixos", "raspberry-pi"]
 aliases = [".brain/investigations/2026-01-05-first-task.md", "investigations/2026-01-05-first-task.md"]
-body_sha256 = "042609ce4776dd69d342049011c1488e7337ef433b149bfc9ae05a6694277ffd"
+body_sha256 = "502b95d3583363b0b82e3cde7c2ce7f37e98e985131429be7e20aefd7053fd4f"
 +++
 
+raspberry-pi, nixos
 ## What was attempted
 
 We picked a database, see [[2026-01-06-pick-a-db]] and the

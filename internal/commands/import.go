@@ -36,7 +36,7 @@ func Import(e *Env, o ImportOptions) int {
 	}
 	report, err := importv3.Run(importv3.Options{
 		Sources: o.Sources, Out: out, Leaks: o.Leaks, Today: today, Home: e.Getenv("HOME"),
-		Version: o.Version, Timeout: 60 * time.Second, Stdout: e.Stdout,
+		Version: o.Version, Timeout: 60 * time.Second, Stdout: e.Stdout, Stderr: e.Stderr,
 	})
 	var failure *importv3.Failure
 	if errors.As(err, &failure) {

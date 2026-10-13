@@ -1,7 +1,7 @@
-imported 38 entries from 2 sources into <STORE>
-  entries: rules 12, decisions 2, runbooks 2, reference 6, tasks 6, plans 3, journal 7
+imported 40 entries from 2 sources into <STORE>
+  entries: rules 13, decisions 2, runbooks 2, reference 6, tasks 7, plans 3, journal 7
   attachments 2, not-knowledge 6 files, leaks 2
-  index rows 6: matched 4, orphan 1, duplicate 1, conflict 1, placeholders 6
-  links rewritten 7, unresolved targets 1; duplicates dropped 1; short bodies 18
-  warnings: W-NO-SUMMARY 33, W-NO-TERMS 31, W-PROMOTED-UNCITED 1, W-SHORT-BODY 18
+  index rows 6: matched 4, orphan 1, duplicate 1, conflict 2, placeholders 5
+  links rewritten 7, unresolved targets 1; duplicates dropped 1; short bodies 20
+  warnings: W-NO-SUMMARY 35, W-NO-TERMS 31, W-SHORT-BODY 20
 report: <STORE>/import-report.json

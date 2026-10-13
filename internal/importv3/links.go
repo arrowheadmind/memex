@@ -58,7 +58,7 @@ func (im *Importer) unitAt(src *Source, p string) *Unit {
 // reference's own source, then in the primary.
 func (im *Importer) resolveRef(src *Source, ref string) *Unit {
 	ref = strings.TrimPrefix(ref, "./")
-	for _, p := range src.Prefixes(im.home) {
+	for _, p := range im.allPrefixes() {
 		if strings.HasPrefix(ref, p) {
 			ref = strings.TrimPrefix(ref, p)
 			break
@@ -128,6 +128,38 @@ func inSpans(spans [][2]int, start, end int) bool {
 	return false
 }
 
+// allPrefixes returns every SRC's prefixes (SPEC §13.5), longest first.
+func (im *Importer) allPrefixes() []string {
+	if im.prefixes != nil {
+		return im.prefixes
+	}
+	set := map[string]bool{}
+	for _, s := range im.srcs {
+		for _, p := range s.Prefixes(im.home) {
+			set[p] = true
+		}
+	}
+	for p := range set {
+		im.prefixes = append(im.prefixes, p)
+	}
+	sort.Slice(im.prefixes, func(i, j int) bool {
+		if len(im.prefixes[i]) != len(im.prefixes[j]) {
+			return len(im.prefixes[i]) > len(im.prefixes[j])
+		}
+		return im.prefixes[i] < im.prefixes[j]
+	})
+	return im.prefixes
+}
+
+// boundaryByte reports whether c may precede a path reference: a reference glued to a path
+// character on its left (as in `../.brain/x.md`) is part of a longer path and stays.
+func boundaryByte(c byte) bool {
+	return !(c == '.' || c == '/' || c == '_' || c == '-' || c == '~' ||
+		('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9'))
+}
+
+var suffixRe = regexp.MustCompile(`(:[0-9]+|#L[0-9]+)$`)
+
 // rewriteLinks replaces resolvable path references with [[id]] in a body (SPEC §13.5). A
 // reference wrapped in single backticks loses them, because a link inside a code span is not
 // a link (§6); a reference inside any other code span, or in fenced code, stays as it is.
@@ -135,13 +167,7 @@ func inSpans(spans [][2]int, start, end int) bool {
 func (im *Importer) rewriteLinks(u *Unit, body string) string {
 	lines := strings.Split(body, "\n")
 	code := fenced(lines)
-	prefixes := u.Src.Prefixes(im.home)
-	var prefixAlt []string
-	for _, p := range prefixes {
-		prefixAlt = append(prefixAlt, regexp.QuoteMeta(p))
-	}
-	full := regexp.MustCompile(`(?:` + strings.Join(prefixAlt, "|") + `)?` + refRe.String())
-	wrapped := regexp.MustCompile("`" + full.String() + "`")
+	full, wrapped := im.refPatterns()
 	rewrite := func(m string) (string, bool) {
 		sm := full.FindStringSubmatch(m)
 		suffix := sm[len(sm)-1]
@@ -157,20 +183,33 @@ func (im *Importer) rewriteLinks(u *Unit, body string) string {
 			continue
 		}
 		// pass 1: `ref` -> [[id]]
-		l = wrapped.ReplaceAllStringFunc(l, func(m string) string {
-			inner := m[1 : len(m)-1]
-			if to, ok := rewrite(inner); ok {
-				im.report.Links.Rewritten = append(im.report.Links.Rewritten, rewriteRec{Entry: u.ID, From: m, To: to})
-				return to
+		{
+			var b strings.Builder
+			last := 0
+			for _, loc := range wrapped.FindAllStringIndex(l, -1) {
+				if loc[0] > 0 && !boundaryByte(l[loc[0]-1]) {
+					continue
+				}
+				m := l[loc[0]:loc[1]]
+				inner := m[1 : len(m)-1]
+				b.WriteString(l[last:loc[0]])
+				if to, ok := rewrite(inner); ok {
+					im.report.Links.Rewritten = append(im.report.Links.Rewritten, rewriteRec{Entry: u.ID, From: m, To: to})
+					b.WriteString(to)
+				} else {
+					b.WriteString(m)
+				}
+				last = loc[1]
 			}
-			return m
-		})
+			b.WriteString(l[last:])
+			l = b.String()
+		}
 		// pass 2: bare references outside code spans
 		spans := codeSpans(l)
 		var b strings.Builder
 		last := 0
 		for _, loc := range full.FindAllStringIndex(l, -1) {
-			if inSpans(spans, loc[0], loc[1]) {
+			if inSpans(spans, loc[0], loc[1]) || (loc[0] > 0 && !boundaryByte(l[loc[0]-1])) {
 				continue
 			}
 			m := l[loc[0]:loc[1]]
@@ -204,6 +243,20 @@ func (im *Importer) rewriteLinks(u *Unit, body string) string {
 	return strings.Join(lines, "\n")
 }
 
+// refPatterns compiles, once, the reference pattern with every SRC's prefixes and its
+// single-backtick-wrapped form.
+func (im *Importer) refPatterns() (*regexp.Regexp, *regexp.Regexp) {
+	if im.fullRe == nil {
+		var alt []string
+		for _, p := range im.allPrefixes() {
+			alt = append(alt, regexp.QuoteMeta(p))
+		}
+		im.fullRe = regexp.MustCompile(`(?:` + strings.Join(alt, "|") + `)?` + refRe.String())
+		im.wrappedRe = regexp.MustCompile("`" + im.fullRe.String() + "`")
+	}
+	return im.fullRe, im.wrappedRe
+}
+
 // resolveSuperseded finds the "superseded by" target of units whose status says so.
 func (im *Importer) resolveSuperseded() {
 	for _, u := range im.units {
@@ -220,7 +273,7 @@ func (im *Importer) resolveSuperseded() {
 				break
 			}
 			for _, m := range refRe.FindAllString(h, -1) {
-				m = strings.TrimSuffix(m, regexp.MustCompile(`(:[0-9]+|#L[0-9]+)$`).FindString(m))
+				m = strings.TrimSuffix(m, suffixRe.FindString(m))
 				if t := im.resolveRef(u.Src, m); t != nil && t != u {
 					target = t
 					break

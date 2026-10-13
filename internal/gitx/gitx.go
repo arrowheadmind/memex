@@ -69,10 +69,16 @@ type Git struct {
 // Option changes how New builds a Git.
 type Option func(*options)
 
-type options struct{ staged bool }
+type options struct {
+	staged bool
+	extra  []string
+}
 
 // Staged keeps GIT_INDEX_FILE, for `check --staged` only (SPEC §3.3).
 func Staged() Option { return func(o *options) { o.staged = true } }
+
+// Extra adds KEY=VALUE pairs to the environment, after the §3.3 changes.
+func Extra(kv ...string) Option { return func(o *options) { o.extra = append(o.extra, kv...) } }
 
 // New returns a Git for the repository at dir. Every command runs with the caller's
 // environment changed as SPEC §3.3 says; a timeout of zero means none.
@@ -81,7 +87,7 @@ func New(dir string, timeout time.Duration, opts ...Option) *Git {
 	for _, f := range opts {
 		f(&o)
 	}
-	return &Git{dir: dir, env: environ(os.Environ(), o.staged), timeout: timeout}
+	return &Git{dir: dir, env: append(environ(os.Environ(), o.staged), o.extra...), timeout: timeout}
 }
 
 // Error is a failed git command: its arguments, exit status and captured stderr.

@@ -35,19 +35,20 @@ type Unit struct {
 	Verified    string
 	Stem        string // filename stem of a file unit, or ""
 
-	Lines      []int    // 1-based source line numbers of the unit (heading and body)
-	TitleLines []int    // 1-based line numbers of the heading that became the title
-	BodyLines  []string // body text, source form
-	Body       string   // final body
-	Removed    []string // text removed from the source on the way to the frontmatter
-	Extra      []string // text added to the output from another source line (INDEX summary)
+	Lines       []int    // 1-based source line numbers of the unit (heading and body)
+	TitleLines  []int    // 1-based line numbers of the heading that became the title
+	BodyLines   []string // body text, source form
+	Body        string   // final body
+	Removed     []string // text removed from the source on the way to the frontmatter
+	Extra       []string // text added to the output from another source line (INDEX summary)
+	TitleSource string   // the heading text after the removals, for the §13.6 comparison
+	Labels      []string // generated labels in the body (table rows), not text
 
 	StatusValue  string   // status value found in the file, "" if none
 	IndexStatus  string   // status value of the matching INDEX row, "" if none
 	SupHints     []string // lines searched for a "superseded by" reference
 	SupersededBy string
-	CompareBody  *string // output text for the §13.6 comparison when it is not the body
-	IndexPrefix  string  // "**Index summary:** …" paragraph prepended to the body
+	IndexPrefix  string // "**Index summary:** …" paragraph prepended to the body
 	ID           string
 	Order        int
 	Secondary    bool
@@ -142,8 +143,9 @@ func (im *Importer) extractFile(f *fileRec, kind, typ string) *Unit {
 			u.Removed = append(u.Removed, rem)
 		}
 		u.Date = date
+		u.TitleSource = text
 		u.Title = cutTitle(stripMarkup(text))
-		if u.Title != stripMarkup(text) {
+		if u.Title != strings.Join(strings.Fields(stripMarkup(text)), " ") {
 			u.TitleInText = false // cut: the full heading stays in the body, nothing is removed
 			u.Removed = nil
 		}
@@ -188,9 +190,13 @@ func (im *Importer) extractFile(f *fileRec, kind, typ string) *Unit {
 	if kind == "plan" || kind == "decision" || kind == "investigation" && u.StatusValue == "" {
 		im.findStatus(f, u, consumed)
 	}
-	// blockquotes mentioning "supersed" are superseded-callout candidates
+	// blockquotes mentioning "supersed" are superseded-callout candidates (decisions and
+	// other file units; an investigation's hints are its Status section only)
 	var quote []string
 	for i, l := range f.Lines {
+		if kind == "investigation" {
+			break
+		}
 		if strings.HasPrefix(strings.TrimSpace(l), ">") {
 			quote = append(quote, l)
 			if i+1 < len(f.Lines) && strings.HasPrefix(strings.TrimSpace(f.Lines[i+1]), ">") {
@@ -209,7 +215,10 @@ func (im *Importer) extractFile(f *fileRec, kind, typ string) *Unit {
 }
 
 // extractHeader removes the brainctl header of an investigation: the Status, Source Repo
-// and Context sections directly after the title, each with its first value line.
+// and Context sections directly after the title, each at most once. A section's value line
+// moves to the frontmatter only when it is that value alone (a single token); a line that
+// says more stays in the body (SPEC §13.3). The Status section's lines are the only
+// "superseded by" hints of an investigation.
 func (im *Importer) extractHeader(f *fileRec, u *Unit, title int, consumed map[int]bool, moved *[]int) {
 	i := title + 1
 	seen := map[string]bool{}
@@ -235,38 +244,45 @@ func (im *Importer) extractHeader(f *fileRec, u *Unit, title int, consumed map[i
 		if j < len(f.Lines) {
 			if l, _ := heading(f.Lines[j]); l == 0 {
 				value := strings.TrimSpace(f.Lines[j])
-				consumed[j] = true
-				*moved = append(*moved, j)
+				alone := !strings.ContainsAny(value, " \t,")
 				switch text {
 				case "Status":
 					u.StatusValue = statusValue(value)
-					u.SupHints = append(u.SupHints, value)
+					for k := j; k < len(f.Lines); k++ {
+						if lv, _ := heading(f.Lines[k]); lv > 0 {
+							break
+						}
+						if strings.TrimSpace(f.Lines[k]) != "" {
+							u.SupHints = append(u.SupHints, f.Lines[k])
+						}
+					}
 				case "Source Repo":
-					u.Repos = []string{value}
+					if fs := strings.Fields(value); len(fs) > 0 {
+						u.Repos = []string{fs[0]}
+					}
 				case "Context":
-					u.Tags = append(u.Tags, value)
+					for _, t := range strings.Split(value, ",") {
+						if n := tagify(t); n != "" && !contextNames[n] {
+							u.Tags = append(u.Tags, n)
+						}
+					}
+				}
+				if alone {
+					consumed[j] = true
+					*moved = append(*moved, j)
 				}
 				j++
 			}
 		}
 		i = j
 	}
-	// the multi-line rest of a status section stays in the body; lines until the next
-	// heading are also status hints
-	for k := i; k < len(f.Lines); k++ {
-		if l, _ := heading(f.Lines[k]); l > 0 {
-			break
-		}
-		if strings.TrimSpace(f.Lines[k]) != "" {
-			u.SupHints = append(u.SupHints, f.Lines[k])
-		}
-	}
 }
 
 // findStatus looks for a "## Status" section or a "**Status:**" line that stays in the body.
 func (im *Importer) findStatus(f *fileRec, u *Unit, consumed map[int]bool) {
+	code := fenced(f.Lines)
 	for i, l := range f.Lines {
-		if consumed[i] {
+		if consumed[i] || code[i] {
 			continue
 		}
 		if lvl, text := heading(l); lvl == 2 && text == "Status" {
@@ -274,7 +290,7 @@ func (im *Importer) findStatus(f *fileRec, u *Unit, consumed map[int]bool) {
 				if lv, _ := heading(f.Lines[j]); lv > 0 {
 					break
 				}
-				if strings.TrimSpace(f.Lines[j]) == "" {
+				if strings.TrimSpace(f.Lines[j]) == "" || code[j] {
 					continue
 				}
 				if u.StatusValue == "" {
@@ -396,7 +412,7 @@ func (im *Importer) extractRules(f *fileRec, isConstraints bool) {
 		} else {
 			u.Kind = "km-section"
 		}
-		rest, tag, removed := stripPrefix(text)
+		rest, tag, removed, prefixDate := stripPrefix(text)
 		if removed != "" {
 			u.Removed = append(u.Removed, removed)
 			u.Tags = append(u.Tags, tag)
@@ -405,7 +421,11 @@ func (im *Importer) extractRules(f *fileRec, isConstraints bool) {
 		if rem != "" {
 			u.Removed = append(u.Removed, rem)
 		}
+		if date == "" {
+			date = prefixDate
+		}
 		u.Date = date
+		u.TitleSource = rest
 		full := stripMarkup(rest)
 		u.Title = cutTitle(full)
 		if struck(rest) {
@@ -453,16 +473,15 @@ func (im *Importer) addRow(f *fileRec, i int, header []string, isConstraints boo
 		first = unescapeCell(cells[0])
 	}
 	u.Title = cutTitle(stripMarkup(first))
-	var paras, plain []string
+	var paras []string
 	for k, c := range cells {
-		paras = append(paras, "**"+header[k]+":** "+unescapeCell(c))
-		plain = append(plain, unescapeCell(c))
+		label := "**" + header[k] + ":** "
+		paras = append(paras, label+unescapeCell(c))
+		u.Labels = append(u.Labels, label)
 	}
 	im.add(f, u, []int{i}, nil, nil)
 	// the row line is the source; the body is generated from its cells
 	u.BodyLines = []string{strings.Join(paras, "\n\n")}
-	cmp := strings.Join(plain, "")
-	u.CompareBody = &cmp
 	if shape {
 		im.report.RowShape = append(im.report.RowShape, fmt.Sprintf("%s:%d", f.Path, i+1))
 	}
@@ -575,15 +594,14 @@ func (im *Importer) extractBacklog(f *fileRec) {
 			if s := backlogStatus(text); s != "" {
 				u.Status = s
 			}
-			rest, removed := leadingMarkers(text)
-			if removed != "" {
-				u.Removed = append(u.Removed, removed)
-			}
+			rest, removed := removeMarkers(text)
+			u.Removed = append(u.Removed, removed...)
 			rest, date, rem := headingDate(rest)
 			if rem != "" {
 				u.Removed = append(u.Removed, rem)
 			}
 			u.Date = date
+			u.TitleSource = rest
 			full := stripMarkup(rest)
 			u.Title = cutTitle(full)
 			var titleIdx, body []int

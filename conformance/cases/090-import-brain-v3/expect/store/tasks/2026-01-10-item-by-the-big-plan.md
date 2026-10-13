@@ -1,8 +1,8 @@
 +++
-title = "Item SUPERSEDED by the big plan"
+title = "Item by the big plan"
 status = "dropped"
 created = 2026-01-10
-aliases = ["docs/backlog.md#item-superseded-by-the-big-plan"]
+aliases = ["docs/backlog.md#item-by-the-big-plan"]
 +++
 
 

@@ -26,6 +26,7 @@ import (
 const (
 	seedMessage    = "conformance: seed"
 	seedDate       = "2026-01-10T12:00:00+00:00" // author and committer date of src/ seeds
+	seedDate2      = "2026-01-11T12:00:00+00:00" // the same for src2/ second commits
 	commandTimeout = 120 * time.Second
 	// unreachableOrigin is a non-routable address reached through git's own HTTP helper, so
 	// the attempt hangs until memex's network_timeout instead of failing fast (SPEC §15).
@@ -374,13 +375,45 @@ func (s *sandbox) seedSources(caseDir string) error {
 		if err := copyTree(filepath.Join(caseDir, "src", e.Name()), dir); err != nil {
 			return err
 		}
-		for _, a := range [][]string{{"init", "-q"}, {"add", "-A"}, {"commit", "-q", "--allow-empty", "-m", seedMessage}} {
+		gitIn := func(env []string, a ...string) error {
 			cmd := exec.Command("git", a...)
 			cmd.Path = filepath.Join(s.bin, "git")
 			cmd.Dir = dir
 			cmd.Env = env
 			if out, err := cmd.CombinedOutput(); err != nil {
 				return fmt.Errorf("src %s: git %s: %v\n%s", e.Name(), strings.Join(a, " "), err, out)
+			}
+			return nil
+		}
+		for _, a := range [][]string{{"init", "-q"}, {"add", "-A"}, {"commit", "-q", "--allow-empty", "-m", seedMessage}} {
+			if err := gitIn(env, a...); err != nil {
+				return err
+			}
+		}
+		// src2/<name>/ is a second commit one day later: its files are copied over the first
+		// ones, and the paths listed in its .remove file are deleted first (SPEC §15).
+		second := filepath.Join(caseDir, "src2", e.Name())
+		if exists(second) {
+			if rm, err := os.ReadFile(filepath.Join(second, ".remove")); err == nil {
+				for _, p := range strings.Split(strings.TrimSpace(string(rm)), "\n") {
+					if p != "" {
+						if err := os.Remove(filepath.Join(dir, p)); err != nil {
+							return err
+						}
+					}
+				}
+			}
+			if err := copyTree(second, dir); err != nil {
+				return err
+			}
+			if err := os.Remove(filepath.Join(dir, ".remove")); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			env2 := append(append([]string(nil), s.env...), "GIT_AUTHOR_DATE="+seedDate2, "GIT_COMMITTER_DATE="+seedDate2)
+			for _, a := range [][]string{{"add", "-A"}, {"commit", "-q", "--allow-empty", "-m", seedMessage + " 2"}} {
+				if err := gitIn(env2, a...); err != nil {
+					return err
+				}
 			}
 		}
 		s.srcs[e.Name()] = dir

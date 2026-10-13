@@ -14,6 +14,10 @@ The vendor has not answered. Nothing to do until they do, check again next week.
 
 ## To Do
 
+### The closed-loop test harness was retired early
+
+A heading whose lowercase words are not markers; this item stays open.
+
 ### Plain item with a sub-item
 
 #### Sub-item

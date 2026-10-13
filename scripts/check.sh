@@ -14,3 +14,11 @@ go vet ./...
 go test ./...
 go build -o memex ./cmd/memex
 go run ./conformance/runner --memex ./memex
+
+# Every conformance fixture file must be tracked: a case's own store/.gitignore can hide
+# files from `git add`, and a clean clone would then run a different case.
+untracked=$(git ls-files --others --exclude-standard conformance/cases)
+if [ -n "$untracked" ]; then
+  printf 'conformance: untracked fixture files (use git add -f):\n%s\n' "$untracked" >&2
+  exit 1
+fi

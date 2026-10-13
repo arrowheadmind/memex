@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/arrowheadmind/memex/internal/gitx"
@@ -23,6 +24,7 @@ type Source struct {
 	Basename string
 	Primary  bool
 	git      *gitx.Git
+	mu       sync.Mutex        // guards the caches below; reads may run concurrently
 	files    []string          // every tracked path at Rev, sorted
 	fileSet  map[string]bool   // files as a set
 	content  map[string]string // path -> text, cached
@@ -47,12 +49,12 @@ func OpenSource(arg string, primary bool, timeout time.Duration) (*Source, error
 	if err != nil {
 		return nil, err
 	}
-	g := gitx.New(abs, timeout)
-	if _, err := g.Run("rev-parse", "--is-inside-work-tree"); err != nil {
+	g := gitx.New(abs, timeout, gitx.Extra("GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1"))
+	if _, err := run(g, "rev-parse", "--is-inside-work-tree"); err != nil {
 		return nil, fmt.Errorf("%s is not a git repository", p)
 	}
 	if rev == "" {
-		status, err := g.Run("status", "--porcelain")
+		status, err := run(g, "status", "--porcelain")
 		if err != nil {
 			return nil, err
 		}
@@ -61,12 +63,12 @@ func OpenSource(arg string, primary bool, timeout time.Duration) (*Source, error
 		}
 		rev = "HEAD"
 	}
-	commit, err := g.Run("rev-parse", "--verify", rev+"^{commit}")
+	commit, err := run(g, "rev-parse", "--verify", rev+"^{commit}")
 	if err != nil {
 		return nil, fmt.Errorf("%s: no revision %q", p, rev)
 	}
 	commit = strings.TrimSpace(commit)
-	list, err := g.Run("ls-tree", "-r", "--name-only", "-z", commit)
+	list, err := run(g, "ls-tree", "-r", "--name-only", "-z", commit)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +86,60 @@ func OpenSource(arg string, primary bool, timeout time.Duration) (*Source, error
 	sort.Strings(s.files)
 	return s, nil
 }
+
+// gitConfig isolates every source read from the operator's git configuration, so that two
+// machines read the same history the same way (SPEC §13.1).
+var gitConfig = []string{"-c", "blame.ignoreRevsFile=", "-c", "log.showSignature=false", "-c", "diff.renames=true"}
+
+func run(g *gitx.Git, args ...string) (string, error) {
+	return g.Run(append(append([]string(nil), gitConfig...), args...)...)
+}
+
+func (s *Source) run(args ...string) (string, error) { return run(s.git, args...) }
+
+// LineRangeDay dates a line unit (SPEC §13.3): the earlier of
+//   - the commit in `git log -L<a>,<b>:<path>` that created the range (the newest commit
+//     whose hunk has an empty old side), or the oldest commit of that log when none does;
+//     this follows the lines through edits, so an edited row keeps its date;
+//   - the oldest commit of `git log -S<text>` for the unit's first line, which a move inside
+//     the file does not touch, so a moved backlog item keeps its date.
+func (s *Source) LineRangeDay(p string, a, b int, firstLine string) (string, error) {
+	out, err := s.run("log", fmt.Sprintf("-L%d,%d:%s", a, b, p), "--format=%x00%aI", s.Commit)
+	if err != nil {
+		return "", err
+	}
+	byL := ""
+	for _, block := range strings.Split(out, "\x00")[1:] {
+		date := block[:10]
+		byL = date
+		if created := hunkCreates.MatchString(block); created {
+			break
+		}
+	}
+	byS := ""
+	if strings.TrimSpace(firstLine) != "" {
+		out, err := s.run("log", "-S"+firstLine, "--format=%aI", s.Commit, "--", p)
+		if err != nil {
+			return "", err
+		}
+		lines := nonEmptyLines(out)
+		if len(lines) > 0 {
+			byS = lines[len(lines)-1][:10]
+		}
+	}
+	switch {
+	case byL == "" && byS == "":
+		return s.FirstDay(p)
+	case byL == "" || (byS != "" && byS < byL):
+		return byS, nil
+	}
+	return byL, nil
+}
+
+// hunkCreates matches a -L hunk whose old side is empty: the lines did not exist before.
+var hunkCreates = regexp.MustCompile(`(?m)^@@ -\d+,0 \+\d+(,\d+)? @@`)
+
+var dateLine = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T`)
 
 // Files returns every tracked path at the revision, sorted.
 func (s *Source) Files() []string { return s.files }
@@ -105,14 +161,19 @@ func (s *Source) Dir(dir string) []string {
 
 // Read returns a file's text at the revision.
 func (s *Source) Read(p string) (string, error) {
-	if c, ok := s.content[p]; ok {
+	s.mu.Lock()
+	c, ok := s.content[p]
+	s.mu.Unlock()
+	if ok {
 		return c, nil
 	}
-	out, err := s.git.Run("show", s.Commit+":"+p)
+	out, err := s.run("show", s.Commit+":"+p)
 	if err != nil {
 		return "", fmt.Errorf("%s: cannot read %s at %s", s.Path, p, s.Rev)
 	}
+	s.mu.Lock()
 	s.content[p] = out
+	s.mu.Unlock()
 	return out, nil
 }
 
@@ -125,10 +186,13 @@ func (s *Source) ReadBytes(p string) ([]byte, error) {
 // FirstDay is the YYYY-MM-DD part of the author time of the earliest commit touching the
 // file, following renames.
 func (s *Source) FirstDay(p string) (string, error) {
-	if d, ok := s.firstDay[p]; ok {
+	s.mu.Lock()
+	d, ok := s.firstDay[p]
+	s.mu.Unlock()
+	if ok {
 		return d, nil
 	}
-	out, err := s.git.Run("log", "--follow", "--format=%aI", s.Commit, "--", p)
+	out, err := s.run("log", "--follow", "--format=%aI", s.Commit, "--", p)
 	if err != nil {
 		return "", err
 	}
@@ -136,17 +200,22 @@ func (s *Source) FirstDay(p string) (string, error) {
 	if len(lines) == 0 {
 		return "", fmt.Errorf("%s: no history for %s", s.Path, p)
 	}
-	d := lines[len(lines)-1][:10]
+	d = lines[len(lines)-1][:10]
+	s.mu.Lock()
 	s.firstDay[p] = d
+	s.mu.Unlock()
 	return d, nil
 }
 
 // LastDay is the date of the last commit touching the file.
 func (s *Source) LastDay(p string) (string, error) {
-	if d, ok := s.lastDay[p]; ok {
+	s.mu.Lock()
+	d, ok := s.lastDay[p]
+	s.mu.Unlock()
+	if ok {
 		return d, nil
 	}
-	out, err := s.git.Run("log", "-1", "--format=%aI", s.Commit, "--", p)
+	out, err := s.run("log", "-1", "--format=%aI", s.Commit, "--", p)
 	if err != nil {
 		return "", err
 	}
@@ -154,14 +223,16 @@ func (s *Source) LastDay(p string) (string, error) {
 	if len(lines) == 0 {
 		return "", fmt.Errorf("%s: no history for %s", s.Path, p)
 	}
-	d := lines[0][:10]
+	d = lines[0][:10]
+	s.mu.Lock()
 	s.lastDay[p] = d
+	s.mu.Unlock()
 	return d, nil
 }
 
 // CommitDay is the author date of the source revision itself.
 func (s *Source) CommitDay() (string, error) {
-	out, err := s.git.Run("log", "-1", "--format=%aI", s.Commit)
+	out, err := s.run("log", "-1", "--format=%aI", s.Commit)
 	if err != nil {
 		return "", err
 	}
@@ -177,7 +248,7 @@ func (s *Source) BlameDays(p string) ([]string, error) {
 	if b, ok := s.blames[p]; ok {
 		return b, nil
 	}
-	out, err := s.git.Run("blame", "--line-porcelain", s.Commit, "--", p)
+	out, err := s.run("blame", "--line-porcelain", s.Commit, "--", p)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +262,8 @@ func (s *Source) BlameDays(p string) ([]string, error) {
 	var cur string
 	for _, line := range strings.Split(out, "\n") {
 		switch {
-		case len(line) > 40 && isHex(line[:40]) && line[40] == ' ':
-			cur = line[:40]
+		case isBlameHeader(line):
+			cur = line[:strings.IndexByte(line, ' ')]
 			fields := strings.Fields(line)
 			// final line number is fields[2]; records come in order, one per line.
 			_ = fields
@@ -212,6 +283,12 @@ func (s *Source) BlameDays(p string) ([]string, error) {
 	}
 	s.blames[p] = days
 	return days, nil
+}
+
+// isBlameHeader recognizes "<sha> <orig> <final> [<count>]" with a 40- or 64-hex hash.
+func isBlameHeader(line string) bool {
+	sp := strings.IndexByte(line, ' ')
+	return (sp == 40 || sp == 64) && isHex(line[:sp])
 }
 
 func isHex(s string) bool {

@@ -59,24 +59,23 @@ func cutTitle(s string) string {
 	return s
 }
 
-// headingDate applies §13.3's date rule to a heading: a trailing "(YYYY-MM-DD)" or
-// ", found YYYY-MM-DD" is removed and returned; else the last date in the text is returned
-// and the text is kept. removed holds the text taken out, for the accounting.
+// headingDate applies §13.3's date rule to a heading: a trailing "(YYYY-MM-DD)",
+// ", found YYYY-MM-DD" or " — YYYY-MM-DD" is removed from the title; the unit's date is the
+// EARLIEST date written anywhere in the heading. removed holds the text taken out.
 func headingDate(text string) (title, date, removed string) {
-	if m := trailDateRe.FindStringSubmatchIndex(text); m != nil {
-		return strings.TrimSpace(text[:m[0]]), text[m[2]:m[3]], text[m[0]:]
+	title = text
+	for _, re := range []*regexp.Regexp{trailDateRe, foundDateRe, dashDateRe} {
+		if m := re.FindStringSubmatchIndex(text); m != nil {
+			title, removed = strings.TrimSpace(text[:m[0]]), text[m[0]:]
+			break
+		}
 	}
-	if m := foundDateRe.FindStringSubmatchIndex(text); m != nil {
-		return strings.TrimSpace(text[:m[0]]), text[m[2]:m[3]], text[m[0]:]
+	for _, d := range dateRe.FindAllString(text, -1) {
+		if date == "" || d < date {
+			date = d
+		}
 	}
-	if m := dashDateRe.FindStringSubmatchIndex(text); m != nil {
-		return strings.TrimSpace(text[:m[0]]), text[m[2]:m[3]], text[m[0]:]
-	}
-	all := dateRe.FindAllString(text, -1)
-	if len(all) > 0 {
-		return text, all[len(all)-1], ""
-	}
-	return text, "", ""
+	return title, date, removed
 }
 
 // nonWS returns the non-whitespace code points of s, as a string, for the §13.6 comparison.
@@ -185,19 +184,27 @@ var prefixTags = []struct{ prefix, tag string }{
 	{"Pattern:", "pattern"},
 }
 
-// stripPrefix removes a §13.3 heading prefix; it returns the rest, the tag and the removed
-// text. "Historical mistake (superseded …):" keeps its parenthesis content in the title.
-func stripPrefix(text string) (rest, tag, removed string) {
+var historicalRe = regexp.MustCompile(`^Historical mistake(\s*\(([^)]*)\))?:\s*`)
+
+// stripPrefix removes a §13.3 heading prefix; it returns the rest, the tag, the removed text
+// and, for "Historical mistake (superseded YYYY-MM-DD):", the date in the parenthesis, which
+// is the unit's date only when the rest of the heading has none.
+func stripPrefix(text string) (rest, tag, removed, date string) {
+	if m := historicalRe.FindStringSubmatch(text); m != nil {
+		if d := dateRe.FindString(m[2]); d != "" {
+			date = d
+		}
+		return strings.TrimSpace(text[len(m[0]):]), "historical", m[0], date
+	}
 	for _, p := range prefixTags {
+		if p.prefix == "Historical mistake" {
+			continue
+		}
 		if strings.HasPrefix(text, p.prefix) {
-			if p.prefix == "Historical mistake" {
-				// "Historical mistake (…): x" -> "(…): x"; only the words go
-				return strings.TrimSpace(strings.TrimPrefix(text, p.prefix)), p.tag, p.prefix
-			}
-			return strings.TrimSpace(strings.TrimPrefix(text, p.prefix)), p.tag, p.prefix
+			return strings.TrimSpace(strings.TrimPrefix(text, p.prefix)), p.tag, p.prefix, ""
 		}
 	}
-	return text, "", ""
+	return text, "", "", ""
 }
 
 // titlePrefixes are the "# Word:" prefixes of file units (SPEC §13.3).
@@ -283,10 +290,12 @@ func firstParagraph(body string) string {
 	return strings.Join(out, "\n")
 }
 
-// backlog markers (SPEC §13.3): symbols and words, their status, in precedence order.
-var backlogDropped = regexp.MustCompile(`(?i)\b(SUPERSEDED|MOOT|RETIRED)\b`)
-var backlogBlocked = regexp.MustCompile(`⏸|(?i)\bBLOCKED\b`)
-var backlogDone = regexp.MustCompile(`✓|✅|(?i)\b(DONE|FIXED|CLOSED|RESOLVED)\b`)
+// Backlog markers (SPEC §13.3): the listed tokens only, case-sensitive, whole words, in
+// precedence order dropped > blocked > done.
+var backlogDropped = regexp.MustCompile(`\b(SUPERSEDED|MOOT|RETIRED)\b`)
+var backlogBlocked = regexp.MustCompile(`⏸|\bBLOCKED\b`)
+var backlogDone = regexp.MustCompile(`✓|✅|\b(DONE|FIXED|CLOSED|RESOLVED)\b`)
+var markerToken = regexp.MustCompile(`✓|✅|⏸|\b(DONE|FIXED|CLOSED|RESOLVED|SUPERSEDED|MOOT|RETIRED|BLOCKED)\b`)
 
 // backlogStatus returns the status a backlog heading's markers imply, or "".
 func backlogStatus(text string) string {
@@ -301,15 +310,17 @@ func backlogStatus(text string) string {
 	return ""
 }
 
-// leadingMarkers removes marker symbols and marker words from the start of a heading, and
-// returns the rest and what was removed.
-var leadingMarkerRe = regexp.MustCompile(`^(?:(?:✓|✅|⏸|📋|(?i:DONE|FIXED|CLOSED|RESOLVED|SUPERSEDED|MOOT|RETIRED|BLOCKED))\s*)+`)
-
-func leadingMarkers(text string) (rest, removed string) {
+// removeMarkers removes the listed marker tokens (and a full strikethrough's ~~) from a
+// heading, and nothing else; it returns the rest and the removed tokens.
+func removeMarkers(text string) (rest string, removed []string) {
 	if struck(text) {
 		t := strings.TrimSpace(text)
 		text = strings.TrimSpace(t[2 : len(t)-2])
+		removed = append(removed, "~~")
 	}
-	m := leadingMarkerRe.FindString(text)
-	return strings.TrimSpace(text[len(m):]), m
+	rest = markerToken.ReplaceAllStringFunc(text, func(m string) string {
+		removed = append(removed, m)
+		return ""
+	})
+	return strings.Join(strings.Fields(rest), " "), removed
 }

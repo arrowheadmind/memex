@@ -28,6 +28,7 @@ type Options struct {
 	Version string
 	Timeout time.Duration
 	Stdout  io.Writer
+	Stderr  io.Writer // progress notes, such as the dating cost; nil for none
 }
 
 // Importer holds one run.
@@ -48,7 +49,14 @@ type Importer struct {
 	attach      []attachment
 	attachOwner []*Unit // per attachment, the entry whose files/ directory holds it
 	agentMD     string
+	prefixes    []string
+	fullRe      *regexp.Regexp
+	wrappedRe   *regexp.Regexp
+	datingCost  time.Duration
 }
+
+var brainRepoRe = regexp.MustCompile(`(?m)^- \*\*BRAIN_REPO\*\*: *(.+)$`)
+var logPrefixRe = regexp.MustCompile(`^\d{8}T\d{6}Z-[^-]+-`)
 
 type attachment struct {
 	Src  *Source
@@ -102,6 +110,7 @@ func Run(o Options) (*Report, error) {
 	}
 	im.resolveStatuses()
 	im.applyRepos()
+	im.dropDuplicates()
 	if err := im.remainders(); err != nil {
 		return nil, err
 	}
@@ -123,6 +132,9 @@ func Run(o Options) (*Report, error) {
 		u.Body = im.rewriteLinks(u, strings.Join(u.BodyLines, "\n"))
 	}
 	im.report.Links.Unresolved = im.unresolvedList()
+	if o.Stderr != nil {
+		fmt.Fprintf(o.Stderr, "memex: dated line units in %.1fs\n", im.datingCost.Seconds())
+	}
 	im.account()
 	if err := im.write(); err != nil {
 		return nil, err
@@ -214,7 +226,7 @@ func (im *Importer) walk(s *Source) error {
 		if err != nil {
 			return err
 		}
-		if m := regexp.MustCompile(`(?m)^- \*\*BRAIN_REPO\*\*: *(.+)$`).FindStringSubmatch(text); m != nil {
+		if m := brainRepoRe.FindStringSubmatch(text); m != nil {
 			im.brainRepo[s] = tagify(m[1])
 		}
 		if s.Primary {
@@ -287,13 +299,7 @@ func (im *Importer) leaks() error {
 		if err != nil {
 			return err
 		}
-		if !strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "~") {
-			abs, err := filepath.Abs(p)
-			if err == nil {
-				p = abs
-			}
-		}
-		shown := p
+		shown := p // written as given, except that the home directory becomes ~
 		if im.home != "" && strings.HasPrefix(p, im.home+"/") {
 			shown = "~/" + strings.TrimPrefix(p, im.home+"/")
 		}
@@ -332,12 +338,12 @@ func (im *Importer) applyRepos() {
 	for _, u := range im.units {
 		var repos []string
 		for _, r := range u.Repos {
-			if t := tagify(r); t != "" && !emptyRepos[t] {
+			if t := tagify(r); t != "" && !im.emptyRepo(t) {
 				repos = append(repos, t)
 			}
 		}
 		if len(repos) == 0 && u.Kind != "leak" {
-			if r := im.brainRepo[u.Src]; r != "" && !emptyRepos[r] {
+			if r := im.brainRepo[u.Src]; r != "" && !im.emptyRepo(r) {
 				repos = []string{r}
 			}
 		}
@@ -408,12 +414,12 @@ func (im *Importer) attachmentsEntries() error {
 			dir = stem(rel)
 		}
 		if isLog {
-			dir = regexp.MustCompile(`^\d{8}T\d{6}Z-[^-]+-`).ReplaceAllString(stem(rel), "")
+			dir = logPrefixRe.ReplaceAllString(stem(rel), "")
 		}
 		var owner *Unit
 		best := -1
 		for _, u := range im.units {
-			if u.Src != a.Src || u.Kind != "plan" {
+			if u.Src != a.Src || u.Kind != "plan" { // a dropped duplicate is no longer a plan
 				continue
 			}
 			if u.Stem == dir || (strings.HasPrefix(dir, u.Stem) && len(u.Stem) < len(dir)) {
@@ -458,7 +464,7 @@ func typeDir(typ string) string {
 // write creates DIR as init does and writes every entry, attachment and AGENT.md.
 func (im *Importer) write() error {
 	g := gitx.New(im.opts.Out, im.opts.Timeout)
-	if err := store.CreateLayout(im.opts.Out, filepath.Base(im.opts.Out), g); err != nil {
+	if err := store.CreateLayout(im.opts.Out, im.primary.Basename, g); err != nil {
 		return err
 	}
 	// attachments entries' bodies list the files they own

@@ -2,7 +2,7 @@
 title = "docs/backlog.md (import remainder)"
 status = "active"
 created = 2026-01-10
-verified = 2026-01-10
+verified = 2026-01-11
 aliases = ["docs/backlog.md"]
 +++
 

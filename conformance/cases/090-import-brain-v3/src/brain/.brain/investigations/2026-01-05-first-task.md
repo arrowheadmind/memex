@@ -4,10 +4,10 @@
 raw
 
 ## Source Repo
-Programming
+src
 
 ## Context
-root
+raspberry-pi, nixos
 
 ## What was attempted
 
