@@ -44,14 +44,19 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 12 Tool neutrality | Planned |
 | 13 Importing a brain v3 store | Planned |
 | 15 Conformance suite | Planned |
+| 16 Help | Planned |
+| 17 Agent-first requirements | Planned |
 
 ---
 
 ## 1. Principles
 
-These come from about 2,300 commits of experience with the predecessor (brain-kit's
-`brainctl`, v2 and v3). Each one names the failure it prevents.
+Principle 0 is the design stance. The rest come from about 2,300 commits of experience with
+the predecessor (brain-kit's `brainctl`, v2 and v3), and each names the failure it prevents.
 
+0. **The primary user is a language-model agent.** Humans are the second user: they read the
+   same output and must find it clear, but when the two pull apart, the agent's needs decide.
+   §17 states what this requires, and every command is designed against it.
 1. **Mechanism over memory.** A rule that depends on being remembered has already failed.
    Everything memex can check, it checks (`memex check`, hooks, refusals). Documentation comes
    second.
@@ -425,6 +430,7 @@ Warnings:
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` |
+| `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-LEAK`).
 
@@ -508,12 +514,13 @@ floating-point arithmetic differs in the last bits still rank identically.
 **Text output:** one block per result, numbered from 1:
 
 ```
-1. rule active 2026-09-12-bare-rebuild-leaves-the-closure-uncached
+1. [rule, active] rules/2026-09-12-bare-rebuild-leaves-the-closure-uncached.md
    Bare rebuild leaves the closure uncached
    …the closure was never pushed to the **cache** so the weekly…
 ```
 
-- **Line 1:** rank, type, status, id.
+- **Line 1:** rank, then `[<type>, <status>]`, then the entry's path relative to the store root.
+  The id is the filename stem, and an agent can open the path directly with its own file tools.
 - **Line 2:** three spaces and the title, then ` — ` and the summary if one is present.
 - **Line 3 (snippet):** three spaces, then the first body line (outside fenced code) that
   contains a matching token. If no body line matches, line 3 is omitted.
@@ -527,7 +534,11 @@ floating-point arithmetic differs in the last bits still rank identically.
 ```
 N more visible matches not shown (raise --limit)
 N matches hidden by status (use --all)
+Store root: <absolute store path>
 ```
+
+The `Store root` line is printed whenever there is at least one result, so that relative paths
+can be resolved without another call.
 
 **When nothing matches at all,** including hidden entries:
 
@@ -665,8 +676,8 @@ followed by the outcome line where one applies. If the fetch fails, it prints
 - **Titles and other values** that begin with `-` MUST be passed as `--title=-x`. A positional
   value or a bare `--title -x` beginning with `-` is a usage error, never a silently accepted
   title. The predecessor created junk entries from `capture --help`.
-- **Help:** `memex help [COMMAND]`, `memex COMMAND --help` and `-h` print help to standard output
-  and exit 0. They never perform the command.
+- **Help:** `memex help …`, `memex COMMAND --help` and `-h` print help to standard output and exit
+  0. They never perform the command, and they work without a store. See §16.
 - **Version:** `memex version` and `memex --version` print `memex <version> (store format 1)`.
 - **Exit codes:**
 
@@ -718,15 +729,18 @@ into `DIR` with the pointer text of §12.
 ### 11.2 `new` and `capture`
 
 ```
-memex new TYPE --title=T --body FILE|- [--status S] [--summary S] [--tag X]… [--keyword K]…
+memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…
           [--repo R]… [--no-repo] [--host H]… [--no-host] [--always] [--kind K]
           [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…
-memex capture --title=T --body FILE|- [same options]
+memex capture --title=T --summary=S --body FILE|- [same options]
 ```
 
 `capture` is `new journal`. Behavior:
 
 1. Validate the options against §5.2 and §5.3 (for example, `--always` only on rules).
+   `--summary` is required, because search results and lists show it, and it is what lets an
+   agent decide whether to open an entry without reading it. `--keyword` SHOULD be given
+   whenever the body's vocabulary differs from how someone would ask about it.
    `verified` defaults to today for references.
 2. Normalize the body (§5.1) and check its content measure (§5.6).
 3. Compute the id (§5.4).
@@ -762,19 +776,33 @@ This is the start-of-task ritual. It prints:
      each line indented two spaces, cut to 600 code points total, with `…` appended if cut.
 3. **Blank line, then `## Results`,** and the §8.5 text output for the query.
 
+**Output budget.** `--max-chars N` (default 12000, minimum 2000) bounds the whole output in
+code points.
+- The sync line and the `## Always` section are never cut.
+- If they alone exceed half the budget, a final line
+  `warning: always rules use <n> of <N> characters; review them` is added.
+- Search results are then dropped from the end, whole blocks at a time, until the output fits.
+- When any result was dropped, a last line reads:
+  `output budget reached: <k> results not shown (raise --max-chars or run memex search)`.
+
 The exit code is the search's. A failed sync never changes it.
 
 ### 11.5 `list`
 
 ```
-memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]… [--all] [--json]
+memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N]
+           [--fields F,…] [--json]
 ```
 
 - **Order:** descending `created`, then ascending id.
 - **Visibility:** by default only visible entries are listed. `--status` selects statuses
   explicitly, and `--all` lists every entry.
+- **Limit:** `--limit N` prints the first N entries, then
+  `N more entries not shown (raise --limit)` if any were cut.
 - **Text output:** one line per entry, `<created> <type> <status> <id> <title>`, separated by
   single spaces.
+- **Fields:** `--fields` selects and orders the columns, from `created, type, status, id, path,
+  title, summary, tags`. Columns are separated by a tab in text output.
 - **JSON output:** an array of objects with keys `id, type, status, created, title, summary,
   tags, path`.
 
@@ -831,7 +859,7 @@ memex set ID ASSIGNMENT…
 ### 11.8 `promote`
 
 ```
-memex promote SOURCE-ID --to TYPE --title=T --body FILE|- [new options]
+memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new options]
 ```
 
 1. Creates a new entry, as `new`, with `sources` containing SOURCE-ID plus any `--source` values.
@@ -910,7 +938,11 @@ Creates a `raw` journal entry from a file found by the leak scan.
 
 §13.
 
-### 11.16 `template`
+### 11.16 `help`
+
+§16.
+
+### 11.17 `template`
 
 ```
 memex template TYPE
@@ -1131,6 +1163,228 @@ Every section of this specification marked Implemented MUST have at least one ca
 
 ---
 
+## 16. Help
+
+Help is the way a person or a language model learns memex. It is part of the specified
+interface, held to the same standard as any other output: exact, tested, and unable to drift
+from the behavior it describes.
+
+### 16.1 Goals
+
+1. **Learnable in one call.** `memex help --all` prints everything needed to use memex
+   correctly, in one output, with no need to read the source or this specification.
+2. **Cheap to consult.** Every piece is reachable on its own and sized to be read quickly.
+   An agent fetches only what it needs.
+3. **Correct by construction.** Every example is executed by the conformance suite. Every
+   option the parser accepts is documented, and nothing undocumented is accepted.
+4. **Errors teach.** A usage error names the problem and the exact help command that explains
+   it.
+
+### 16.2 Forms
+
+| Invocation | Prints |
+|---|---|
+| `memex help` or `memex --help` | The overview (§16.4) |
+| `memex help COMMAND`, `memex COMMAND --help`, `memex COMMAND -h` | The command page (§16.5) |
+| `memex help TOPIC` | The topic page (§16.6) |
+| `memex help topics` | One line per command and topic: name, two spaces, one-line description |
+| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11. Pages are separated by a line `---`. |
+| `memex help --json` | The machine-readable interface (§16.7) |
+
+- An unknown name exits 2 and prints, on stderr:
+  `memex: no help for "<name>"; did you mean "<nearest>"? Run: memex help topics`.
+  - The nearest name is the one with the smallest Levenshtein distance, and only if that
+    distance is ≤ 3; otherwise the `did you mean` clause is omitted.
+  - The same suggestion rule applies to an unknown command.
+- Help never needs a store, configuration or network, and never writes anything.
+
+### 16.3 Format and sources
+
+- **Format.** All help output is Markdown, plain enough to read raw in a terminal:
+  - ATX headings, lists, tables, and fenced code blocks;
+  - lines at most 100 characters, except table rows and code;
+  - no ANSI escapes.
+- **Help text is data, not code.** It lives in this repository as `help/*.md`: one file per
+  command (`help/cmd-<command>.md`), one per topic (`help/topic-<name>.md`) and
+  `help/overview.md`. An implementation embeds these files and prints them verbatim. The one
+  exception is the first line of the overview, which carries the version (§16.4). This keeps
+  help identical across implementations in different languages.
+- **Only implemented behavior is documented.** A command or option enters help in the commit
+  that implements it (§0).
+
+### 16.4 Overview
+
+`help/overview.md`, at most 80 lines, in this order:
+
+1. **Version line:** `# memex <version> (store format 1)`.
+2. **The agent line:** "If you are an AI agent: run `memex help agents` now (60 lines), or
+   `memex help --all` once for everything."
+3. **What memex is:** two or three sentences.
+4. **The model:** store, entry, type, id, status, visibility, and frontmatter, in one short list.
+5. **The everyday loop,** as a runnable example:
+   - `memex preflight "…"` before work;
+   - `memex capture --title=… --summary=… --body FILE` after it;
+   - edit an entry, then `memex save`.
+6. **The command table:** each command with its one-line description.
+7. **The topic table.**
+8. **Where to go next:** `memex help topics`.
+
+### 16.5 Command pages
+
+Each `help/cmd-<command>.md` has these sections, in this order. Sections that don't apply are
+omitted.
+
+1. `# memex <command>`, followed by its one-line description.
+2. **Usage:** the synopsis exactly as in §11.
+3. **Description:** what it does and when to use it, at most 15 lines.
+4. **Options:** a table with columns option, value, default, meaning, covering every option the
+   command accepts and no others.
+5. **Output:** the exact shape of standard output, including the outcome line (§9.4) for
+   mutating commands.
+6. **Exit codes:** only the codes this command can return.
+7. **Examples:** two to five. Each is a fenced block marked ` ```example `, holding the command
+   line prefixed `$ ` followed by its exact output.
+8. **Mistakes to avoid:** the misuse the command refuses, and why. Example for `capture`:
+   titles starting with `-`, empty bodies, and writing to a tool's memory instead.
+9. **See also:** related commands and topics.
+
+Each page is at most 120 lines.
+
+### 16.6 Topic pages
+
+In this order (the `--all` order):
+
+| Topic | Covers |
+|---|---|
+| `agents` | Rules of engagement for language-model agents, at most 60 lines: run `preflight` before work; capture after it; never write a tool's own memory; edit then `save`; respect outcome lines and exit codes; journal bodies are immutable; how to supersede instead of editing history. Written as imperatives. |
+| `concepts` | The model and the reasoning behind it (§1, §2) |
+| `entries` | Types, statuses, visibility and every frontmatter field, as tables (§5.2, §5.3) |
+| `ids` | The id and slug rules, with worked examples (§5.4) |
+| `links` | Link syntax and resolution (§6) |
+| `search` | Query syntax, prefix terms, phrases, ranking, filters, and how to read output, including hidden-count lines (§8) |
+| `writing` | The write protocol, direct edits, outcomes and conflicts (§9) |
+| `config` | Store resolution, the config file and environment variables (§3) |
+| `check-codes` | Every `E-` and `W-` code, with its condition and the usual fix (§7) |
+| `exit-codes` | The §10 table |
+| `neutrality` | Pointer files, the leak scan and tool memory (§12) |
+| `import` | The brain v3 importer and its report (§13) |
+
+Each topic is at most 200 lines. `memex help --all` as a whole MUST stay under 3,000 lines. The
+conformance suite measures this, so that reading all of memex stays one affordable call.
+
+### 16.7 Machine-readable interface
+
+`memex help --json` prints one compact JSON object, keys in this order:
+
+```json
+{"version":"…","format":1,
+ "commands":[{"name":"…","summary":"…","usage":"…","mutating":true,
+   "options":[{"name":"--title","value":"T","repeatable":false,"required":true,"default":null,"summary":"…"}],
+   "positionals":[{"name":"QUERY","repeatable":true,"required":true}],
+   "exit_codes":[0,1,2]}],
+ "types":[{"name":"rule","directory":"rules","statuses":["active","superseded","retired"],"visible":["active"]}],
+ "fields":[{"name":"title","kind":"string","required":"yes","allowed_on":["*"]}],
+ "exit_codes":[{"code":0,"meaning":"Success"}],
+ "topics":[{"name":"agents","summary":"…"}]}
+```
+
+- The JSON is generated from the same definitions the parser and validator use, never written
+  by hand.
+- `required` on fields is `"yes"`, `"no"`, or a condition string such as
+  `"when status is superseded"`.
+
+### 16.8 Usage errors
+
+On a usage error (exit 2), stderr carries:
+1. `memex: <problem>`;
+2. the command's usage line;
+3. `Run: memex help <command>`.
+
+Examples of `<problem>`: `unknown option --tittle (did you mean --title?)`, `missing --body`,
+`value for --title starts with "-"; write --title=-…`.
+
+### 16.9 Guarantees enforced by the conformance suite
+
+- Every command and topic has a page. `memex help topics` lists exactly them.
+- Every option and positional accepted by a command appears in its page's Options table and in
+  `help --json`. Conversely, every documented option is accepted.
+  - The runner checks this by comparing `help --json` with the Options tables.
+  - It also tries each documented option. An undocumented `--x` must fail as unknown.
+- Every ` ```example ` block is executed in a fresh store seeded from
+  `conformance/help-fixture/`, and its output must match exactly.
+- Size limits (§16.4–16.6) hold.
+- `help --all` is byte-identical to the concatenation rule of §16.2.
+
+## 17. Agent-first requirements
+
+These are the concrete consequences of Principle 0. Each is testable, and each has conformance
+cases.
+
+### 17.1 Learnable without the source
+
+- An agent that has never seen memex can use it correctly after `memex help agents`, and fully
+  after `memex help --all` (§16).
+- `AGENT.md` (Appendix A) tells it so in its first lines.
+
+### 17.2 Economical with context
+
+- **Bounded output.** Every command that can print an unbounded amount has a bound: `search`
+  has `--limit`, `preflight` has `--max-chars`, and `list` has `--limit` (default unlimited)
+  and `--fields`.
+- **No filler.** No banners, no decorative output, no repeated headers, and no "success!"
+  lines beyond the outcome line.
+- **Triage before reading.** Results show title, summary and a one-line snippet, enough to
+  decide whether to open the entry. That is why `summary` is required on new entries.
+- **Truncation is announced.** Whenever output is cut, a final line says so and names the
+  option that lifts the cut. Silent truncation is a defect.
+
+### 17.3 Unambiguous and stable output
+
+- **Stable shapes.** Text output has fixed line shapes (§8.5, §9.4, §11), and every command
+  that prints data accepts `--json`. Changing a text shape counts as an interface change, and
+  goes in `CHANGELOG.md` under "Changed output".
+- **The outcome is always last.** For mutating commands, the last line is exactly one outcome
+  line (§9.4).
+- **Exit codes carry meaning** (§10). An agent can branch on the code without parsing text.
+- **Paths are relative to the store root,** and the root is printed once, so an agent can use
+  its own file tools.
+
+### 17.4 Forgiving of model mistakes, never silently
+
+Language models predictably make certain mistakes. memex catches each one and says how to fix it.
+
+| Mistake | memex's response |
+|---|---|
+| A misspelled command, option, type, status, field or topic | Exit 2 with `did you mean "<nearest>"?` (Levenshtein distance ≤ 3), plus the help command |
+| An unknown or invented id (`show`, `set`, `promote`, `--parent`, `--source`) | Exit 1 with `no entry "<id>"`, plus up to 3 nearest ids by search score of the given text, one per line, as `  candidate: <path>` |
+| The same capture run twice | Idempotent no-op (§11.2) |
+| A title starting with `-`, or an option swallowed as a value | Refused (§10) |
+| An empty or heading-only body | Refused, with the content-measure rule and the template command |
+| Editing a journal body | `check` fails with `E-HASH`, and the message names `set <id> status=superseded` plus `capture` as the correct path |
+| Writing knowledge into a tool's memory | Detected by the leak scan (§12), with `import-leak` as the fix |
+| A search phrased differently from the stored text | OR-combined ranked terms, prefix matching, and `keywords` (§8). The miss is reported, never silent |
+
+### 17.5 Safe to run unattended
+
+- Never interactive (Principle 9).
+- Reads are side-effect free, apart from the search cache (§8.6) and `preflight`'s sync of the
+  store.
+- Writes are atomic and verified (§9.1). A write that fails part-way leaves the store as it was,
+  or reports exactly what was left.
+- Concurrent agents on one host are serialized by the write lock. Agents on different hosts are
+  reconciled by rebase, and a true conflict is reported with exit 6, never resolved by guessing.
+
+### 17.6 Writing for the next agent
+
+memex's own guidance, in `help agents` and the templates, tells agents how to write entries
+that the next agent will find and trust:
+- Put the reader's likely words in `keywords`.
+- Make `summary` a sentence that answers "should I open this?".
+- Use one entry per lesson.
+- Link with `[[id]]` rather than prose paths.
+- Supersede instead of rewriting history.
+- Record evidence (commands, commit pins, measured values) in the body.
+
 ## Appendix A. Files written by `init`
 
 `AGENT.md`:
@@ -1140,9 +1394,10 @@ Every section of this specification marked Implemented MUST have at least one ca
 
 This store is the shared memory for this operator's work. It is managed with `memex`.
 
+- If you are new to memex: `memex help agents` (short), or `memex help --all` (everything).
 - Before any non-trivial task: `memex preflight "<task in your own words>"`.
 - After any non-trivial task: write what you learned to a file and run
-  `memex capture --title="<task>" --body FILE`.
+  `memex capture --title="<task>" --summary="<one sentence>" --body FILE`.
 - Never write knowledge into a coding tool's own memory or rules files.
   Knowledge lives here only.
 - Edit entries directly when needed, then run `memex save`.

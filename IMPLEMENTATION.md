@@ -53,6 +53,10 @@ internal/write/       §9 lock, write protocol, outcomes
 internal/commands/    one file per §11 command
 internal/neutral/     §12 pointer check, leak scan, tool-memory check
 internal/importv3/    §13 brain v3 importer and accounting
+internal/help/        §16 embeds ../../help/*.md with //go:embed; prints pages verbatim
+internal/spec/        single source of commands, options, types, statuses, fields and exit
+                      codes; the parser, validator and `help --json` are all driven from it
+help/                 §16 help pages (data, language-neutral, shared by any implementation)
 conformance/runner/   §15 runner (Go, but it only drives the binary)
 conformance/cases/    §15 cases (data, language-neutral)
 ```
@@ -74,6 +78,17 @@ conformance/cases/    §15 cases (data, language-neutral)
   is a review finding.
 - **Exit codes:** `main` maps typed errors to §10 codes. A panic is recovered at the top level,
   printed as `memex: internal error: …`, and exits 70.
+
+## Help and the agent-first stance
+
+- **Design for agents first** (SPEC Principle 0, §17). Agents are memex's main users. When a
+  choice of wording or shape comes up, pick what an agent parses unambiguously and cheaply.
+- **One source for the interface.** `internal/spec` holds a table of commands and options with
+  summaries. The parser registers options from that table, so an option can't exist without a
+  summary, and `help --json` serializes the same table. The prose pages in `help/` are checked
+  against it by the conformance runner (§16.9).
+- **Suggestions.** One shared Levenshtein helper, used everywhere a name is unknown (§16.2,
+  §17.4).
 
 ## Testing
 
