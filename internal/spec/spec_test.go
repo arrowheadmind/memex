@@ -83,3 +83,27 @@ func TestLookupCommand(t *testing.T) {
 		t.Error("nope found")
 	}
 }
+
+func TestNearest(t *testing.T) {
+	cases := []struct {
+		name string
+		want string
+		ok   bool
+	}{
+		{"serch", "search", true},
+		{"vesion", "version", true},
+		{"chek", "check", true},
+		{"xyzzyplugh", "", false},
+		{"", "new", true}, // distance 3; earliest of the three-letter names in §11 order
+		{"sät", "set", true},
+	}
+	for _, c := range cases {
+		got, ok := Nearest(c.name, CommandNames())
+		if ok != c.ok || (ok && got != c.want) {
+			t.Errorf("Nearest(%q) = %q, %v; want %q, %v", c.name, got, ok, c.want, c.ok)
+		}
+	}
+	if d := levenshtein("Café", "cafe"); d != 2 {
+		t.Errorf("levenshtein counts code points: got %d, want 2", d)
+	}
+}
