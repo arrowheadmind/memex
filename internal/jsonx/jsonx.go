@@ -37,6 +37,8 @@ type Bool bool
 
 // Score is the one non-integer number memex prints (SPEC §8.5): fixed notation with exactly
 // six digits after the decimal point, rounded half to even on the exact binary value.
+// Callers MUST apply the §8.3 rounding to the score first (IMPLEMENTATION.md, "Rounding");
+// Score only formats the value it is given.
 type Score float64
 
 // Null is the JSON null.
