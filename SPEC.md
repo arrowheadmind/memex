@@ -778,8 +778,9 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   characters: `"` as `\"`, `\` as `\\`, U+000A as `\n`, U+000D as `\r`, U+0009 as `\t`, and every
   other code point below U+0020 as `\u` followed by four lowercase hex digits. Nothing else is
   escaped: `/`, `<`, `>`, `&`, U+007F, U+2028, U+2029 and all non-ASCII characters are written
-  literally. Numbers that are integers are written without a fraction; the only non-integer is
-  `score` (§8.5).
+  literally. A byte sequence that is not valid UTF-8 (possible only in text that came from the
+  command line) is written as U+FFFD. Numbers that are integers are written without a
+  fraction; the only non-integer is `score` (§8.5).
 - **Titles and other values** that begin with `-` MUST be passed as `--title=-x`. A positional
   value or a bare `--title -x` beginning with `-` is a usage error, never a silently accepted
   title. The predecessor created junk entries from `capture --help`.
@@ -1418,9 +1419,10 @@ The same placeholders apply to the ` ```example ` blocks of the help pages (§16
 help example can show `pushed <SHA7>` and `Store root: <STORE>` and still be executed.
 
 **Network cases.** A case directory may contain `origin-unreachable`, which makes the runner
-point `origin` at a non-routable address instead of the bare clone, so that `network_timeout`
-behavior (§9.1) is tested; the runner sets `MEMEX_CONFIG` to a file with `network_timeout = 2`
-for such cases.
+point `origin` at a local TCP listener that accepts connections and never answers, instead of
+the bare clone, so that `network_timeout` behavior (§9.1) is tested with a deterministic hang
+and no assumption about the host's network; the runner sets `MEMEX_CONFIG` to a file with
+`network_timeout = 2` for such cases.
 
 Every section of this specification marked Implemented MUST have at least one case, and each
 `E-` and `W-` code MUST have a case that triggers it.
@@ -1458,7 +1460,8 @@ from the behavior it describes.
 - An unknown name exits 2 and prints, on stderr:
   `memex: no help for "<name>"; did you mean "<nearest>"? Run: memex help topics`.
   - The nearest name is the one with the smallest Levenshtein distance, and only if that
-    distance is ≤ 3; otherwise the `did you mean` clause is omitted.
+    distance is ≤ 3; otherwise the `; did you mean "<nearest>"?` clause is replaced by `.`,
+    giving `memex: no help for "<name>". Run: memex help topics`.
   - Ties are broken by the order of the candidate list (commands in §11 order, then topics
     in §16.6 order).
 - An unknown command exits 2 and prints, on stderr, with the same suggestion rule over the

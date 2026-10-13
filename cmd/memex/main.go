@@ -180,6 +180,8 @@ func printHelpPage(name string, stdout io.Writer) (int, *usageError) {
 	problem := fmt.Sprintf("no help for %q", name)
 	if near, ok := spec.Nearest(name, pages); ok {
 		problem += fmt.Sprintf("; did you mean %q?", near)
+	} else {
+		problem += "."
 	}
 	return 0, &usageError{problem: problem, helpRef: "memex help topics"}
 }
@@ -221,6 +223,8 @@ func unknownCommand(name string) string {
 	problem := fmt.Sprintf("unknown command %q", name)
 	if near, ok := spec.Nearest(name, spec.CommandNames()); ok {
 		problem += fmt.Sprintf("; did you mean %q?", near)
+	} else {
+		problem += "."
 	}
 	return problem
 }

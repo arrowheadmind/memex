@@ -7,7 +7,9 @@ they share.
 
 The name comes from Vannevar Bush's 1945 *memex*, a "memory extender".
 
-**Status: specification only.** Nothing is implemented yet.
+**Status: in development.** The specification is complete; the implementation is being built
+block by block (see [WORK.md](WORK.md)). The status table at the top of SPEC.md says which
+sections are implemented.
 
 - [SPEC.md](SPEC.md) is the single specification. It is language-neutral and precise enough that
   two implementations produce byte-identical results. Each section is marked Planned or
