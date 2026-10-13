@@ -61,9 +61,9 @@ the predecessor (brain-kit's `brainctl`, v2 and v3), and each names the failure 
    Everything memex can check, it checks (`memex check`, hooks, refusals). Documentation comes
    second.
 2. **One fact, one place.** Metadata lives only in an entry's frontmatter. The id is the filename
-   and the type is the directory, so neither is repeated in the file. Nothing memex generates
-   (lists, search caches) is committed. The predecessor kept status in three places, and they
-   drifted apart.
+   and the type is the directory, so neither is repeated in the file. Nothing memex derives
+   from entries (lists, indexes, search caches) is committed. The predecessor kept status in
+   three places, and they drifted apart.
 3. **One entry, one file.** Never accumulate knowledge by appending to a shared file. The
    predecessor's shared files reached 1 MB and 19,865 lines. Every session appended to them,
    and its concurrency machinery existed mostly to cope with that.
@@ -171,7 +171,6 @@ reference/          one current-state fact sheet per file
 tasks/              one backlog item per file
 plans/              one plan, handover prompt or execution report per file
 journal/            one investigation per file; body immutable
-logs/               one machine-produced log per file; body immutable
 files/<id>/         attachments belonging to entry <id>; any files, any depth
 .memex/             local cache and lock; listed in .gitignore; never committed
 .githooks/          hooks written by `memex init`
@@ -197,7 +196,8 @@ absent one means empty. memex creates a directory when it first writes into it.
 
 Type directories are flat. Any other file or directory inside a type directory is a validation
 error (§7). So is any top-level entry not in the list above, except dot-files and
-dot-directories (`.git`, `.gitattributes`, `.editorconfig`, …), which memex ignores.
+dot-directories (`.git`, `.gitattributes`, `.editorconfig`, …), `LICENSE`, `flake.nix`,
+`flake.lock` and `import-report.json` (§13.6), which memex ignores.
 
 ---
 
@@ -259,8 +259,17 @@ are stored sorted (ascending by code point) and deduplicated.
 
 The body is otherwise written byte for byte.
 
+**Canonical body.** In canonical form the body is in normalized form: no CR, no trailing
+whitespace at the end, exactly one final LF. Journal bodies are the exception: their bytes are
+whatever `body_sha256` covers, and `fmt` never touches them.
+
 **Reading.** Any valid TOML in the frontmatter is accepted for reading. A file that isn't in
 canonical form is a validation warning (§7), and `memex fmt` fixes it.
+
+**Unicode version.** Every Unicode-dependent rule in this specification (NFKD, general
+categories, simple lowercase mapping) is evaluated with the tables of **Unicode 15.0**. An
+implementation whose runtime ships other tables MUST still produce Unicode 15.0 results for the
+code points the conformance suite covers.
 
 ### 5.2 Types and statuses
 
@@ -273,9 +282,11 @@ canonical form is a validation warning (§7), and `memex fmt` fixes it.
 | `tasks/` | task | `open` `in-progress` `blocked` `done` `dropped` | `open` `in-progress` `blocked` |
 | `plans/` | plan | `draft` `active` `done` `abandoned` `superseded` | `draft` `active` |
 | `journal/` | journal | `raw` `kept` `promoted` `superseded` | `raw` `kept` `promoted` |
-| `logs/` | log | `kept` | none |
 
 - **Rules cover both constraints and known mistakes.** The difference lives in the body.
+- **Machine-produced logs are not a type.** A log belongs to the entry whose work produced it,
+  as an attachment under `files/<id>/`. The predecessor's ten dispatch logs were all named
+  after the plan they executed.
 - **Journal statuses:**
   - `raw`: not yet reviewed.
   - `kept`: reviewed, nothing to promote.
@@ -304,7 +315,7 @@ Listed in canonical order.
 | 14 | `verified` | date | yes | reference | When the facts were last checked against the live system |
 | 15 | `review_days` | integer ≥ 1 | no | reference | Staleness threshold for `verified` |
 | 16 | `aliases` | array | no | all | Former names or paths that resolve to this entry (§6) |
-| 17 | `body_sha256` | string | yes | journal, log | Lowercase hex SHA-256 of the body bytes |
+| 17 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
 
 - A field not in this table is an error.
 - A field on a type not listed under "Allowed on" is an error.
@@ -335,25 +346,31 @@ SHA-256 of the UTF-8 title.
 ### 5.5 Attribution
 
 On creation, unless options override it:
-- `repos` is the basename of the top-level directory of the git repository containing the
-  current directory, as reported by `git rev-parse --show-toplevel`, but only if that repository
-  is not the store. Otherwise it is empty.
-- `hosts` is `[host]` (§3.2).
+- `repos` is the name of the git repository containing the current directory: the basename of
+  the parent of `git rev-parse --git-common-dir` (made absolute), so that a linked worktree such
+  as `<repo>/.worktrees/<task>` is attributed to `<repo>`, not to `<task>`. It is empty when the
+  current directory is not inside a repository, or when that repository is the store.
+- `hosts` is empty. The predecessor never filtered by host, and a default on every entry is
+  noise.
 
-`--repo NAME` and `--host NAME` (repeatable) replace the defaults. `--no-repo` and `--no-host`
-empty them. This is the only use memex makes of the current directory.
+`--repo NAME` and `--host NAME` (repeatable) set the fields. `--no-repo` empties the default.
+This is the only use memex makes of the current directory.
 
 ### 5.6 Bodies
 
 - The body is free Markdown. memex never edits a body except by writing one it was given, and
   during import (§13).
 - **Content measure:** the number of non-whitespace Unicode code points in body lines that are
-  not ATX headings (a line matching `^ {0,3}#{1,6}( |$)`) and not inside fenced code blocks.
-  The body MUST have a content measure of at least **80**. The predecessor accumulated captures
-  that were only empty headings.
-- **Journal and log bodies are immutable.** `body_sha256` is set when the entry is created.
+  not ATX headings (a line matching `^ {0,3}#{1,6}( |$)`). Lines inside fenced code blocks
+  count: a runbook that is mostly commands is a full body. A body given to `new`, `capture` or
+  `promote` MUST have a content measure of at least **80**; the command refuses it (exit 1)
+  with the rule and a pointer to `memex help entries`. The predecessor accumulated captures
+  that were only empty headings. An existing entry below 80 is a warning (`W-SHORT-BODY`),
+  because imported units are often short and are still knowledge.
+- **Journal bodies are immutable.** `body_sha256` is set when the entry is created.
   To correct one, create a new entry and set the old one's status to `superseded`.
-- `memex template TYPE` prints a suggested body outline (Appendix B). It is never enforced.
+- `memex help entries` prints a suggested body outline per type (Appendix B). It is never
+  enforced.
 
 **Fenced code blocks** (used here and in §6): a line matching `^ {0,3}(```+|~~~+)` opens a
 block, which is closed by a later line starting (after up to 3 spaces) with at least as many
@@ -364,21 +381,24 @@ body.
 
 ## 6. Links
 
-**Syntax:** `[[TARGET]]` or `[[TARGET|TEXT]]`. TARGET is any text without `]`, `|` or LF.
-Links inside fenced code blocks and inside inline code spans (backtick-delimited on one line)
-are ignored.
+**Syntax:** `[[TARGET]]` or `[[TARGET|TEXT]]`. TARGET is text without `]`, `|` or LF that
+either matches the id pattern of §5.4 or equals an alias of some entry. Anything else between
+`[[` and `]]` (for example a shell test like `[[ -f x ]]`) is plain text, not a link. Links
+inside fenced code blocks and inside inline code spans (backtick-delimited on one line) are
+ignored.
 
 **Resolution of TARGET, in order:**
 1. The id of an entry: resolved.
 2. Exactly one entry has TARGET in `aliases`: resolved, with a warning `W-ALIAS-LINK` that
    suggests the id.
-3. Otherwise unresolved, which is an error (`E-LINK`).
+3. TARGET matches the id pattern but no entry has it: an error (`E-LINK`).
 
 **Field references** (`parent`, `sources`, `superseded_by`) MUST be ids. Aliases are not
 accepted there.
 
-**Markdown links** to `files/...` are checked for existence (`E-FILE-LINK`). Any other URL,
-path or `repo@sha` pin is free text and is not checked.
+**Markdown links** whose destination starts with `files/` are store-root-relative paths and
+are checked for existence (`E-FILE-LINK`). Any other URL, path or `repo@sha` pin is free text
+and is not checked.
 
 ---
 
@@ -387,7 +407,8 @@ path or `repo@sha` pin is free text and is not checked.
 `memex check` validates the whole store. `memex check --staged` validates the entries that are
 added or modified in the git index, plus the link targets they reference.
 
-**Output** is one line per finding, sorted by path and then code:
+**Output** is one line per finding, sorted by path, then code, then message (all by code
+point):
 
 ```
 <path>: <CODE> <message>
@@ -395,6 +416,10 @@ added or modified in the git index, plus the link targets they reference.
 
 The last line is `check: N errors, M warnings`. Exit 0 if there are no errors. With
 `--strict`, warnings count as errors.
+
+**Bounding the output.** `--errors-only` prints only errors. `--limit N` (default 200) prints
+the first N finding lines and then one line per remaining code, `<CODE>: K more`, so that a
+large imported store does not flood the caller. The summary line is always last.
 
 Errors:
 
@@ -415,7 +440,6 @@ Errors:
 | `E-LINK` | Unresolved `[[...]]` |
 | `E-FILE-LINK` | Markdown link to a missing `files/...` path |
 | `E-HASH` | `body_sha256` mismatch |
-| `E-BODY` | Content measure below 80 |
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id |
 | `E-MANIFEST` | `memex.toml` invalid |
@@ -431,6 +455,8 @@ Warnings:
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) |
+| `W-SHORT-BODY` | Content measure below 80 (§5.6) |
+| `W-SECRET` | A body line looks like a credential: a PEM private-key header, `password=`/`token=`/`secret=` followed by a non-placeholder value, or a run of 40+ base64 characters. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-LEAK`).
 
@@ -491,7 +517,7 @@ Where:
   field `c`.
 - Field weights `w_c`: title 10, keywords 8, tags 5, aliases 3, body 1.
 - Type weights: rule 1.5, runbook 1.3, reference 1.3, decision 1.2, task 1.0, plan 1.0,
-  journal 0.8, log 0.5.
+  journal 0.8.
 
 `N`, `n(q)` and `avgdl` are computed over **all** entries, whatever their status. Visibility
 filters apply after scoring.
@@ -707,7 +733,7 @@ memex init --pointers DIR [--force]
 repository, and writes:
 - `memex.toml` (`name` defaults to the directory basename);
 - `AGENT.md` (Appendix A);
-- the eight type directories, each with no files;
+- the seven type directories, each with no files;
 - `files/`;
 - `.gitignore` containing `.memex/`;
 - `.githooks/pre-commit` (Appendix A).
@@ -730,12 +756,19 @@ into `DIR` with the pointer text of §12.
 
 ```
 memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…
-          [--repo R]… [--no-repo] [--host H]… [--no-host] [--always] [--kind K]
+          [--repo R]… [--no-repo] [--host H]… [--always] [--kind K]
           [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…
 memex capture --title=T --summary=S --body FILE|- [same options]
+memex capture --from PATH [--title=T] [--summary=S] [same options]
 ```
 
-`capture` is `new journal`. Behavior:
+`capture` is `new journal`. `capture --from PATH` imports a file found by the leak scan (§12):
+the title defaults to the file's first ATX heading text, else its filename; the summary
+defaults to `Imported from <PATH>`; the body is the line `Imported from \`<PATH>\` (<today>).`,
+a blank line, then the file content, normalized; `aliases` gets `<PATH>` as written. It never
+deletes PATH, and on success prints `remove <PATH> after review` before the outcome line.
+
+Behavior:
 
 1. Validate the options against §5.2 and §5.3 (for example, `--always` only on rules).
    `--summary` is required, because search results and lists show it, and it is what lets an
@@ -891,10 +924,12 @@ Rewrites entries into canonical form (§5.1) without changing any field value or
 ### 11.12 `check`
 
 ```
-memex check [--staged] [--strict] [--workspace]
+memex check [--staged] [--strict] [--workspace] [--errors-only] [--limit N] [--json]
 ```
 
-§7.
+§7. With `--json`, the output is one object: `{"findings":[{"path":"…","code":"…",
+"severity":"error","message":"…"}],"errors":N,"warnings":M,"truncated":K}` in that key order,
+where `truncated` is the number of findings not listed because of `--limit`.
 
 ### 11.13 `doctor`
 
@@ -921,34 +956,13 @@ Read-only. Prints one line per check, `PASS|WARN|FAIL <id> <message>`, in this o
 
 Exit 1 if any check FAILs, else 0.
 
-### 11.14 `import-leak`
-
-```
-memex import-leak PATH [--title=T]
-```
-
-Creates a `raw` journal entry from a file found by the leak scan.
-- The title defaults to the file's first ATX heading text, else its filename.
-- The body is the line `Imported from \`<PATH>\` (<today>).`, then a blank line, then the file
-  content, normalized.
-- It never deletes PATH. On success it prints `remove <PATH> after review` before the outcome
-  line.
-
-### 11.15 `import`
+### 11.14 `import`
 
 §13.
 
-### 11.16 `help`
+### 11.15 `help`
 
 §16.
-
-### 11.17 `template`
-
-```
-memex template TYPE
-```
-
-Prints Appendix B's outline for TYPE.
 
 ---
 
@@ -983,7 +997,7 @@ the tool changes.
      `.cursor/rules/**`, `.github/copilot-instructions.md`, `.windsurfrules`
 
    This list lives in the specification. Adding a tool means adding a line here and a
-   conformance case. `import-leak` moves the content into the store.
+   conformance case. `capture --from PATH` (§11.2) moves the content into the store.
 4. **Integration is one-way.** Tools' hooks call memex (for example `memex preflight` at session
    start). memex knows nothing about tools beyond the pointer text and the paths in rule 3.
 5. **Switching off a tool's own memory is configuration, not memex's job.** `doctor`'s
@@ -1258,7 +1272,7 @@ In this order (the `--all` order):
 |---|---|
 | `agents` | Rules of engagement for language-model agents, at most 60 lines: run `preflight` before work; capture after it; never write a tool's own memory; edit then `save`; respect outcome lines and exit codes; journal bodies are immutable; how to supersede instead of editing history. Written as imperatives. |
 | `concepts` | The model and the reasoning behind it (§1, §2) |
-| `entries` | Types, statuses, visibility and every frontmatter field, as tables (§5.2, §5.3) |
+| `entries` | Types, statuses, visibility and every frontmatter field, as tables (§5.2, §5.3), then the body outline of each type (Appendix B) |
 | `ids` | The id and slug rules, with worked examples (§5.4) |
 | `links` | Link syntax and resolution (§6) |
 | `search` | Query syntax, prefix terms, phrases, ranking, filters, and how to read output, including hidden-count lines (§8) |
@@ -1359,9 +1373,9 @@ Language models predictably make certain mistakes. memex catches each one and sa
 | An unknown or invented id (`show`, `set`, `promote`, `--parent`, `--source`) | Exit 1 with `no entry "<id>"`, plus up to 3 nearest ids by search score of the given text, one per line, as `  candidate: <path>` |
 | The same capture run twice | Idempotent no-op (§11.2) |
 | A title starting with `-`, or an option swallowed as a value | Refused (§10) |
-| An empty or heading-only body | Refused, with the content-measure rule and the template command |
+| An empty or heading-only body | Refused, with the content-measure rule and `memex help entries` |
 | Editing a journal body | `check` fails with `E-HASH`, and the message names `set <id> status=superseded` plus `capture` as the correct path |
-| Writing knowledge into a tool's memory | Detected by the leak scan (§12), with `import-leak` as the fix |
+| Writing knowledge into a tool's memory | Detected by the leak scan (§12), with `capture --from PATH` as the fix |
 | A search phrased differently from the stored text | OR-combined ranked terms, prefix matching, and `keywords` (§8). The miss is reported, never silent |
 
 ### 17.5 Safe to run unattended
@@ -1376,7 +1390,7 @@ Language models predictably make certain mistakes. memex catches each one and sa
 
 ### 17.6 Writing for the next agent
 
-memex's own guidance, in `help agents` and the templates, tells agents how to write entries
+memex's own guidance, in `help agents` and `help entries`, tells agents how to write entries
 that the next agent will find and trust:
 - Put the reader's likely words in `keywords`.
 - Make `summary` a sentence that answers "should I open this?".
@@ -1415,6 +1429,8 @@ exec memex check --staged
 The file mode is `0755`.
 
 ## Appendix B. Body templates
+
+Printed by `memex help entries`, one per type. Suggestions only; nothing checks them.
 
 **rule**
 
@@ -1484,10 +1500,4 @@ The file mode is `0755`.
 ## What failed
 
 ## Reusable insights
-```
-
-**log**
-
-```markdown
-(raw log text)
 ```
