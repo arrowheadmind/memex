@@ -87,9 +87,10 @@ conformance/cases/    §15 cases (data, language-neutral)
 - **Lowercase (§5.4, §8.2):** `unicode.ToLower` per rune is the simple mapping. Don't use
   `strings.ToLower` together with special-casing tables.
 - **TOML (§5.1, §5.3):** `BurntSushi/toml` decodes `2026-09-12` and `2026-09-12T00:00:00Z` both
-  into `time.Time`. Decode into `map[string]any` with `toml.MetaData`, and use
-  `md.Type(key) == "Local Date"` to enforce the date kind; `md.Undecoded()` is not needed with a
-  map, but every key is checked against §5.3 by name.
+  into `time.Time`, and `md.Type(key)` says `"Datetime"` for every date and time kind (checked
+  against v1.6.0). The only mark of a Local Date is the name of the value's location,
+  `date-local`, so `internal/entry` checks that, and a unit test pins it in case a bump changes
+  it. Decode into `map[string]any`; every key is checked against §5.3 by name.
 - **Git (§3.3, §9):** `internal/gitx` builds the child environment explicitly (scrub list,
   `GIT_TERMINAL_PROMPT=0`, `GIT_EDITOR=true`, `GIT_SSH_COMMAND`, `LC_ALL=C`) and runs every
   network command under `context.WithTimeout(network_timeout)`. On timeout the process group is
