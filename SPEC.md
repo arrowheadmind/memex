@@ -1384,15 +1384,32 @@ implementation runs it through a runner that takes the path of the `memex` execu
 
 | File | Meaning |
 |---|---|
-| `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>`, and adds a bare clone as `origin` with upstream tracking. |
-| `env` | `KEY=VALUE` lines added to the environment. The runner always sets `MEMEX_STORE` (to the temporary store), `MEMEX_CONFIG` (to an empty file), `MEMEX_TODAY=2026-01-15`, `MEMEX_HOST=testhost`, `HOME` (a temporary directory), `TZ=UTC` and `LC_ALL=C`. |
+| `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Without `store/`, the store path is an empty temporary directory with no git repository and no origin. |
+| `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. |
 | `cmd` | The argument vector, one argument per line, without the program name |
 | `stdin` | Standard input (optional; empty if absent) |
-| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is whatever `memex version` reports |
+| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
 | `expect/exit` | Expected exit code |
-| `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex` |
-| `expect/commits` | Optional. Expected `git log --format=%s` of the store, newest first |
+| `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex`. Regular files are compared by relative path, bytes and executable bit. Directories are not compared: an empty directory is ignored on both sides, because a case directory kept in git cannot hold one |
+| `expect/commits` | Optional. Expected `git log --format=%s` of the store, newest first, without the `conformance: seed` commit |
 | `expect/stderr-contains` | Optional. Lines that must each appear in standard error |
+
+**Runner environment.** Every command runs with exactly this environment, then the case's `env`:
+
+- `PATH` is one temporary directory holding only two entries: `memex`, a symbolic link to the
+  executable under test, and `git`, a symbolic link to the system `git`. Nothing else from the
+  host `PATH` is reachable, so a case cannot depend on a host tool. The link named `memex` is
+  what the pre-commit hook of Appendix A runs.
+- `HOME` is a temporary directory. It holds `.gitconfig` with `user.name = test`,
+  `user.email = test@example.invalid` and `init.defaultBranch = main`, and nothing else.
+- `GIT_CONFIG_GLOBAL` names that `.gitconfig`, so the identity holds even when a case's `env`
+  overrides `HOME`, and `GIT_CONFIG_NOSYSTEM=1`.
+- `MEMEX_STORE` is the temporary store, `MEMEX_CONFIG` an empty file,
+  `MEMEX_TODAY=2026-01-15`, `MEMEX_HOST=testhost`, `TZ=UTC` and `LC_ALL=C`.
+
+No other variable is inherited from the runner's environment. The working directory is the
+temporary `HOME`, which is not inside a git repository, so §5.5 attribution is empty unless a
+case says otherwise.
 
 A case with several steps uses `steps/01/`, `steps/02/`, …, each holding its own `cmd`, `stdin`
 and `expect/`, sharing one store.
