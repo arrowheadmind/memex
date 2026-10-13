@@ -81,7 +81,9 @@ conformance/cases/    §15 cases (data, language-neutral)
   the rounded score. Sum in the order §8.3 fixes; don't reorder for speed.
 - **Unicode (§5.1):** `unicode` (stdlib) and `golang.org/x/text/unicode/norm` each ship their
   own tables, which can be a Unicode version apart. Pin `x/text` to a release whose tables
-  match the toolchain's `unicode.Version`, and add a test that asserts both are `15.0.0`.
+  match the toolchain's `unicode.Version`, and add a test that asserts `unicode.Version` and
+  `norm.Version` are equal (both `17.0.0` with Go 1.27). If no `x/text` release has 17.0 tables
+  when B1 pins it, stop and report; do not pin an older Go to make them agree.
 - **Lowercase (§5.4, §8.2):** `unicode.ToLower` per rune is the simple mapping. Don't use
   `strings.ToLower` together with special-casing tables.
 - **TOML (§5.1, §5.3):** `BurntSushi/toml` decodes `2026-09-12` and `2026-09-12T00:00:00Z` both
