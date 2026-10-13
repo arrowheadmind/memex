@@ -1,0 +1,23 @@
+The 9-significant-digit rounding of SPEC §8.3 decides this ranking.
+
+Query `qx`: a 2-code-point term, so it matches the whole token `qx` only.
+
+Tokens per document, by field (title, keywords+summary, tags, aliases, body):
+  R rules/…other-words  [other words] [] [] [qx] [qx]   |R| = 4   f(qx,R) = 3*1 + 1*1 = 4
+  D decisions/…qx       [qx] [] [] [] [qx qx]           |D| = 3   f(qx,D) = 10*1 + 1*2 = 12
+  four other documents with 3 + 3 + 2 + 3 = 11 tokens and no `qx`
+
+N = 6, avgdl = 18 / 6 = 3, n(qx) = 2, idf = ln(4.5 / 2.5) = ln(1.8)
+
+In exact arithmetic the two scores are equal:
+  R: idf * 4 * 2.2 / (4 + 1.2*(0.25 + 0.75*4/3))   * 1.5 = idf * 8.8/5.5 * 1.5 = idf * 2.4
+  D: idf * 12 * 2.2 / (12 + 1.2*(0.25 + 0.75*3/3)) * 1.2 = idf * 26.4/13.2 * 1.2 = idf * 2.4
+  idf * 2.4 = 1.41068800 (9 significant digits)
+
+In binary64, evaluated in the order SPEC §8.3 fixes, they differ in the last bit:
+  R = 1.4106879957650857
+  D = 1.4106879957650860   (D > R)
+
+Both round to 1.41068800, so they tie, and the tie goes to the type that comes first in
+§5.2's table: the rule ranks first. Ranking by the unrounded score would put the decision
+first.

@@ -1,0 +1,11 @@
+1. [rule, active] rules/2026-01-10-visible.md  matched 1/1: deploy
+   Visible rule
+   The **deploy** word appears here.
+2. [rule, superseded] rules/2026-01-10-old.md  matched 1/1: deploy
+   Old rule
+   The **deploy** word appeared here once.
+3. [task, done] tasks/2026-01-10-done-task.md  matched 1/1: deploy
+   Done deploy task
+   The **deploy** is done.
+2 matches excluded by filters (drop --type/--tag/--repo/--host)
+Store root: <STORE>

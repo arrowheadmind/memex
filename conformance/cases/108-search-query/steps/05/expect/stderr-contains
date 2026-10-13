@@ -1,0 +1,3 @@
+memex: the query has no terms or phrases; give at least one word
+memex search QUERY… [--type T]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N] [--json]
+Run: memex help search

@@ -1,0 +1,6 @@
+1. [rule, active] rules/2026-01-10-visible.md  matched 1/1: deploy
+   Visible rule
+   The **deploy** word appears here.
+1 matches hidden by status (use --all)
+3 matches excluded by filters (drop --type/--tag/--repo/--host)
+Store root: <STORE>

@@ -1,0 +1,6 @@
+search
+deploy
+--repo
+app
+--host
+web1

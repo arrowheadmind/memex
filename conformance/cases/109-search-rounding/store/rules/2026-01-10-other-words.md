@@ -1,0 +1,8 @@
++++
+title = "Other words"
+status = "active"
+created = 2026-01-10
+aliases = ["qx"]
++++
+
+qx

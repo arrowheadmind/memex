@@ -1,0 +1,4 @@
+1. [rule, active] rules/2026-01-10-nix-build.md  matched 2/2: nix, build
+   Nix build
+   Run **nix** **build**, then **build** again.
+Store root: <STORE>

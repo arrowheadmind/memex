@@ -1,0 +1,7 @@
+1. [rule, active] rules/2026-01-10-nix.md  matched 1/2: nix
+   Use nix
+   Run **nix** build.
+2. [rule, active] rules/2026-01-10-caches.md  matched 1/2: cach
+   Caches everywhere
+   **Cached** builds are fast; uncached ones are slow.
+Store root: <STORE>

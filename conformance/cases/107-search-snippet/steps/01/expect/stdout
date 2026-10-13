@@ -1,0 +1,15 @@
+1. [rule, active] rules/2026-01-10-middle.md  matched 1/1: marker
+   Middle
+   …aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa **marker** bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb…
+2. [task, open] tasks/2026-01-10-fence-only.md  matched 1/1: marker
+   Marker in title
+3. [reference, active] reference/2026-01-10-edge.md  matched 1/1: marker
+   Edge
+   cccccccccccccccccccccccccccccc **marker** dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd …
+4. [task, open] tasks/2026-01-10-short.md  matched 1/1: marker
+   Short
+   a short **marker** line
+5. [runbook, active] runbooks/2026-01-10-end.md  matched 1/1: marker
+   End
+   …ord word word word word word word word word word word word word word word word word word word word word word word word word word word word word word **marker** here
+Store root: <STORE>

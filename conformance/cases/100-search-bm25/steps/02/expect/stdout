@@ -1,0 +1,10 @@
+1. [runbook, active] runbooks/2026-01-10-rebuild-steps.md  matched 2/2: cache, rebuild
+   Rebuild steps — How to rebuild.
+   Run the **rebuild** after a flush.
+2. [rule, active] rules/2026-01-10-cache-keys.md  matched 1/2: cache
+   Cache keys
+   Rotate the **cache** keys yearly.
+3. [decision, accepted] decisions/2026-01-10-use-a-binary-store.md  matched 1/2: rebuild
+   Use a binary store
+   We decided to **rebuild** less.
+Store root: <STORE>

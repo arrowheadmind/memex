@@ -1,0 +1,3 @@
+search
+--json
+nix "build" x"

@@ -1,0 +1,7 @@
+1. [task, open] tasks/2026-01-10-a-b.md  matched 3/4: "a b", "a", a
+   A b
+   The words **a** **b** together.
+2. [rule, active] rules/2026-01-10-nix-build.md  matched 1/4: build
+   Nix build
+   Run nix **build**, then **build** again.
+Store root: <STORE>

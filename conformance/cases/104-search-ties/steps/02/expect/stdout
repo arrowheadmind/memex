@@ -1,0 +1,16 @@
+1. [runbook, active] runbooks/2026-01-10-z-run.md  matched 1/1: alpha
+   Same words
+   **alpha** beta.
+2. [reference, active] reference/2026-01-10-a-ref.md  matched 1/1: alpha
+   Same words
+   **alpha** beta.
+3. [task, open] tasks/2026-01-10-b-task.md  matched 1/1: alpha
+   Same words
+   **alpha** beta.
+4. [task, open] tasks/2026-01-10-c-task.md  matched 1/1: alpha
+   Same words
+   **alpha** beta.
+5. [plan, draft] plans/2026-01-10-a-plan.md  matched 1/1: alpha
+   Same words
+   **alpha** beta.
+Store root: <STORE>

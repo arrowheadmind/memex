@@ -1,0 +1,3 @@
+memex: missing QUERY
+memex search QUERY… [--type T]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N] [--json]
+Run: memex help search

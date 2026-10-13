@@ -69,7 +69,7 @@ func parseLimit(a *args) (int, string) {
 func parseQuery(positionals []string) (search.Query, string) {
 	q := search.ParseQuery(strings.Join(positionals, " "))
 	if len(q.Items) == 0 {
-		return q, fmt.Sprintf("the query %q has no terms or phrases; give at least one word", q.Text)
+		return q, "the query has no terms or phrases; give at least one word"
 	}
 	return q, ""
 }

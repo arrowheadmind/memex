@@ -1,0 +1,9 @@
+1. [rule, active] rules/2026-01-10-binary-cache-setup.md  matched 2/2: "binary cache", nix
+   Binary cache setup
+   Point **nix** at the **binary** **cache**. Then nixos uses it.
+2. [journal, raw] journal/2026-01-10-nix-notes.md  matched 1/2: nix
+   Nix notes
+3. [reference, active] reference/2026-01-10-cache-sizes.md  matched 1/2: "binary cache"
+   Cache sizes
+   A binary blob, not a cache of **binary** **cache** entries.
+Store root: <STORE>

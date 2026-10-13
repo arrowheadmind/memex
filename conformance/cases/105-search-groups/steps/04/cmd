@@ -1,0 +1,9 @@
+search
+deploy
+--type
+rule
+--type
+task
+--tag
+deploy
+--all
