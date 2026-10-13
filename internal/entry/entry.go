@@ -81,9 +81,13 @@ func SplitFile(data string) (*Split, *Problem) {
 	return nil, &p
 }
 
-// Fields are the validated frontmatter values of one entry, keyed by §5.3 name. Values are
-// string, time.Time (dates), int64, bool or []string.
+// Fields are the frontmatter values of one entry, keyed by §5.3 name. Values are string,
+// time.Time (dates), int64, bool or []string, or Invalid for a known field whose value failed
+// its check (it is present, but has no usable value).
 type Fields map[string]any
+
+// Invalid marks a present field whose value is not valid.
+type Invalid struct{}
 
 // String returns the string field name, or "".
 func (f Fields) String(name string) string {
@@ -173,6 +177,7 @@ func ParseFields(s *Split, typ *spec.Type) (Fields, []Problem) {
 		v, p := fieldValue(def, raw[name])
 		if p != nil {
 			ps = append(ps, *p)
+			fields[name] = Invalid{}
 			continue
 		}
 		fields[name] = v
