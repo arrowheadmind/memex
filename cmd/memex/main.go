@@ -127,21 +127,26 @@ func dispatch(args []string, stdout, stderr io.Writer) (int, *usageError) {
 		return printVersion(stdout)
 	case "help":
 		return runHelp(rest, stdout, cmdErr)
-	case "check":
-		a, problem := parseCommand(cmd, rest, env)
-		if problem != "" {
-			return 0, cmdErr(problem)
-		}
-		return runCheck(env, a, cmdErr)
-	case "import":
-		a, problem := parseCommand(cmd, rest, env)
-		if problem != "" {
-			return 0, cmdErr(problem)
-		}
-		return runImport(env, a, cmdErr)
-	default:
+	}
+	runner, ok := runners[cmd.Name]
+	if !ok {
 		return 0, cmdErr(fmt.Sprintf("command %q is not implemented yet", cmd.Name))
 	}
+	a, problem := parseCommand(cmd, rest, env)
+	if problem != "" {
+		return 0, cmdErr(problem)
+	}
+	return runner(env, a, cmdErr)
+}
+
+// runners are the implemented commands that take parsed arguments.
+var runners = map[string]func(*commands.Env, *args, func(string) *usageError) (int, *usageError){
+	"check":     runCheck,
+	"import":    runImport,
+	"search":    runSearch,
+	"preflight": runPreflight,
+	"list":      runList,
+	"show":      runShow,
 }
 
 // parseCommand parses a command's arguments and takes --store from them, which may appear
