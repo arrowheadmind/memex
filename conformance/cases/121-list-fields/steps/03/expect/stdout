@@ -1,0 +1,1 @@
+{"entries":[{"id":"2026-01-12-a-task","type":"task","status":"open","created":"2026-01-12","title":"A task","summary":null,"tags":[],"path":"tasks/2026-01-12-a-task.md"},{"id":"2026-01-12-newest","type":"rule","status":"active","created":"2026-01-12","title":"Newest rule","summary":"The newest one.","tags":["deploy","nix"],"path":"rules/2026-01-12-newest.md"}],"more":2}

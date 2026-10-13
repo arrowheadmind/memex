@@ -1,0 +1,4 @@
+memex: unknown status "activ"; did you mean "active"?
+memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N]
+           [--fields F,…] [--json]
+Run: memex help list
