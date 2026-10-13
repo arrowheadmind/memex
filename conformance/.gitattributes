@@ -1,0 +1,2 @@
+# Case fixtures are compared byte for byte; git must never convert them.
+cases/** -text
