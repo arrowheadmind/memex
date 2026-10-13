@@ -1278,12 +1278,15 @@ A **unit** is the smallest piece of source that becomes one entry.
 - **Dates.** A unit's date is, in order: the date in its filename; the date taken from its
   heading; else the `YYYY-MM-DD` part of `%aI` (author time in its recorded offset) of the
   oldest commit in the unit's history. For a file unit that is `git log --follow`. For a line
-  unit it is the earlier of two readings, because neither alone is right: the commit of
-  `git log -L<first>,<last>:<file>` that created the range (the newest commit whose hunk has
-  an empty old side, else the oldest commit listed), which follows the lines through edits so
-  an edited row keeps its date; and the oldest commit of `git log -S<first line>` for the
-  unit's first line, which a move inside the file does not touch, so a moved backlog item
-  keeps its date. Blame alone would date a one-line row by its last edit.
+  unit it is the oldest commit of `git log -S<key> -- <file>`, where the key is taken from
+  the unit's first line without its `#` marks and outer table pipes: the longest piece
+  between marker tokens and dates (the tokens that change when an item is closed or
+  re-filed), cut to its first 60 code points, with markup and inner pipes kept because `-S`
+  matches the file's bytes literally. That is the commit that first added the text, which
+  neither a later edit of the rest of the unit nor a move inside the file changes. When `-S`
+  finds nothing (the first line itself was edited), the blame date of that line is used and
+  the unit is listed in the report under `dated_by_blame`. `git log -L` is not used: it
+  follows a range back through hunks that replaced other text at the same lines.
 - **Tables.** Only the table before the first `## ` heading of `known-mistakes.md` and
   `constraints.md` yields row units. A table inside a `## ` section is part of that rule's
   body.
@@ -1308,7 +1311,7 @@ A **unit** is the smallest piece of source that becomes one entry.
 | `constraints.md` table row | rule | First cell | `active` |
 | `constraints.md` `## ` section other than `## Always` | rule | Heading text | `active` |
 | `constraints.md` `## Always` top-level bullet | rule, `always = true` | The bullet's leading bold span if it starts with `**…**`; else its first sentence (up to the first `. `, `: ` or ` — `); markup stripped | `active` |
-| `docs/backlog.md` `### ` item | task | Heading text with the marker tokens removed, and nothing else (📋 stays) | From the enclosing section: `## In Progress` → `in-progress`, `## To Do` → `open`, `## Done` → `done`. Overridden by markers in the heading, matched case-sensitively as whole words, exactly as listed: ✓, ✅, `DONE`, `FIXED`, `CLOSED`, `RESOLVED` → `done`; ⏸, `BLOCKED` → `blocked`; `SUPERSEDED`, `MOOT`, `RETIRED`, or a fully struck-through heading → `dropped`, with `dropped` winning over `blocked` over `done` when several apply. "was closed" or "retired the blog" are words, not markers. `####` headings and everything below them belong to the item's body |
+| `docs/backlog.md` `### ` item | task | Heading text with its first marker removed (the symbol and the word after it, when both are present), and nothing else | From the enclosing section: `## In Progress` → `in-progress`, `## To Do` → `open`, `## Done` → `done`. Overridden by the **first marker** of the heading, scanning its text outside code spans from left to right, where a marker is: a symbol ✓, ✅ or ⏸ anywhere (✗ counts only for the word after it), together with the marker word right after it if there is one; or one of the words `DONE`, `FIXED`, `CLOSED`, `RESOLVED`, `BLOCKED`, `SUPERSEDED`, `MOOT`, `RETIRED` (case-sensitive, whole word, a trailing `:`, `;`, `,` or `.` allowed) at the start of the heading, after an optional `YYYY-MM-DD — ` prefix, or as its last token. ✓, ✅, `DONE`, `FIXED`, `CLOSED`, `RESOLVED` → `done`; ⏸, `BLOCKED` → `blocked`; `SUPERSEDED`, `MOOT`, `RETIRED` → `dropped`; a fully struck-through heading → `dropped`. Every other word stays, so `(was BLOCKED)` in the middle and `0 \`SUPERSEDED\` markers` are text. Removed markers are listed in the report under `markers_removed`. `####` headings and everything below them belong to the item's body |
 | Other `docs/**/*.md` | reference | First heading | `active`, `verified` = date of the last commit touching the file |
 | `.brain/AGENT.md` of the primary SRC | `AGENT.md` | — | `DIR/AGENT.md` is Appendix A's text, followed by a blank line and the source file verbatim, so the operator rewrites it with both in view |
 
@@ -1473,7 +1476,8 @@ and non-whitespace characters in, and the same out per category), `entries` (id,
 kind, source, path, status, source line range, removed and extra text), `attachments`,
 `not_knowledge`, `index` (rows, matched, placeholders, orphan, duplicate, conflict),
 `tags_normalized`, `links` (rewritten, wikilinks_quoted, unresolved), `duplicates`,
-`aliases_dropped`, `row_shape`, `short_body`, `leaks`, `warnings` (per code), `problems`. It
+`aliases_dropped`, `row_shape`, `short_body`, `dated_by_blame`, `markers_removed`, `leaks`,
+`warnings` (per code), `problems`. It
 is written through the §10 JSON rules and contains no absolute path, so that two runs from the
 same revisions are byte-identical whatever the directories.
 
