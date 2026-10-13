@@ -71,8 +71,9 @@ conformance/cases/    §15 cases (data, language-neutral)
 
 ## Behavior-preserving details to get right
 
-- **JSON (§10):** `encoding/json` always escapes U+2028 and U+2029 and writes `\b`/`\f` as
-  `\u0008`/`\u000c`, which §10 forbids. `internal/jsonx` is a small writer: ordered objects,
+- **JSON (§10):** `encoding/json` always escapes U+2028 and U+2029, escapes `<`, `>` and `&`
+  unless told not to, and (since Go 1.22) writes U+0008/U+000C as `\b`/`\f` where §10 requires
+  `\u0008`/`\u000c`. Checked against Go 1.27. `internal/jsonx` is a small writer: ordered objects,
   arrays, strings escaped exactly as §10 says, integers, `null`, and `score` through
   `strconv.FormatFloat(x, 'f', 6, 64)` (Go rounds half to even on the exact binary value, as
   required). No reflection, no struct tags.
