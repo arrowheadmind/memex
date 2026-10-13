@@ -7,8 +7,13 @@ they share.
 
 The name comes from Vannevar Bush's 1945 *memex*, a "memory extender".
 
-**Status: specification only.** Nothing is implemented yet. [SPEC.md](SPEC.md) is the single
-specification; each section is marked Planned or Implemented.
+**Status: specification only.** Nothing is implemented yet.
+
+- [SPEC.md](SPEC.md) is the single specification. It is language-neutral and precise enough that
+  two implementations produce byte-identical results. Each section is marked Planned or
+  Implemented.
+- [IMPLEMENTATION.md](IMPLEMENTATION.md) records the choices for the Go implementation.
+- `conformance/` (to come) is the language-neutral test suite that any implementation must pass.
 
 Design in brief:
 
@@ -16,9 +21,10 @@ Design in brief:
   path you configure.
 - **One entry per file,** with TOML frontmatter. The id is the filename and the type is the
   directory.
-- **Ranked full-text search** (SQLite FTS5 with BM25) as a rebuildable local cache.
+- **Ranked full-text search** (BM25, OR-combined terms, prefix matching). A search that hides
+  matches says so, and one that finds nothing never looks like success.
 - **Tool-neutral.** Coding tools get a one-line pointer file. Knowledge never lives in a tool's
   private memory.
-- **Python standard library and `git` only.**
+- **Written in Go,** with a few widely used dependencies. `git` is the only external program.
 
 License: MIT.
