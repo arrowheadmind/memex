@@ -1432,7 +1432,11 @@ from the behavior it describes.
   `memex: no help for "<name>"; did you mean "<nearest>"? Run: memex help topics`.
   - The nearest name is the one with the smallest Levenshtein distance, and only if that
     distance is ≤ 3; otherwise the `did you mean` clause is omitted.
-  - The same suggestion rule applies to an unknown command.
+  - Ties are broken by the order of the candidate list (commands in §11 order, then topics
+    in §16.6 order).
+- An unknown command exits 2 and prints, on stderr, with the same suggestion rule over the
+  command names:
+  `memex: unknown command "<name>"; did you mean "<nearest>"? Run: memex help topics`.
 - Help never needs a store, configuration or network, and never writes anything.
 
 ### 16.3 Format and sources
@@ -1539,6 +1543,15 @@ On a usage error (exit 2), stderr carries:
 
 Examples of `<problem>`: `unknown option --tittle (did you mean --title?)`, `missing --body`,
 `value for --title starts with "-"; write --title=-…`.
+
+`memex` with no command is a usage error with the same three lines, using the general form
+of §10 as the usage line:
+
+```
+memex: missing command
+memex [GLOBAL OPTIONS] COMMAND [OPTIONS] [ARGS]
+Run: memex help
+```
 
 ### 16.9 Guarantees enforced by the conformance suite
 
