@@ -1,0 +1,13 @@
+rules/2026-01-10-comment.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-comment.md
+rules/2026-01-10-duplicate.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-duplicate.md
+rules/2026-01-10-empty.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-empty.md
+rules/2026-01-10-escape.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-escape.md
+rules/2026-01-10-false.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-false.md
+rules/2026-01-10-literal.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-literal.md
+rules/2026-01-10-no-blank.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-no-blank.md
+rules/2026-01-10-no-final-lf.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-no-final-lf.md
+rules/2026-01-10-order.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-order.md
+rules/2026-01-10-spacing.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-spacing.md
+rules/2026-01-10-trailing.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-trailing.md
+rules/2026-01-10-unsorted.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-unsorted.md
+check: 0 errors, 12 warnings

@@ -1,0 +1,3 @@
+rules/2026-01-10-typo.md: E-STATUS status "actve" is not valid for a rule (did you mean "active"?); valid: active, superseded, retired
+tasks/2026-01-10-far.md: E-STATUS status "finished" is not valid for a task; valid: open, in-progress, blocked, done, dropped
+check: 2 errors, 0 warnings

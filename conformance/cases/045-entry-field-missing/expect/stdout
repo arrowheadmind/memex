@@ -1,0 +1,4 @@
+journal/2026-01-10-no-hash.md: E-FIELD-MISSING missing required field "body_sha256"
+reference/2026-01-10-no-verified.md: E-FIELD-MISSING missing required field "verified"
+rules/2026-01-10-no-title.md: E-FIELD-MISSING missing required field "title"
+check: 3 errors, 0 warnings

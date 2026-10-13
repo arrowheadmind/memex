@@ -1,0 +1,3 @@
+decisions/2026-01-10-same.md: E-DUP-ID the id is also used by rules/2026-01-10-same.md
+rules/2026-01-10-same.md: E-DUP-ID the id is also used by decisions/2026-01-10-same.md
+check: 2 errors, 0 warnings

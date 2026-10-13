@@ -1,0 +1,3 @@
+rules/2026-01-10-by-only.md: E-SUPERSEDED superseded_by is set but status is "active", not superseded
+rules/2026-01-10-no-by.md: E-SUPERSEDED status is superseded but superseded_by is missing
+check: 2 errors, 0 warnings

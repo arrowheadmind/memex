@@ -34,7 +34,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 |---|---|
 | 3 Configuration | Implemented |
 | 4 Store layout | Implemented |
-| 5 Entries | Planned |
+| 5 Entries | Implemented |
 | 6 Links | Planned |
 | 7 Validation | Planned |
 | 8 Search | Planned |

@@ -1,0 +1,2 @@
+rules/2026-01-10-mismatch.md: E-CREATED created 2026-01-09 differs from the date in the id, 2026-01-10
+check: 1 errors, 0 warnings

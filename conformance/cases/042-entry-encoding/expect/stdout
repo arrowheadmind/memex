@@ -1,0 +1,4 @@
+rules/2026-01-10-bom.md: E-ENCODING begins with a byte-order mark
+rules/2026-01-10-crlf.md: E-ENCODING contains CR characters; use LF line endings
+rules/2026-01-10-latin1.md: E-ENCODING not valid UTF-8
+check: 3 errors, 0 warnings

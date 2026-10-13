@@ -1,0 +1,2 @@
+rules/2026-01-10-same-body.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-same-body.md
+check: 0 errors, 1 warnings

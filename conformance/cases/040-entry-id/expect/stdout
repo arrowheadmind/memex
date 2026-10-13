@@ -1,0 +1,5 @@
+rules/2026-01-10-Upper.md: E-ID the filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most 120 characters before .md
+rules/2026-01-10-a--b.md: E-ID the filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most 120 characters before .md
+rules/2026-01-10-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md: E-ID the filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most 120 characters before .md
+rules/Bad_Name.md: E-ID the filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most 120 characters before .md
+check: 4 errors, 0 warnings
