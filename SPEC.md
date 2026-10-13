@@ -1279,11 +1279,12 @@ A **unit** is the smallest piece of source that becomes one entry.
   heading; else the `YYYY-MM-DD` part of `%aI` (author time in its recorded offset) of the
   oldest commit in the unit's history. For a file unit that is `git log --follow`. For a line
   unit it is the oldest commit of `git log -S<key> -- <file>`, where the key is taken from
-  the unit's first line without its `#` marks and outer table pipes: the longest piece
-  between marker tokens and dates (the tokens that change when an item is closed or
-  re-filed), cut to its first 60 code points, with markup and inner pipes kept because `-S`
-  matches the file's bytes literally. That is the commit that first added the text, which
-  neither a later edit of the rest of the unit nor a move inside the file changes. When `-S`
+  the unit's first line without its `#` marks, or from a table row's first cell when that
+  cell has at least 4 code points (the first cell is the row's identity; the other cells get
+  reworded): the longest piece between marker tokens and dates (the tokens that change when
+  an item is closed or re-filed), cut to its first 60 code points, with markup kept because
+  `-S` matches the file's bytes literally. That is the commit that first added the text,
+  which neither a later edit of the rest of the unit nor a move inside the file changes. When `-S`
   finds nothing (the first line itself was edited), the blame date of that line is used and
   the unit is listed in the report under `dated_by_blame`. `git log -L` is not used: it
   follows a range back through hunks that replaced other text at the same lines.
