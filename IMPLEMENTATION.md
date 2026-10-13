@@ -36,7 +36,8 @@ Deliberately not used:
   the parsed entries. That's well within budget for a store of a few thousand entries. The §8.6
   cache is added only if a measured `preflight` exceeds 300 ms on the real store. If that
   happens, the candidate is `modernc.org/sqlite`, which is pure Go and includes FTS5, used purely
-  as a cache. Results must stay identical (§8.6).
+  as a cache. Results must stay identical (§8.6); FTS5's `bm25()` clamps idf instead of using
+  §8.3's Lucene form, so it could select candidates but not compute scores.
 - **A CLI framework (cobra).** Help text and errors must stay under our control (§10).
 - **A git library.** memex runs the `git` executable (§9). Behavior stays identical to what a
   person would type, and git's own configuration (hooks, credentials, signing) applies.
