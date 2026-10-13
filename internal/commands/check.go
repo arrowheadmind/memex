@@ -37,6 +37,9 @@ func Check(e *Env, o CheckOptions) int {
 		if err != nil {
 			return e.fail(spec.ExitUsage, "check --staged needs the store's git index: %v", err)
 		}
+		if !idx.Exists(store.ManifestFile) {
+			return e.fail(spec.ExitUsage, "check --staged: %s is not in the git index", store.ManifestFile)
+		}
 		tree, staged = idx, changed
 		if staged == nil {
 			staged = []string{}
