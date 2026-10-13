@@ -438,42 +438,55 @@ The last line is `check: N errors, M warnings`. Exit 0 if there are no errors. W
 the first N finding lines and then one line per remaining code, `<CODE>: K more`, so that a
 large imported store does not flood the caller. The summary line is always last.
 
+**Messages.** Every message follows the template in the tables below, exactly. A message
+starts with the thing that is wrong, names the value when there is one, and ends with the fix
+when the fix is a command. In templates:
+- `<id>` is the id of the entry the finding is about, and `<path>` its store-relative path.
+- A quoted placeholder (`"<field>"`, `"<value>"`, …) is the value written as a TOML basic
+  string (§5.1): in double quotes, with `\`, `"` and control characters escaped.
+- `<paths>` is a list of store-relative paths in code-point order, separated by `, `.
+- `<line>` is a line number in the file, counting from 1.
+- `<new>`, `<word>` and `<sentence>` are written literally, for the reader to fill in.
+- ` (did you mean "<nearest>"?)` is present only when the §16.2 rule finds a nearest name
+  (Levenshtein distance ≤ 3, ties to the earlier candidate in the list named).
+- Where a row lists several templates, the condition decides which one applies.
+
 Errors:
 
-| Code | Condition |
-|---|---|
-| `E-ID` | Filename isn't a valid id (§5.4) |
-| `E-DUP-ID` | Same id in two type directories |
-| `E-NOT-ENTRY` | Non-`.md` file or subdirectory in a type directory; unknown top-level item (§4) |
-| `E-ENCODING` | Not UTF-8, has a BOM, or contains CR |
-| `E-FRONTMATTER` | Missing delimiters, or invalid TOML |
-| `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type |
-| `E-FIELD-MISSING` | Required field absent |
-| `E-FIELD-VALUE` | Wrong kind or value outside its constraints |
-| `E-STATUS` | Status not valid for the type |
-| `E-CREATED` | `created` ≠ id date |
-| `E-SUPERSEDED` | `superseded` without `superseded_by`, or `superseded_by` without `superseded` |
-| `E-REF` | `parent`/`sources`/`superseded_by` names a missing id, or `parent` isn't a plan |
-| `E-LINK` | Unresolved `[[...]]` |
-| `E-FILE-LINK` | Markdown link to a missing `files/...` path |
-| `E-HASH` | `body_sha256` mismatch |
-| `E-ALIAS` | The same alias on two entries, or an alias equal to an id |
-| `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id |
-| `E-MANIFEST` | `memex.toml` invalid |
+| Code | Condition | Message |
+|---|---|---|
+| `E-ID` | Filename isn't a valid id (§5.4) | `filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most 120 characters before .md` |
+| `E-DUP-ID` | Same id in two type directories | `id "<id>" is also used by <paths>` (the other paths) |
+| `E-NOT-ENTRY` | Non-`.md` file or subdirectory in a type directory; unknown top-level item (§4) | Unknown top-level item: `unknown top-level item; it is not part of the store layout`. Subdirectory of a type directory: `subdirectory in a type directory; type directories are flat, attachments go in files/<id>/`. Other non-entry in a type directory: `not a .md file; type directories hold only entries, attachments go in files/<id>/`. A type directory that is a file: `not a directory; <dir>/ holds <type> entries`. `files` as a file: `not a directory; files/ holds attachments as files/<id>/`. `memex.toml`, `AGENT.md` or `README.md` that is not a regular file: `not a regular file` |
+| `E-ENCODING` | Not UTF-8, has a BOM, or contains CR | One finding per problem: `not valid UTF-8`, `begins with a byte-order mark`, `contains CR characters; use LF line endings` |
+| `E-FRONTMATTER` | Missing delimiters, or invalid TOML | `missing opening +++ line; the file must begin with the line +++`, `missing closing +++ line after the frontmatter`, `invalid TOML in the frontmatter at line <line>` |
+| `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type | `unknown field "<field>" (did you mean "<nearest>"?)` over the §5.3 names in canonical order; `field "<field>" is not allowed on a <type>; it is allowed on: <types>` with the "Allowed on" types of §5.3 separated by `, ` |
+| `E-FIELD-MISSING` | Required field absent | `missing required field "<field>"` |
+| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be at least 1, not <value>`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed` |
+| `E-STATUS` | Status not valid for the type | `status "<value>" is not valid for a <type> (did you mean "<nearest>"?); valid: <statuses>`, the type's statuses in §5.2 order separated by `, ` |
+| `E-CREATED` | `created` ≠ id date | `created <date> differs from the date in the id, <id date>` |
+| `E-SUPERSEDED` | `superseded` without `superseded_by`, or `superseded_by` without `superseded` | `status is superseded but superseded_by is missing; add it: memex set <id> superseded_by=<new>`; `superseded_by is set but status is "<value>"; either memex set <id> status=superseded, or memex set <id> superseded_by=` |
+| `E-REF` | `parent`/`sources`/`superseded_by` names a missing id, or `parent` isn't a plan | `<field> "<value>" is not the id of an entry`, followed by `; it is an alias of <path>, write its id "<target id>"` when exactly one entry has the value as an alias; `parent "<value>" is a <type>, not a plan` |
+| `E-LINK` | Unresolved `[[...]]` | `[[<target>]] on line <line> is not the id of an entry`; `[[<target>]] on line <line> is an alias of several entries (<paths>); link an id` |
+| `E-FILE-LINK` | Markdown link to a missing `files/...` path | `<destination> on line <line> does not exist`; `<destination> on line <line> is not a plain path under files/; write it without . or ..` when the destination contains a `.` or `..` segment or an empty segment before its end |
+| `E-HASH` | `body_sha256` mismatch | `body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set <id> status=superseded superseded_by=<new>` |
+| `E-ALIAS` | The same alias on two entries, or an alias equal to an id | `alias "<value>" is also on <paths>` (the other entries); `alias "<value>" is the id of <paths>` |
+| `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id | On `files/<x>`: `"<x>" is not the id of an entry; attachments go in files/<id>/`, written literally as `files/<id>/`; on a file directly under `files/`: `not a directory; attachments go in files/<id>/` |
+| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`; `missing key "format"`; `format must be an integer`; `name must be a string` |
 
 Warnings:
 
-| Code | Condition |
-|---|---|
-| `W-CANONICAL` | Entry valid but not in canonical form (`memex fmt` fixes it) |
-| `W-ALIAS-LINK` | Link resolved through an alias |
-| `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` |
-| `W-RAW-OLD` | `raw` journal entry created more than 90 days ago |
-| `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` |
-| `W-NO-TERMS` | Entry with neither `tags` nor `keywords` |
-| `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) |
-| `W-SHORT-BODY` | Content measure below 80 (§5.6) |
-| `W-SECRET` | A body line looks like a credential: a PEM private-key header, `password=`/`token=`/`secret=` followed by a non-placeholder value, or a run of 40+ base64 characters. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body |
+| Code | Condition | Message |
+|---|---|---|
+| `W-CANONICAL` | Entry valid but not in canonical form (`memex fmt` fixes it) | `not in canonical form; run memex fmt <path>` |
+| `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead` |
+| `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` | `verified <date> is more than review_days (<n>) ago; check the facts, then: memex set <id> verified=<today>` |
+| `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
+| `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
+| `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
+| `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
+| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80` |
+| `W-SECRET` | A body line looks like a credential: a PEM private-key header, `password=`/`token=`/`secret=` followed by a non-placeholder value, or a run of 40+ base64 characters. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body | One finding per line: `line <line> looks like a credential (<what>); remove it, or add the line <!-- memex: allow-secret --> if it is not one`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
 `W-LEAK`).
