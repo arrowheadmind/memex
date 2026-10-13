@@ -18,6 +18,7 @@ func TestPath(t *testing.T) {
 		{map[string]string{"MEMEX_CONFIG": "/c.toml", "XDG_CONFIG_HOME": "/x", "HOME": "/h"}, "/c.toml"},
 		{map[string]string{"XDG_CONFIG_HOME": "/x", "HOME": "/h"}, "/x/memex/config.toml"},
 		{map[string]string{"HOME": "/h"}, "/h/.config/memex/config.toml"},
+		{map[string]string{}, ""},
 	}
 	for _, c := range cases {
 		if got := Path(envOf(c.env)); got != c.want {
@@ -34,6 +35,9 @@ func TestLoad(t *testing.T) {
 			t.Fatal(err)
 		}
 		return envOf(map[string]string{"MEMEX_CONFIG": p})
+	}
+	if c, err := Load(envOf(nil)); err != nil || c.Path != "" || c.SearchLimit != 12 {
+		t.Fatalf("no HOME: %+v, %v", c, err)
 	}
 	c, err := Load(envOf(map[string]string{"MEMEX_CONFIG": filepath.Join(dir, "absent.toml")}))
 	if err != nil || !c.SyncOnPreflight || c.SearchLimit != 12 || c.ListLimit != 50 || c.NetworkTimeout != 20 {
@@ -64,15 +68,31 @@ func TestExpand(t *testing.T) {
 		"~/s":         "/h/s",
 		"$HOME/s":     "/h/s",
 		"${HOME}/s":   "/h/s",
+		"$HOME":       "/h",
 		"/a/~/b":      "/a/~/b",
 		"~user/s":     "~user/s",
 		"$USER/s":     "$USER/s",
 		"/x/$HOME/y":  "/x//h/y",
+		"$HOMEDIR/x":  "$HOMEDIR/x",
+		"/a${HOME}b":  "/a/hb",
 		"relative/$X": "relative/$X",
+		"$HOME/$HOME": "/h//h",
 	} {
-		if got := Expand(in, "/h"); got != want {
-			t.Errorf("Expand(%q) = %q, want %q", in, got, want)
+		if got, err := Expand(in, "/h"); err != nil || got != want {
+			t.Errorf("Expand(%q) = %q, %v; want %q", in, got, err, want)
 		}
+	}
+	for in, want := range map[string]string{
+		"~/s":       "cannot expand ~: HOME is not set",
+		"$HOME/s":   "cannot expand $HOME: HOME is not set",
+		"${HOME}/s": "cannot expand ${HOME}: HOME is not set",
+	} {
+		if _, err := Expand(in, ""); err == nil || err.Error() != want {
+			t.Errorf("Expand(%q) without HOME: %v, want %q", in, err, want)
+		}
+	}
+	if got, err := Expand("/abs/$HOMEDIR", ""); err != nil || got != "/abs/$HOMEDIR" {
+		t.Errorf("no expansion needed without HOME: %q, %v", got, err)
 	}
 }
 

@@ -51,7 +51,8 @@ var keys = []struct{ name, kind string }{
 	{"network_timeout", "Integer"},
 }
 
-// Path returns the config file path (SPEC §3.2).
+// Path returns the config file path (SPEC §3.2), or "" when neither XDG_CONFIG_HOME nor HOME
+// is set, in which case there is no config file.
 func Path(env Env) string {
 	if p := env("MEMEX_CONFIG"); p != "" {
 		return p
@@ -59,13 +60,27 @@ func Path(env Env) string {
 	if x := env("XDG_CONFIG_HOME"); x != "" {
 		return filepath.Join(x, "memex", "config.toml")
 	}
-	return filepath.Join(env("HOME"), ".config", "memex", "config.toml")
+	if h := env("HOME"); h != "" {
+		return filepath.Join(h, ".config", "memex", "config.toml")
+	}
+	return ""
+}
+
+// displayPath names the config file in messages.
+func (c *Config) displayPath() string {
+	if c.Path == "" {
+		return "~/.config/memex/config.toml"
+	}
+	return c.Path
 }
 
 // Load reads the config file. A missing file gives the defaults; a file that won't parse,
 // has an unknown key or a value of the wrong kind is an *Error.
 func Load(env Env) (*Config, error) {
 	c := &Config{Path: Path(env), SyncOnPreflight: true, SearchLimit: 12, ListLimit: 50, NetworkTimeout: 20}
+	if c.Path == "" {
+		return c, nil
+	}
 	data, err := os.ReadFile(c.Path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return c, nil
@@ -158,14 +173,32 @@ func unwrapPath(err error) error {
 	return err
 }
 
-// Expand applies the SPEC §3.1 expansion: a leading "~/", and the strings "${HOME}" and
-// "$HOME". Nothing else is expanded and symlinks are not resolved.
-func Expand(path, home string) string {
+var dollarHome = regexp.MustCompile(`\$HOME(/|$)`)
+
+// Expand applies the SPEC §3.1 expansion: a leading "~/", "${HOME}" anywhere, and "$HOME"
+// where it is followed by "/" or ends the path. Nothing else is expanded and symlinks are
+// not resolved. Expanding with HOME unset is an *Error.
+func Expand(path, home string) (string, error) {
+	unset := func(what string) error { return errorf("cannot expand %s: HOME is not set", what) }
 	if strings.HasPrefix(path, "~/") {
+		if home == "" {
+			return "", unset("~")
+		}
 		path = home + path[1:]
 	}
-	path = strings.ReplaceAll(path, "${HOME}", home)
-	return strings.ReplaceAll(path, "$HOME", home)
+	if strings.Contains(path, "${HOME}") {
+		if home == "" {
+			return "", unset("${HOME}")
+		}
+		path = strings.ReplaceAll(path, "${HOME}", home)
+	}
+	if dollarHome.MatchString(path) {
+		if home == "" {
+			return "", unset("$HOME")
+		}
+		path = dollarHome.ReplaceAllStringFunc(path, func(m string) string { return home + m[len("$HOME"):] })
+	}
+	return path, nil
 }
 
 // ResolveStore returns the store root (SPEC §3.1). flag is the --store value and flagSet
@@ -180,9 +213,12 @@ func ResolveStore(flag string, flagSet bool, env Env, c *Config) (string, error)
 	case c.Store != "":
 		path = c.Store
 	default:
-		return "", errorf("no store configured; use --store, MEMEX_STORE, or store = \"...\" in %s", c.Path)
+		return "", errorf("no store configured; use --store, MEMEX_STORE, or store = \"...\" in %s", c.displayPath())
 	}
-	path = Expand(path, env("HOME"))
+	path, err := Expand(path, env("HOME"))
+	if err != nil {
+		return "", err
+	}
 	if !filepath.IsAbs(path) {
 		return "", errorf("store path %q is relative; give an absolute path", path)
 	}
