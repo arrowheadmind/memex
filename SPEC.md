@@ -544,8 +544,10 @@ An entry that cannot be parsed (`E-ENCODING`, or an `E-FRONTMATTER` that leaves 
 Applied identically to documents and queries:
 1. NFKD, then remove category Mn.
 2. Simple lowercase.
-3. A token is a maximal run of code points of general category L* or N*. Everything else
-   separates tokens.
+3. A token is a maximal run of code points of general category L*, N* or M*. Everything else
+   separates tokens. Marks other than Mn survive step 1, so scripts that write vowels as
+   spacing marks stay whole: `हिन्दी` is one token (`हिनदी`: its virama, an Mn, is removed; its
+   vowel signs, Mc, stay).
 
 There is no stemming and no stop-word list.
 
@@ -568,13 +570,13 @@ matches it. Each result reports *which* items matched it (§8.5), because a docu
 matched one common word must not look like one that matched the whole query. The predecessor
 learned this the hard way: an approximate hit read as an exact one is worse than silence.
 
-**Score** (BM25 with k1 = 1.2 and b = 0.75; the formula below is normative, and it is the one
-SQLite FTS5's `bm25()` computes, with the sign flipped):
+**Score** (BM25 with k1 = 1.2 and b = 0.75 and the Lucene idf, which is positive even for an
+item that most documents match; the formula below is normative):
 
 ```
 N        = number of documents
 n(q)     = number of documents matched by item q
-idf(q)   = max( ln((N − n(q) + 0.5) / (n(q) + 0.5)), 1e-6 )
+idf(q)   = ln( 1 + (N − n(q) + 0.5) / (n(q) + 0.5) )
 f(q,D)   = Σ over fields c of  w_c × hits(q, D, c)
 |D|      = total token count of D across all fields
 avgdl    = mean |D| over all documents
@@ -633,23 +635,27 @@ order differently across implementations; the conformance suite avoids such case
   how many matched this document, and `<items>` the matched items in query order, separated by
   `, `, phrases in double quotes. An item is printed in its normalized form (§8.2): a term as
   its token, a phrase as its tokens joined by single spaces (`Café` prints `cafe`, `"Nix  Build"`
-  prints `"nix build"`); the JSON `items` and `matched` arrays use the same strings. The id is the filename stem, and an agent can open the path
-  directly with its own file tools.
+  prints `"nix build"`); the JSON `items` and `matched` arrays use the same strings. The id
+  is the filename stem, and an agent can open the path directly with its own file tools.
 - **Line 2:** three spaces and the title, then ` — ` and the summary if one is present.
 - **Line 3 (snippet):** three spaces, then the snippet, built like this:
   1. Take the first body line, outside fenced code, that contains a match. A line contains a
      match when, tokenized by §8.2, it has a token matching a term, or the consecutive tokens of
      a phrase.
   2. Trim leading and trailing whitespace from that line.
-  3. Tokens are located in the *original* line: a token is a maximal run of code points of
-     category L* or N* in the original text, and it matches when its normalized form (§8.2)
-     matches. This keeps positions exact when NFKD changes lengths (`Café`, `ﬁ`).
+  3. Tokens are located in the *original* line as *runs*: a run is a maximal run of code
+     points of category L*, N* or M* in the original text. A run matches when a token of its
+     normalized form (§8.2) matches a term, or belongs to an occurrence of a phrase in the
+     sequence of the line's run tokens. This keeps positions exact when NFKD changes lengths
+     (`Café`, `ﬁ`), and `Les Cafés` written with a combining accent marks `**Cafés**` for the
+     query `cafe`. Below, a *matching token* is a matching run.
   4. If the trimmed line is longer than 160 code points, keep a window of 160 code points that
      starts 40 code points before the first matching token's start (or at 0), moved left so
      that it ends at the line's end if it would overrun. If the window starts after 0, prefix
      `…`; if it ends before the line's end, append `…`. The window never splits a matching
      token: a matching token cut by the window edge is dropped from the window, which then
-     starts after it or ends before it. A token that does not match may be cut.
+     starts after it or ends before it, and the whitespace this leaves at that edge is removed
+     too (`…bbb **cache** ccc…`, not `ccc …`). A token that does not match may be cut.
   5. Wrap each matching token inside the window in `**`. For a phrase, wrap each of its tokens.
      Markers and `…` are not counted in the 160.
   If no body line contains a match, line 3 is omitted.
@@ -951,7 +957,10 @@ no task text. It prints:
    `store: NOT SYNCED: timed out after 20s`. A failed sync never stops preflight. With sync
    skipped, it prints `store: not synced (last fetch <time or "never">)`, where the time is the
    modification time of the store's `FETCH_HEAD` (`git rev-parse --git-path FETCH_HEAD`) in
-   RFC 3339 UTC to the second, and `never` when that file does not exist.
+   RFC 3339 UTC to the second. It is `never` when that file does not exist, or when the store
+   root is not the top of its own repository (`git rev-parse --show-toplevel` run in the store
+   names another directory, symbolic links resolved), because a store directory inside another
+   repository has never been fetched itself.
 2. **Blank line, then `## Always`.** The heading is printed even when no rule follows it.
    For each rule with `always = true` that is visible by default (§5.2; `--all` applies only to
    the results), in id order,
