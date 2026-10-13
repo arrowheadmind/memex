@@ -1,0 +1,1 @@
+{"findings":[{"path":"rules/2026-01-10-a.md","code":"E-LINK","severity":"error","message":"line 8: [[2026-01-10-x]] is not the id of an entry"},{"path":"rules/2026-01-10-a.md","code":"E-LINK","severity":"error","message":"line 8: [[2026-01-10-y]] is not the id of an entry"}],"errors":5,"warnings":3,"truncated":6}

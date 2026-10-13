@@ -1,0 +1,6 @@
+journal/2025-10-16-old.md: W-RAW-OLD raw since 2025-10-16, more than 90 days; review it and set status kept or promoted
+journal/2026-01-10-promoted.md: W-PROMOTED-UNCITED promoted, but no entry lists "2026-01-10-promoted" in sources
+reference/2026-01-10-stale.md: W-STALE-REFERENCE verified 2025-12-15 is more than review_days (30) ago; check the facts and set verified
+rules/2026-01-10-no-summary.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry
+rules/2026-01-10-no-terms.md: W-NO-TERMS no tags or keywords; add the words a reader would search with to keywords
+check: 0 errors, 5 warnings

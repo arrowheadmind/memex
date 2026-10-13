@@ -1,0 +1,6 @@
+rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-x]] is not the id of an entry
+rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-y]] is not the id of an entry
+E-LINK: 1 more
+E-NOT-ENTRY: 1 more
+E-STATUS: 1 more
+check: 5 errors, 3 warnings

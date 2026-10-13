@@ -1,0 +1,4 @@
+check
+--errors-only
+--limit
+2

@@ -1,0 +1,9 @@
+rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-x]] is not the id of an entry
+rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-y]] is not the id of an entry
+rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-z]] is not the id of an entry
+rules/2026-01-10-a.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry
+rules/2026-01-10-a.md: W-NO-TERMS no tags or keywords; add the words a reader would search with to keywords
+rules/2026-01-10-b.md: E-STATUS status "wrong" is not valid for a rule; valid: active, superseded, retired
+rules/2026-01-10-b.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry
+stray.txt: E-NOT-ENTRY unknown top-level item; it is not part of the store layout
+check: 5 errors, 3 warnings

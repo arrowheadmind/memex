@@ -1,0 +1,5 @@
+check
+--json
+--errors-only
+--limit
+1

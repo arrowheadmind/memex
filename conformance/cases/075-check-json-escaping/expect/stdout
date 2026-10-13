@@ -1,0 +1,1 @@
+{"findings":[{"path":"rules/2026-01-10-q.md","code":"E-STATUS","severity":"error","message":"status \"\\\"quoted\\\" \\\\ </tag> é\" is not valid for a rule; valid: active, superseded, retired"}],"errors":1,"warnings":0,"truncated":0}
