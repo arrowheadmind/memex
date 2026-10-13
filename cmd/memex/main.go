@@ -187,7 +187,7 @@ func printHelpPage(name string, stdout io.Writer) (int, *usageError) {
 }
 
 // pageNames lists the commands and topics that have a help page, commands in §11 order, then
-// topics in file order.
+// topics in §16.6 order (SPEC §16.2).
 func pageNames() []string {
 	var names []string
 	for _, c := range spec.Commands {
@@ -195,9 +195,10 @@ func pageNames() []string {
 			names = append(names, c.Name)
 		}
 	}
-	topics, _ := fs.Glob(help.Pages, "topic-*.md")
-	for _, t := range topics {
-		names = append(names, strings.TrimSuffix(strings.TrimPrefix(t, "topic-"), ".md"))
+	for _, t := range spec.Topics {
+		if _, err := fs.Stat(help.Pages, "topic-"+t.Name+".md"); err == nil {
+			names = append(names, t.Name)
+		}
 	}
 	return names
 }

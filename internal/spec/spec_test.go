@@ -107,3 +107,16 @@ func TestNearest(t *testing.T) {
 		t.Errorf("levenshtein counts code points: got %d, want 2", d)
 	}
 }
+
+func TestTopics(t *testing.T) {
+	want := []string{"agents", "concepts", "entries", "ids", "links", "search", "writing",
+		"config", "check-codes", "exit-codes", "neutrality", "importing"}
+	if !slices.Equal(TopicNames(), want) {
+		t.Errorf("topics %v, want the §16.6 order %v", TopicNames(), want)
+	}
+	for _, tp := range Topics {
+		if tp.Summary == "" {
+			t.Errorf("topic %s: no summary", tp.Name)
+		}
+	}
+}

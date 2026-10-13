@@ -244,7 +244,7 @@ var Commands = []Command{
 			{Name: "--max-chars", Value: "N", Default: "12000", Summary: "Bound on the whole output, in code points (minimum 2000)"},
 		}, searchFilters),
 		Positionals: []Positional{{Name: "QUERY", Repeatable: true}},
-		ExitCodes:   []int{ExitOK, ExitUsage, ExitNoMatch},
+		ExitCodes:   []int{ExitOK, ExitUsage, ExitNoMatch, ExitLock},
 	},
 	{
 		Name:    "list",
@@ -395,6 +395,38 @@ func CommandNames() []string {
 	names := make([]string, len(Commands))
 	for i, c := range Commands {
 		names[i] = c.Name
+	}
+	return names
+}
+
+// Topic is one help topic (SPEC §16.6).
+type Topic struct {
+	Name    string
+	Summary string
+}
+
+// Topics is the SPEC §16.6 table, in its order, which is the `help --all` order and the
+// tie-break order of help suggestions (§16.2).
+var Topics = []Topic{
+	{"agents", "Rules of engagement for language-model agents"},
+	{"concepts", "The model and the reasoning behind it"},
+	{"entries", "Types, statuses, frontmatter fields and body outlines"},
+	{"ids", "The id and slug rules, with worked examples"},
+	{"links", "Link syntax and resolution"},
+	{"search", "Query syntax, ranking, filters and how to read output"},
+	{"writing", "The write protocol, direct edits, outcomes and conflicts"},
+	{"config", "Store resolution, the config file and environment variables"},
+	{"check-codes", "Every E- and W- code, with its condition and the usual fix"},
+	{"exit-codes", "The exit-code table"},
+	{"neutrality", "Pointer files, the leak scan and tool memory"},
+	{"importing", "The brain v3 importer and its report"},
+}
+
+// TopicNames returns every topic name, in table order.
+func TopicNames() []string {
+	names := make([]string, len(Topics))
+	for i, t := range Topics {
+		names[i] = t.Name
 	}
 	return names
 }
