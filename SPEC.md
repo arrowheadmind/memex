@@ -1386,8 +1386,8 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | File | Meaning |
 |---|---|
 | `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Without `store/`, the store path is an empty temporary directory with no git repository and no origin. |
-| `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. |
-| `cmd` | The argument vector, one argument per line, without the program name |
+| `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. `<STORE>` and `<HOME>` in a value are replaced by the paths they name in `expect/stdout`. |
+| `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
 | `stdin` | Standard input (optional; empty if absent) |
 | `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
 | `expect/exit` | Expected exit code |
