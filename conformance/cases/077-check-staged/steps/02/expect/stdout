@@ -1,1 +1,2 @@
-{"findings":[],"errors":0,"warnings":0,"truncated":0}
+rules/2026-01-10-target.md: E-LINK [[2026-01-10-missing]] on line 10 is not the id of an entry
+check: 1 errors, 0 warnings

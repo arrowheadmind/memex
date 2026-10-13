@@ -1,0 +1,4 @@
+rules/2026-01-10-target.md: E-LINK [[2026-01-10-missing]] on line 10 is not the id of an entry
+rules/2026-01-10-unrelated.md: E-STATUS status "wrong" is not valid for a rule; valid: active, superseded, retired
+stray.txt: E-NOT-ENTRY unknown top-level item; it is not part of the store layout
+check: 3 errors, 0 warnings

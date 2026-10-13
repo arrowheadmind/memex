@@ -1,6 +1,6 @@
 rules/2026-01-10-bad-toml.md: E-FRONTMATTER invalid TOML in the frontmatter at line 3
 rules/2026-01-10-dup-key.md: E-FRONTMATTER invalid TOML in the frontmatter at line 3
-rules/2026-01-10-no-closing.md: E-FRONTMATTER no closing +++ line after the frontmatter
-rules/2026-01-10-no-opening.md: E-FRONTMATTER the file must begin with a line +++
-rules/2026-01-10-spaced-delimiter.md: E-FRONTMATTER the file must begin with a line +++
+rules/2026-01-10-no-closing.md: E-FRONTMATTER missing closing +++ line after the frontmatter
+rules/2026-01-10-no-opening.md: E-FRONTMATTER missing opening +++ line; the file must begin with the line +++
+rules/2026-01-10-spaced-delimiter.md: E-FRONTMATTER missing opening +++ line; the file must begin with the line +++
 check: 5 errors, 0 warnings

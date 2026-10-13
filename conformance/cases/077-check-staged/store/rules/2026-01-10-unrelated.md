@@ -1,8 +1,9 @@
 +++
-title = "A"
-status = "active"
+title = "Unrelated"
+status = "wrong"
 created = 2026-01-10
+summary = "A fixture entry."
+tags = ["fixture"]
 +++
 
 This fixture entry has a body long enough to pass the content measure of eighty code points. It says nothing else.
-[[2026-01-10-x]] [[2026-01-10-y]] [[2026-01-10-z]]

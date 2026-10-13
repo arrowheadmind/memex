@@ -1,6 +1,6 @@
-journal/2025-10-16-old.md: W-RAW-OLD raw since 2025-10-16, more than 90 days; review it and set status kept or promoted
+journal/2025-10-16-old.md: W-RAW-OLD raw since 2025-10-16, more than 90 days ago; review it, then: memex set 2025-10-16-old status=kept, or memex promote 2025-10-16-old
 journal/2026-01-10-promoted.md: W-PROMOTED-UNCITED promoted, but no entry lists "2026-01-10-promoted" in sources
-reference/2026-01-10-stale.md: W-STALE-REFERENCE verified 2025-12-15 is more than review_days (30) ago; check the facts and set verified
-rules/2026-01-10-no-summary.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry
-rules/2026-01-10-no-terms.md: W-NO-TERMS no tags or keywords; add the words a reader would search with to keywords
+reference/2026-01-10-stale.md: W-STALE-REFERENCE verified 2025-12-15 is more than review_days (30) ago; check the facts, then: memex set 2026-01-10-stale verified=2026-01-15
+rules/2026-01-10-no-summary.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry: memex set 2026-01-10-no-summary summary=<sentence>
+rules/2026-01-10-no-terms.md: W-NO-TERMS no tags or keywords; add the words a reader would search with: memex set 2026-01-10-no-terms keywords=<word>,<word>
 check: 0 errors, 5 warnings

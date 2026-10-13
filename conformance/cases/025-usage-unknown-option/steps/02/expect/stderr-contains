@@ -1,0 +1,3 @@
+memex: unknown option --workspace
+memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
+Run: memex help check

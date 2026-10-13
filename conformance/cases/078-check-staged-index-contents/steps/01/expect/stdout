@@ -1,0 +1,2 @@
+rules/2026-01-10-a.md: E-STATUS status "actve" is not valid for a rule (did you mean "active"?); valid: active, superseded, retired
+check: 1 errors, 0 warnings

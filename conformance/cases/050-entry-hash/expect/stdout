@@ -1,2 +1,2 @@
-journal/2026-01-10-edited.md: E-HASH the body does not match body_sha256; journal bodies are immutable. Restore the body, or capture the corrected text and run memex set 2026-01-10-edited status=superseded superseded_by=<new id>
+journal/2026-01-10-edited.md: E-HASH body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set 2026-01-10-edited status=superseded superseded_by=<new>
 check: 1 errors, 0 warnings

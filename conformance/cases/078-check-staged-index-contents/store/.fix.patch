@@ -1,0 +1,9 @@
+diff --git a/rules/2026-01-10-a.md b/rules/2026-01-10-a.md
+--- a/rules/2026-01-10-a.md
++++ b/rules/2026-01-10-a.md
+@@ -1,4 +1,4 @@
+ +++
+ title = "A"
+-status = "active"
++status = "actve"
+ created = 2026-01-10

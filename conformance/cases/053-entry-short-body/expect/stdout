@@ -1,4 +1,4 @@
-rules/2026-01-10-empty.md: W-SHORT-BODY the body's content measure is 0, below 80
-rules/2026-01-10-headings.md: W-SHORT-BODY the body's content measure is 10, below 80
-rules/2026-01-10-one-short.md: W-SHORT-BODY the body's content measure is 79, below 80
+rules/2026-01-10-empty.md: W-SHORT-BODY body content measure 0 is below 80
+rules/2026-01-10-headings.md: W-SHORT-BODY body content measure 10 is below 80
+rules/2026-01-10-one-short.md: W-SHORT-BODY body content measure 79 is below 80
 check: 0 errors, 3 warnings

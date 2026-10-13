@@ -1,3 +1,3 @@
-rules/2026-01-10-owner.md: E-FILE-LINK line 12: files/../memex.toml is not a plain path under files/; write it without . or ..
-rules/2026-01-10-owner.md: E-FILE-LINK line 12: files/2026-01-10-owner/gone.log does not exist
+rules/2026-01-10-owner.md: E-FILE-LINK files/../memex.toml on line 12 is not a plain path under files/; write it without . or ..
+rules/2026-01-10-owner.md: E-FILE-LINK files/2026-01-10-owner/gone.log on line 12 does not exist
 check: 2 errors, 0 warnings

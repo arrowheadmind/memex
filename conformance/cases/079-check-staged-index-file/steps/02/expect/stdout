@@ -1,0 +1,2 @@
+rules/2026-01-10-new.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry: memex set 2026-01-10-new summary=<sentence>
+check: 0 errors, 1 warnings

@@ -1,0 +1,1 @@
+{"findings":[{"path":"rules/2026-01-10-target.md","code":"E-LINK","severity":"error","message":"[[2026-01-10-missing]] on line 10 is not the id of an entry"}],"errors":1,"warnings":0,"truncated":0}

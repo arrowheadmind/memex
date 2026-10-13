@@ -1,3 +1,3 @@
-rules/2026-01-10-by-only.md: E-SUPERSEDED superseded_by is set but status is "active", not superseded
-rules/2026-01-10-no-by.md: E-SUPERSEDED status is superseded but superseded_by is missing
+rules/2026-01-10-by-only.md: E-SUPERSEDED superseded_by is set but status is "active"; either memex set 2026-01-10-by-only status=superseded, or memex set 2026-01-10-by-only superseded_by=
+rules/2026-01-10-no-by.md: E-SUPERSEDED status is superseded but superseded_by is missing; add it: memex set 2026-01-10-no-by superseded_by=<new>
 check: 2 errors, 0 warnings

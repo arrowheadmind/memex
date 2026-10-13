@@ -36,7 +36,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 4 Store layout | Implemented |
 | 5 Entries | Implemented |
 | 6 Links | Implemented |
-| 7 Validation | Planned |
+| 7 Validation | Implemented |
 | 8 Search | Planned |
 | 9 Writing to the store | Planned |
 | 10 Command-line conventions | Planned |

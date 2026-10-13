@@ -1,3 +1,3 @@
 memex: value for --limit must be a non-negative integer, not "-1"
-memex check [--staged] [--strict] [--workspace] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
 Run: memex help check

@@ -2,5 +2,5 @@ decisions/2026-01-10-always.md: E-FIELD-UNKNOWN field "always" is not allowed on
 reference/2026-01-10-kind.md: E-FIELD-UNKNOWN field "kind" is not allowed on a reference; it is allowed on: plan
 rules/2026-01-10-table.md: E-FIELD-UNKNOWN unknown field "extra"
 rules/2026-01-10-typo.md: E-FIELD-UNKNOWN unknown field "tgas" (did you mean "tags"?)
-rules/2026-01-10-typo.md: W-NO-TERMS no tags or keywords; add the words a reader would search with to keywords
+rules/2026-01-10-typo.md: W-NO-TERMS no tags or keywords; add the words a reader would search with: memex set 2026-01-10-typo keywords=<word>,<word>
 check: 4 errors, 1 warnings

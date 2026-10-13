@@ -1,8 +1,8 @@
-rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-x]] is not the id of an entry
-rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-y]] is not the id of an entry
-rules/2026-01-10-a.md: E-LINK line 8: [[2026-01-10-z]] is not the id of an entry
-E-NOT-ENTRY: 1 more
-E-STATUS: 1 more
-W-NO-SUMMARY: 2 more
-W-NO-TERMS: 1 more
+rules/2026-01-10-a.md: E-LINK [[2026-01-10-x]] on line 8 is not the id of an entry
+rules/2026-01-10-a.md: E-LINK [[2026-01-10-y]] on line 8 is not the id of an entry
+rules/2026-01-10-a.md: E-LINK [[2026-01-10-z]] on line 8 is not the id of an entry
+E-NOT-ENTRY: 1 more (raise --limit)
+E-STATUS: 1 more (raise --limit)
+W-NO-SUMMARY: 2 more (raise --limit)
+W-NO-TERMS: 1 more (raise --limit)
 check: 5 errors, 3 warnings

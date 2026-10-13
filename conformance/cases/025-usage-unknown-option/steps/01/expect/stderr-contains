@@ -1,0 +1,3 @@
+memex: unknown option --stagd (did you mean --staged?)
+memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
+Run: memex help check
