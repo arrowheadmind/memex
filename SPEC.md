@@ -112,8 +112,10 @@ The store path is resolved from the first of these that is set:
 
 Rules:
 - A leading `~/` and the strings `$HOME` and `${HOME}` are expanded: `~/` only at the start,
-  `$HOME` and `${HOME}` wherever they occur. No other expansion takes place, and symlinks are
-  not resolved.
+  `${HOME}` wherever it occurs, and `$HOME` only where it is followed by `/` or ends the path
+  (`$HOMEDIR/x` is left alone). No other expansion takes place, and symlinks are not resolved.
+- Expanding `~/`, `$HOME` or `${HOME}` while `HOME` is unset fails with exit 2:
+  `memex: cannot expand ~: HOME is not set` (naming `$HOME` or `${HOME}` for those forms).
 - A variable of §3.3 set to the empty string counts as unset.
 - A relative path is an error.
 - The path MUST be a directory containing `memex.toml`, otherwise the command fails with
@@ -133,7 +135,8 @@ There is no default path and no search of parent directories.
 The path is `MEMEX_CONFIG` if set. Otherwise it is `$XDG_CONFIG_HOME/memex/config.toml` when
 `XDG_CONFIG_HOME` is set, or else `~/.config/memex/config.toml`.
 
-- A missing file is not an error.
+- A missing file is not an error. When neither `XDG_CONFIG_HOME` nor `HOME` is set there is no
+  config file, which is not an error either.
 - A file that won't parse, or that has an unknown key, is an error (exit 2).
 
 Keys:
@@ -215,7 +218,8 @@ absent one means empty. memex creates a directory when it first writes into it.
 Type directories are flat. Any other file or directory inside a type directory is a validation
 error (§7). So is any top-level entry not in the list above, except dot-files and
 dot-directories (`.git`, `.gitattributes`, `.editorconfig`, …), `LICENSE`, `flake.nix`,
-`flake.lock` and `import-report.json` (§13.6), which memex ignores.
+`flake.lock` and `import-report.json` (§13.6), which memex ignores. Dot-files and
+dot-directories directly under `files/` are ignored in the same way.
 
 ---
 
@@ -335,7 +339,7 @@ Listed in canonical order.
 | 12 | `sources` | array | no | all | Ids this entry was derived from |
 | 13 | `superseded_by` | string | iff status is `superseded` | all | Id of the replacing entry |
 | 14 | `verified` | date | yes | reference | When the facts were last checked against the live system |
-| 15 | `review_days` | integer ≥ 1 | no | reference | Staleness threshold for `verified` |
+| 15 | `review_days` | integer, 1–36500 | no | reference | Staleness threshold for `verified` |
 | 16 | `aliases` | array | no | all | Former names or paths that resolve to this entry (§6) |
 | 17 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
 
@@ -404,10 +408,12 @@ body.
 ## 6. Links
 
 **Syntax:** `[[TARGET]]` or `[[TARGET|TEXT]]`. TARGET is text without `]`, `|` or LF that
-either matches the id pattern of §5.4 or equals an alias of some entry. Anything else between
-`[[` and `]]` (for example a shell test like `[[ -f x ]]`) is plain text, not a link. Links
-inside fenced code blocks and inside inline code spans (backtick-delimited on one line) are
-ignored.
+either matches the id pattern of §5.4 or equals an alias of some entry; TEXT is any text
+without `]` or LF. Anything else between `[[` and `]]` (for example a shell test like
+`[[ -f x ]]`) is plain text, not a link. Links inside fenced code blocks and inside inline code
+spans are ignored. An inline code span follows CommonMark: a run of N backticks opens it, and
+the next run of exactly N backticks on the same line closes it (so `` `a``b` `` is one span); a
+run with no such closing run is literal text.
 
 **Resolution of TARGET, in order:**
 1. The id of an entry: resolved.
@@ -421,8 +427,10 @@ A TARGET that is not an id but is an alias of more than one entry is unresolved:
 accepted there.
 
 **Markdown links** whose destination starts with `files/` are store-root-relative paths and
-are checked for existence (`E-FILE-LINK`). Any other URL, path or `repo@sha` pin is free text
-and is not checked.
+are checked (`E-FILE-LINK`). A `#fragment` or `?query` is removed and `%XX` escapes are decoded
+first. The path must then be plain (no `.`, `..` or empty segment), and must resolve, following
+symbolic links, to a regular file or directory whose real path is inside the store root.
+Any other URL, path or `repo@sha` pin is free text and is not checked.
 
 ---
 
@@ -452,6 +460,8 @@ path and code a finding on line 12 sorts before one on line 7.
 
 **`--staged`** reads the store as the git index holds it: the entries, their contents, the
 layout and the existence of `files/` paths all come from the index, not the working tree.
+When nothing is added or modified, an empty index included, there are no findings and the
+exit code is 0.
 
 A file directly under `files/` (not inside `files/<id>/`) is `E-FILES-OWNER`. Invalid TOML,
 in an entry or the manifest, is reported only as `at line <line>`, the line in the file,
@@ -481,13 +491,13 @@ Errors:
 | `E-FRONTMATTER` | Missing delimiters, or invalid TOML | `missing opening +++ line; the file must begin with the line +++`, `missing closing +++ line after the frontmatter`, `invalid TOML in the frontmatter at line <line>` |
 | `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type | `unknown field "<field>" (did you mean "<nearest>"?)` over the §5.3 names in canonical order; `field "<field>" is not allowed on a <type>; it is allowed on: <types>` with the "Allowed on" types of §5.3 separated by `, ` |
 | `E-FIELD-MISSING` | Required field absent | `missing required field "<field>"` |
-| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be at least 1, not <value>`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed` |
+| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed` |
 | `E-STATUS` | Status not valid for the type | `status "<value>" is not valid for a <type> (did you mean "<nearest>"?); valid: <statuses>`, the type's statuses in §5.2 order separated by `, ` |
 | `E-CREATED` | `created` ≠ id date | `created <date> differs from the date in the id, <id date>` |
 | `E-SUPERSEDED` | `superseded` without `superseded_by`, or `superseded_by` without `superseded` | `status is superseded but superseded_by is missing; add it: memex set <id> superseded_by=<new>`; `superseded_by is set but status is "<value>"; either memex set <id> status=superseded, or memex set <id> superseded_by=` |
 | `E-REF` | `parent`/`sources`/`superseded_by` names a missing id, or `parent` isn't a plan | `<field> "<value>" is not the id of an entry`, followed by `; it is an alias of <path>, write its id "<target id>"` when exactly one entry has the value as an alias; `parent "<value>" is a <type>, not a plan` |
 | `E-LINK` | Unresolved `[[...]]` | `[[<target>]] on line <line> is not the id of an entry`; `[[<target>]] on line <line> is an alias of several entries (<paths>); link an id` |
-| `E-FILE-LINK` | Markdown link to a missing `files/...` path | `<destination> on line <line> does not exist`; `<destination> on line <line> is not a plain path under files/; write it without . or ..` when the destination contains a `.` or `..` segment or an empty segment before its end |
+| `E-FILE-LINK` | Markdown link to a missing `files/...` path (§6) | `<destination> on line <line> is not a plain path under files/; write it without . or ..` when the decoded path contains a `.` or `..` segment or an empty segment before its end; `<destination> on line <line> is outside the store` when it resolves outside the store root; otherwise `<destination> on line <line> does not exist`. `<destination>` is written as in the link |
 | `E-HASH` | `body_sha256` mismatch | `body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id | `alias "<value>" is also on <paths>` (the other entries); `alias "<value>" is the id of <paths>` |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id | On `files/<x>`: `"<x>" is not the id of an entry; attachments go in files/<id>/`, written literally as `files/<id>/`; on a file directly under `files/`: `not a directory; attachments go in files/<id>/` |
@@ -504,7 +514,7 @@ Warnings:
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
-| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80` |
+| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save` |
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body | One finding per line: `line <line> looks like a credential (<what>); remove it, or add the line <!-- memex: allow-secret --> if it is not one`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
@@ -1420,7 +1430,7 @@ implementation runs it through a runner that takes the path of the `memex` execu
 
 | File | Meaning |
 |---|---|
-| `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Without `store/`, the store path is an empty temporary directory with no git repository and no origin. |
+| `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Symbolic links in `store/` are copied as links. Without `store/`, the store path is an empty temporary directory with no git repository and no origin. |
 | `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. `<STORE>` and `<HOME>` in a value are replaced by the paths they name in `expect/stdout`. |
 | `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
 | `stdin` | Standard input (optional; empty if absent) |
