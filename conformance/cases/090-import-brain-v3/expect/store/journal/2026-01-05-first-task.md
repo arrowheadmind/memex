@@ -5,10 +5,11 @@ created = 2026-01-05
 summary = "Older duplicate row"
 tags = ["nixos", "raspberry-pi"]
 aliases = [".brain/investigations/2026-01-05-first-task.md", "investigations/2026-01-05-first-task.md"]
-body_sha256 = "502b95d3583363b0b82e3cde7c2ce7f37e98e985131429be7e20aefd7053fd4f"
+body_sha256 = "948db9d2b518c1430b6081b4ef145b7225eae8e62e059db067e5a86b0c222153"
 +++
 
 raspberry-pi, nixos
+
 ## What was attempted
 
 We picked a database, see [[2026-01-06-pick-a-db]] and the

@@ -1,4 +1,4 @@
-# Constraints — Programming
+# Constraints — Work
 
 A preamble line that belongs to no rule.
 

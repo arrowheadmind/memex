@@ -1,4 +1,4 @@
-# Brain Index — Programming
+# Brain Index — Work
 
 | Date | File | Summary | Tags | Context | Repo | Status |
 |------|------|---------|------|---------|------|--------|

@@ -1,4 +1,4 @@
-# Known Mistakes — Programming
+# Known Mistakes — Work
 
 | Symptom | Context | Avoid | Instead |
 |---------|---------|-------|---------|
