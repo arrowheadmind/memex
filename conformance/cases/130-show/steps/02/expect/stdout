@@ -1,0 +1,40 @@
++++
+title = "Other rule"
+status = "active"
+created = 2026-01-10
+aliases = ["other-alias"]
++++
+
+Points back at [[2026-01-10-target]].
+
+--- links
+links to: plans/2026-01-10-target.md
+linked from: plans/2026-01-10-target.md
+---
++++
+title = "Target plan"
+status = "active"
+created = 2026-01-10
+summary = "The plan everything points at."
+aliases = ["old-target"]
++++
+
+Links to [[2026-01-10-other]] and [[other-alias|text]] and [[2026-01-10-other]] again.
+Also [[2026-01-10-missing]] and `[[2026-01-10-in-code]]`.
+
+--- links
+cited by: journal/2026-01-10-cites.md
+supersedes: plans/2026-01-10-old-plan.md
+children: tasks/2026-01-10-child.md
+links to: rules/2026-01-10-other.md
+linked from: plans/2026-01-10-old-plan.md, rules/2026-01-10-other.md
+---
++++
+title = "Lonely decision"
+status = "accepted"
+created = 2026-01-10
++++
+
+Nothing links here.
+
+--- links
