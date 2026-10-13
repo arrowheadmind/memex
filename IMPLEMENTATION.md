@@ -104,6 +104,16 @@ conformance/cases/    §15 cases (data, language-neutral)
   a review finding.
 - **Snippets (§8.5):** tokenize the original line into `[]struct{start, end int; norm string}`
   by rune index, and do the window arithmetic in runes, never bytes.
+- **Import (§13):** `internal/importv3` reads sources only through `git show`, `git log
+  --follow` and `git blame --line-porcelain` at the pinned commit, never through the working
+  tree. Every source line carries one attribution (`unit`, `moved-to-frontmatter`,
+  `structural`, `remainder`) in a per-file slice, and the §13.6 comparison runs over the
+  written body with link rewrites mapped back, so the check covers the whole pipeline. Map
+  iteration never reaches the output: everything that is listed is collected in slices or
+  sorted first. `store.CreateLayout` writes the §11.1 layout for both `import` and `init`.
+- **Conformance fixtures with history (§15):** `src/<name>/` repositories are committed with
+  `GIT_AUTHOR_DATE` and `GIT_COMMITTER_DATE` fixed, so a case's expected store may contain the
+  seed commit's hash.
 - **Exit codes:** `main` maps typed errors to §10 codes. A panic is recovered at the top level,
   printed as `memex: internal error: …`, and exits 70.
 

@@ -42,7 +42,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 10 Command-line conventions | Planned |
 | 11 Commands | Planned |
 | 12 Tool neutrality | Planned |
-| 13 Importing a brain v3 store | Planned |
+| 13 Importing a brain v3 store | Implemented |
 | 15 Conformance suite | Planned |
 | 16 Help | Planned |
 | 17 Agent-first requirements | Planned |
@@ -1230,11 +1230,13 @@ The first SRC is the **primary** brain. Each SRC contributes:
 - `.brain/investigations/*.md`, `.brain/decisions/*.md`, `.brain/runbooks/*.md`;
 - `.brain/plans/**` (top-level files, `prompts/`, `reports/` and any other subdirectory);
 - `.brain/dispatch-logs/*`;
-- `.brain/known-mistakes.md`, `.brain/constraints.md`, `.brain/INDEX.md`, `.brain/AGENT.md`.
+- `.brain/known-mistakes.md`, `.brain/constraints.md`, `.brain/INDEX.md`, `.brain/AGENT.md`;
+- `.brain/backlog.md`, handled exactly like `docs/backlog.md`.
 
 The primary SRC alone also contributes `docs/**/*.md`, including `docs/runbooks/*.md` and
 `docs/backlog.md`. In a secondary SRC (an application repository with a `.brain/`), `docs/` is
-the application's documentation, not knowledge.
+the application's documentation, not knowledge, and `.brain/AGENT.md` is read for its
+`BRAIN_REPO` line only and listed as `not-knowledge`.
 
 **Not knowledge.** These tracked paths are listed in the report as `not-knowledge` and not
 imported: `.brain/templates/**`, `.brain/scripts/**`, `.brain/README.md`, `.brain/plans/README.md`,
@@ -1247,17 +1249,25 @@ directory that is not a `.md` file is an attachment (§13.3).
 A **unit** is the smallest piece of source that becomes one entry.
 
 **Common rules**, which the table assumes:
-- **Titles** are cut to 300 code points after markup stripping (§13.4). A heading that is
-  hard-wrapped over consecutive `## ` lines is one heading. A trailing `(YYYY-MM-DD)` or
-  `, found YYYY-MM-DD` in a heading is removed from the title and becomes the unit's date.
+- **Titles** are cut to 300 code points after markup stripping (§13.4), with whitespace runs
+  collapsed to one space. "First heading" means the first ATX heading of any level. A heading
+  that is hard-wrapped over consecutive `## ` lines (no blank line between them) is one
+  heading. A trailing `(YYYY-MM-DD)`, `, found YYYY-MM-DD` or ` — YYYY-MM-DD` in a heading is
+  removed from the title and becomes the unit's date; otherwise the last `YYYY-MM-DD` anywhere
+  in the heading becomes the date and the text is kept. When the cut shortens a title, the
+  heading line stays in the body instead of moving to the frontmatter, so no text is lost.
 - **Status lines.** The *value* of a `## Status` section or a `**Status:**` line is the first
-  word of its first non-blank line, lowercased, with trailing punctuation removed (so
-  `complete — 2026-07-06` is `complete`, and `- [x] Colors changed` is `-`, which maps to the
-  default). The rest of the section stays in the body.
-- **Dates.** A unit's date is, in order: the date in its filename; the date removed from its
+  word of its first non-blank line, lowercased, with trailing punctuation and symbols removed
+  (so `complete — 2026-07-06` is `complete`, and `- [x] Colors changed` is empty, which maps
+  to the default). The rest of the section stays in the body.
+- **Dates.** A unit's date is, in order: the date in its filename; the date taken from its
   heading; the `YYYY-MM-DD` part of `%aI` (author time in its recorded offset) of the earliest
-  commit that touches any line of the unit (`git log --follow` for file units, `git blame` for
-  line units). Blame alone would re-date a row to the commit that last edited it.
+  commit that touches any line of the unit (`git log --follow` for file units, the earliest
+  `git blame` date over the unit's lines for line units). Blame alone would re-date a row to
+  the commit that last edited it.
+- **Tables.** Only the table before the first `## ` heading of `known-mistakes.md` and
+  `constraints.md` yields row units. A table inside a `## ` section is part of that rule's
+  body.
 - **Prefix stripping.** A first heading of the form `# <Word>: <text>` where `<Word>` is `Task`,
   `Investigation`, `Plan`, `Decision` or `Runbook` yields `<text>`.
 - **`was-<status>` tags.** Whenever a source status maps to a different memex status, the
@@ -1303,9 +1313,13 @@ file order, then remainder and attachments entries; within a directory, by filen
   tried in both runbook directories. When two rows name the same file, the last wins and the
   first is reported as `index-duplicate`. The row provides `summary` and `tags` only when the
   file's own header has none, and `status` only when the file has no status value; where the
-  two disagree, the report lists `index-conflict` with both values.
+  two disagree, the report lists `index-conflict` with both values. A matched row is
+  `moved-to-frontmatter`; an orphan or superseded duplicate row stays in the file's remainder
+  entry (§13.6), so the INDEX remainder is the list of rows that matched nothing.
 - **INDEX placeholders.** A `Summary` of `manual-summary` and a `Tags`/`Context` of `manual`
-  are treated as absent (165 rows carry them).
+  are treated as absent (165 rows carry them), and so are brainctl's own context names
+  `root`, `dev` and `unknown` wherever they appear as a `Context` value or an investigation's
+  `## Context` line. They are counted under `placeholders`.
 - **Summary length.** A summary longer than 500 code points is cut at the last space before
   500, and the full text is prepended to the body as a paragraph `**Index summary:** <text>`,
   accounted as a unit body line.
@@ -1320,12 +1334,16 @@ file order, then remainder and attachments entries; within a directory, by filen
   from it). Line-based units get `<source path>#<slug of the heading or first cell>`, made
   unique with `-2`, `-3`, … in file order. `## Always` bullets get
   `.brain/constraints.md#always-<n>`. Remainder and attachments entries get the source path (or
-  SRC basename) itself. No alias may repeat across the store (`E-ALIAS`).
+  SRC basename) itself. Aliases of units from a secondary SRC are prefixed with
+  `<SRC basename>/`. An alias that equals the id of any entry is dropped and reported under
+  `aliases_dropped`. No alias may repeat across the store (`E-ALIAS`).
 
 **Investigation headers:** the brainctl-written header (the `# Task:` line and the `## Status`,
-`## Source Repo`, `## Context` sections) is removed from the body, because its values now live in
-the frontmatter. Only the first value line of each section moves; further lines stay in the
-body. The removed lines are accounted as `moved-to-frontmatter`. A leading YAML block
+`## Source Repo`, `## Context` sections, in any order, each at most once, directly after the
+title with only blank lines between them) is removed from the body, because its values now
+live in the frontmatter. The value of each section is its first non-blank line; further lines
+stay in the body. The removed lines are accounted as `moved-to-frontmatter`. A `## Context`
+or `## Summary` heading that appears later in the file is content. A leading YAML block
 (`---` … `---`, present in a few early files) stays in the body untouched.
 
 ### 13.4 Rule text
@@ -1355,15 +1373,24 @@ resolve to exactly one unit. A path reference is a substring matching
 (PREFIX)?(\.brain/)?(investigations|decisions|plans|plans/prompts|plans/reports|runbooks|docs|docs/runbooks)/[A-Za-z0-9._-]+\.md(:[0-9]+|#L[0-9]+)?
 ```
 
-not inside fenced code, where `PREFIX` is any of: each SRC path as given on the command line,
-the same with `$HOME` written as `~`, the SRC's basename followed by `/`, or `./`. A line or
-anchor suffix (`:12`, `#L12`) is kept after the link as text. Nothing operator-specific is in
-the tool: the prefixes come from the arguments. INDEX `File` values are resolved the same way.
+not inside fenced code, where `PREFIX` is any of: each SRC path as given on the command line
+and as an absolute path, the same with `$HOME` written as `~`, the SRC's basename followed by
+`/`, or `./`. A line or anchor suffix (`:12`, `#L12`) is kept after the link as text. Nothing
+operator-specific is in the tool: the prefixes come from the arguments. A reference is
+resolved first among the units of its own SRC, then among the primary's; `runbooks/x.md`
+matches either runbook directory when exactly one has the file. INDEX `File` values are
+resolved the same way.
 
+- **Code spans.** A reference wrapped in exactly one pair of backticks (`` `path` ``, the form
+  the predecessor used for most references) becomes `[[id]]` without the backticks, because a
+  link inside a code span is not a link (§6). A reference inside any other code span stays as
+  it is.
+- **Existing wikilinks.** A `[[TARGET]]` already in a body is kept when TARGET is an id or an
+  alias of the new store. When it matches the id pattern but resolves to nothing, it is wrapped
+  in backticks so that it reads as the text it was and is not `E-LINK`; the report lists these
+  under `wikilinks_quoted`. Any other `[[…]]` is plain text (§6).
 - Unresolved references stay unchanged and are counted in the report, grouped by target.
-  Mentions of `known-mistakes.md`, `constraints.md`, `docs/backlog.md`, `INDEX.md` and
-  `AGENT.md` as whole files are expected (over 1,700 of them) and are listed under
-  `unresolved-file`.
+  Mentions of `docs/backlog.md` as a whole file are expected (over 300 of them).
 - `body_sha256` is computed after rewriting.
 - **"Superseded by" resolution** for statuses looks, case-insensitively, for `supersed` in the
   unit's status value or in a blockquote (consecutive lines starting with `>`), and takes the
@@ -1381,27 +1408,55 @@ committed with the import) and prints a summary.
   `## ` lines that only group `### ` items, blank lines between units), or a **remainder**.
 - **Remainder** text, meaning text in a source file that belongs to no unit (preambles,
   comments, closing notes), becomes one `reference` entry per source file. It is titled
-  `<source path> (import remainder)` and contains the lines in source order, so nothing is
-  dropped.
+  `<source path> (import remainder)` (`<SRC basename>/<source path>` for a secondary SRC),
+  contains the non-blank lines in source order, so nothing is dropped, and is dated by the
+  file's first commit with `verified` set to its last. An attachments entry (§13.3) is dated by
+  its SRC's revision.
 - **Per source file** the report lists lines and non-whitespace characters in, and the same out
   per category.
 - The import exits 1 if any source line is unattributed. It also exits 1 if, for any unit, the
   non-whitespace characters of its source text differ from those of its output text. For this
   comparison:
-  - source text is the unit's lines including its heading line or table row; output text is
-    the entry's title followed by its body;
+  - source text is the text of the heading that became the title (without its `#` marks),
+    then the unit's body lines in order; text the importer took out of the heading on the
+    way to the frontmatter (a `Task:`-style prefix, a `Mistake:`-style prefix, a removed date,
+    the leading markers of a backlog heading) is removed from the source side once, and an
+    INDEX summary that was prepended to the body is added to it;
+  - output text is the entry's title, when the title came from a removed heading, followed
+    by the written body with every link rewrite mapped back to its original text through the
+    `rewritten` record; for a table row the output text is its cells, because the title
+    repeats the first cell and the column labels are generated; for an Always bullet it is the
+    body alone, because the title is taken from text that stays in the body;
   - both sides are compared after markup stripping (§13.4) and with `|` and `\|` removed;
-  - generated labels (`**<Column header>:** `, `**Index summary:** `) and the `was-*` and
-    `marker-*` tags are excluded from the output text;
-  - link rewrites are compared through the `rewritten` record, which holds each original path
-    and its replacement.
+  - the import's own additions (`was-*` and `marker-*` tags, `**<Column header>:** ` and
+    `**Index summary:** ` labels) are not text.
 - **INDEX rows** pointing to missing files are listed as `index-orphan`, with their summary
   preserved in the report; `index-duplicate` and `index-conflict` rows likewise.
 - **Short bodies:** every entry below the content measure of 80 is listed under `short-body`,
   so the curation pass can decide what to merge.
 - **Every `not-knowledge` file** is listed by path.
 - **Leaks:** each `--leak PATH` becomes a `raw` journal entry exactly as `capture --from PATH`
-  would make it (§11.2), without committing, and is listed under `leaks`.
+  would make it (§11.2), without committing, dated today, with PATH written with `~` for the
+  home directory, and is listed under `leaks`.
+
+**Report shape.** `import-report.json` is one object with these keys, in this order: `format`
+(1), `today`, `sources` (basename, rev, commit, primary), `files` (per recognized file: lines
+and non-whitespace characters in, and the same out per category), `entries` (id, type, unit
+kind, source, path, status, source line range, removed and extra text), `attachments`,
+`not_knowledge`, `index` (rows, matched, placeholders, orphan, duplicate, conflict),
+`tags_normalized`, `links` (rewritten, wikilinks_quoted, unresolved), `duplicates`,
+`aliases_dropped`, `row_shape`, `short_body`, `leaks`, `warnings` (per code), `problems`. It
+is written through the §10 JSON rules and contains no absolute path, so that two runs from the
+same revisions are byte-identical whatever the directories.
+
+**Command output.** On standard output: `imported <N> entries from <k> sources into <DIR>`,
+then indented lines with the entry counts per type directory, the attachment, not-knowledge
+and leak counts, the INDEX counts, the link and duplicate counts, the warning counts per code,
+and last `report: <DIR>/import-report.json`. Exit 0. With problems, every problem is printed
+on standard error as `memex: <problem>` after the summary, and the exit code is 1; the output
+is written anyway so that the report can be read. An existing `DIR` is exit 1; a FORMAT other
+than `brain-v3`, a missing SRC or a missing `--out` is a usage error (exit 2); a SRC that is
+not a git repository, a dirty SRC without `@REV`, or an unknown REV is exit 1.
 
 **Never automatic:** deduplication, rewording, or judging whether a rule is still true. Those
 are a separate, reviewed curation pass, done with ordinary memex commands.
@@ -1430,7 +1485,9 @@ implementation runs it through a runner that takes the path of the `memex` execu
 
 | File | Meaning |
 |---|---|
-| `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Symbolic links in `store/` are copied as links. Without `store/`, the store path is an empty temporary directory with no git repository and no origin. |
+| `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Symbolic links in `store/` are copied as links. Without `store/`, the store path is an empty temporary directory with no git repository and no origin, and when the case also has `src/`, that empty directory is removed so that a command may create the store. |
+| `src/<name>/` | Optional, one per directory. Source repositories for `import` (§13): each is copied to a temporary directory and committed as the seed with the message `conformance: seed`, author `test <test@example.invalid>` and author and committer date `2026-01-10T12:00:00+00:00`, so that commit hashes, blame dates and first-commit dates are the same on every run. `<SRC:name>` in `cmd`, `env` and `expect/stdout` is that directory's absolute path. |
+| `home/` | Optional. Files copied into the temporary `HOME` before the command runs, for commands that read files outside the store (`import --leak`, the leak scan). |
 | `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. `<STORE>` and `<HOME>` in a value are replaced by the paths they name in `expect/stdout`. |
 | `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
 | `stdin` | Standard input (optional; empty if absent) |
