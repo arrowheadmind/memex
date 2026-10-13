@@ -283,9 +283,10 @@ whatever `body_sha256` covers, and `fmt` never touches them.
 canonical form is a validation warning (§7), and `memex fmt` fixes it.
 
 **Unicode version.** Every Unicode-dependent rule in this specification (NFKD, general
-categories, simple lowercase mapping) is evaluated with the tables of **Unicode 15.0**. An
-implementation whose runtime ships other tables MUST still produce Unicode 15.0 results for the
-code points the conformance suite covers.
+categories, simple lowercase mapping) is evaluated with the tables of **Unicode 17.0**, the
+version the reference toolchain ships. Conformance cases use only code points whose properties
+are the same in every Unicode table an implementation might ship, so an implementation whose
+runtime ships other tables still passes them.
 
 ### 5.2 Types and statuses
 
