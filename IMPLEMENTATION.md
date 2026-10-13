@@ -10,9 +10,12 @@ The spec and the conformance suite (`conformance/`) are the contract, and nothin
 
 - **Go:** the current stable release at the time of the first code commit, pinned by the `go`
   and `toolchain` lines in `go.mod`.
-- **Module path:** *to decide before the first tag*. It follows where the canonical public home
-  will be. Changing a module path after release breaks `go install` for everyone, so it is
-  chosen once.
+- **Module path:** `github.com/arrowheadmind/memex`. It names the canonical public home, which
+  is the GitHub organization `arrowheadmind`, even though development happens on the operator's
+  Gitea (`eduardo/memex`) and GitHub receives the repository later through a Gitea push mirror.
+  The path is baked into every import and into `go install`, and changing it after a release
+  breaks installs, so it is fixed here before the first line of code. Hosting is not checked
+  until someone runs `go install`, by which time the mirror exists.
 - **Checks in CI:** `gofmt -l` must produce no output, plus `go vet ./...` and
   `go test ./...`.
 
@@ -124,6 +127,7 @@ conformance/cases/    §15 cases (data, language-neutral)
 
 - **Nix:** a flake in this repo exposes `packages.default` via `buildGoModule`, with `vendorHash`
   pinned. It is the only durable installation route on the operator's machines.
-- **Other users:** `go install <module>/cmd/memex@vX.Y.Z` and release binaries.
+- **Other users:** `go install github.com/arrowheadmind/memex/cmd/memex@vX.Y.Z` and release
+  binaries.
 - **Version:** set at build time with `-ldflags "-X main.version=…"` from the git tag, and
   `0.0.0-dev` otherwise. The tag is the single source. Every release gets a `CHANGELOG.md` entry.
