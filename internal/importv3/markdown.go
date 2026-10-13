@@ -366,18 +366,24 @@ func headingMarker(text string) (status, rest, removed string) {
 }
 
 // searchKey is the text `git log -S` looks for when dating a line unit (SPEC §13.3): from
-// the unit's first line without its ATX marks and leading table pipe, the longest piece
-// between marker tokens and dates (which change when an item is closed or re-filed), cut
-// to its first 60 code points. Markup and inner pipes stay, because -S matches the file's
-// bytes literally and a key that is not in the file dates nothing.
+// the unit's first line without its ATX marks, or from a table row's first cell, the longest
+// piece between marker tokens and dates (which change when an item is closed or re-filed),
+// cut to its first 60 code points. Markup stays, because -S matches the file's bytes
+// literally and a key that is not in the file dates nothing.
 func searchKey(line string) string {
 	s := line
 	if lvl, text := heading(s); lvl > 0 {
 		s = text
 	}
 	s = strings.TrimSpace(s)
-	s = strings.TrimSpace(strings.TrimPrefix(s, "|"))
-	s = strings.TrimSpace(strings.TrimSuffix(s, "|"))
+	if strings.HasPrefix(s, "|") {
+		// a table row is identified by its first cell; the other cells get reworded
+		if cells := splitCells(s); len(cells) > 0 && len([]rune(cells[0])) >= 4 {
+			s = cells[0]
+		} else {
+			s = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(strings.TrimPrefix(s, "|")), "|"))
+		}
+	}
 	pieces := volatileRe.Split(s, -1)
 	best := ""
 	for _, p := range pieces {

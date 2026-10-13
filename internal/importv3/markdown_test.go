@@ -107,7 +107,9 @@ func TestHeadingMarker(t *testing.T) {
 func TestSearchKey(t *testing.T) {
 	cases := map[string]string{
 		"### ✓ CLOSED 2026-10-07 — three plaintext secret files":                              "— three plaintext secret files",
-		"| **Short** | row \\| x | - |":                                                       "**Short** | row \\| x | -",
+		"| **Short** | row \\| x | - |":                                                       "**Short**",
+		"| Public/private separation | App code repos are public (login-ui) |":                "Public/private separation",
+		"| abc | a first cell that is too short to identify the row |":                        "abc | a first cell that is too short to identify the row",
 		"### Item SUPERSEDED by the big plan":                                                 "by the big plan",
 		"## Mistake: a very long heading that keeps going well past the sixty code point cut": "Mistake: a very long heading that keeps going well past the",
 	}
