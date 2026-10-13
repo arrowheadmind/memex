@@ -111,8 +111,10 @@ The store path is resolved from the first of these that is set:
 3. The `store` key in the config file (§3.2).
 
 Rules:
-- A leading `~/` and the strings `$HOME` and `${HOME}` are expanded. No other expansion takes
-  place, and symlinks are not resolved.
+- A leading `~/` and the strings `$HOME` and `${HOME}` are expanded: `~/` only at the start,
+  `$HOME` and `${HOME}` wherever they occur. No other expansion takes place, and symlinks are
+  not resolved.
+- A variable of §3.3 set to the empty string counts as unset.
 - A relative path is an error.
 - The path MUST be a directory containing `memex.toml`, otherwise the command fails with
   exit 2.
@@ -204,7 +206,7 @@ name = "example"
 - `format` is an integer. memex refuses (exit 2) a store whose `format` is greater than the one it
   implements. If it is lower, memex tells the operator to run the migration that ships with the
   version that raised it.
-- `name` is a free string, shown by `doctor`.
+- `name` is a free string, shown by `doctor`. It is optional.
 - Unknown keys are an error.
 
 Type directories and `files/` MAY be absent: git doesn't track empty directories, and an
@@ -281,6 +283,9 @@ whatever `body_sha256` covers, and `fmt` never touches them.
 
 **Reading.** Any valid TOML in the frontmatter is accepted for reading. A file that isn't in
 canonical form is a validation warning (§7), and `memex fmt` fixes it.
+
+**Whitespace**, wherever this specification uses the word (body normalization, the content
+measure, fence closing), means the code points with the Unicode `White_Space` property.
 
 **Unicode version.** Every Unicode-dependent rule in this specification (NFKD, general
 categories, simple lowercase mapping) is evaluated with the tables of **Unicode 17.0**, the
@@ -410,6 +415,8 @@ ignored.
    suggests the id.
 3. TARGET matches the id pattern but no entry has it: an error (`E-LINK`).
 
+A TARGET that is not an id but is an alias of more than one entry is unresolved: `E-LINK`.
+
 **Field references** (`parent`, `sources`, `superseded_by`) MUST be ids. Aliases are not
 accepted there.
 
@@ -437,7 +444,18 @@ The last line is `check: N errors, M warnings`. Exit 0 if there are no errors. W
 **Bounding the output.** `--errors-only` prints only errors. `--limit N` (default 200) prints
 the first N finding lines and then one line per remaining code, in code-point order of the
 code, `<CODE>: K more (raise --limit)`, so that a large imported store does not flood the
-caller. The summary line is always last.
+caller. The summary line is always last. `--limit 0` means no limit.
+
+The summary counts every finding whatever the options: `--errors-only` only hides warning
+lines, and `--strict` changes only the exit code. Messages compare as text, so within one
+path and code a finding on line 12 sorts before one on line 7.
+
+**`--staged`** reads the store as the git index holds it: the entries, their contents, the
+layout and the existence of `files/` paths all come from the index, not the working tree.
+
+A file directly under `files/` (not inside `files/<id>/`) is `E-FILES-OWNER`. Invalid TOML,
+in an entry or the manifest, is reported only as `at line <line>`, the line in the file,
+never with a parser's own wording.
 
 **Messages.** Every message follows the template in the tables below, exactly. A message
 starts with the thing that is wrong, names the value when there is one, and ends with the fix
@@ -490,7 +508,7 @@ Warnings:
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body | One finding per line: `line <line> looks like a credential (<what>); remove it, or add the line <!-- memex: allow-secret --> if it is not one`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
-`W-LEAK`).
+`W-LEAK`). It is accepted only once §12 is Implemented (§11.12).
 
 ---
 
@@ -778,6 +796,7 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   - `--` ends options.
   - Long options only, except `-m` (`save`) and `-h`.
   - `--opt=value` and `--opt value` are equivalent.
+  - An option that is not repeatable, given more than once, is a usage error.
 - **Streams:**
   - Standard output carries results only.
   - Diagnostics go to standard error, prefixed `memex: `.
@@ -1049,10 +1068,12 @@ Rewrites entries into canonical form (§5.1) without changing any field value or
 ### 11.12 `check`
 
 ```
-memex check [--staged] [--strict] [--workspace] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
 ```
 
-§7. With `--json`, the output is one object: `{"findings":[{"path":"…","code":"…",
+§7. `--workspace` joins the synopsis when §12 is Implemented; until then it is an unknown
+option, because §16.9 forbids accepting an undocumented option or documenting an
+unimplemented one. With `--json`, the output is one object: `{"findings":[{"path":"…","code":"…",
 "severity":"error","message":"…"}],"errors":N,"warnings":M,"truncated":K}` in that key order,
 where `truncated` is the number of findings not listed because of `--limit`.
 
