@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/next-block.sh --hook",
+            "timeout": 10,
+            "statusMessage": "Reading the memex work ledger"
+          }
+        ]
+      }
+    ]
+  }
+}
