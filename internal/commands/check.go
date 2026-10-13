@@ -32,7 +32,7 @@ func Check(e *Env, o CheckOptions) int {
 	var tree store.Tree = store.WorkTree{Root: root}
 	var staged []string
 	if o.Staged {
-		g := &gitx.Git{Dir: root, Env: gitx.Env(e.Environ, true)}
+		g := gitx.New(root, 0, gitx.Staged())
 		idx, changed, err := store.ReadIndex(g)
 		if err != nil {
 			return e.fail(spec.ExitUsage, "check --staged needs the store's git index: %v", err)

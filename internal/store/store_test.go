@@ -109,13 +109,11 @@ func TestReadIndex(t *testing.T) {
 	}
 	root := writeTree(t, layoutFiles)
 	home := t.TempDir()
-	env := gitx.Env([]string{"PATH=" + os.Getenv("PATH"), "HOME=" + home,
-		"GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid",
-		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.invalid"}, false)
-	g := &gitx.Git{Dir: root, Env: env}
+	setGitEnv(t, home)
+	g := gitx.New(root, 0)
 	run := func(args ...string) {
 		t.Helper()
-		if _, err := g.Run(0, args...); err != nil {
+		if _, err := g.Run(args...); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -157,4 +155,14 @@ func TestReadIndex(t *testing.T) {
 	if got := layoutString(l); got != want {
 		t.Errorf("Enumerate(index):\n%s\nwant\n%s", got, want)
 	}
+}
+
+// setGitEnv gives git a private home and an identity for the duration of a test.
+func setGitEnv(t *testing.T, home string) {
+	for k, v := range map[string]string{"HOME": home, "GIT_CONFIG_NOSYSTEM": "1",
+		"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+		"GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid", "GIT_INDEX_FILE": ""} {
+		t.Setenv(k, v)
+	}
+	os.Unsetenv("GIT_INDEX_FILE")
 }

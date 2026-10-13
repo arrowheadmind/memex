@@ -30,13 +30,16 @@ func TestCheckStaged(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	environ := []string{"PATH=" + os.Getenv("PATH"), "HOME=" + t.TempDir(), "GIT_CONFIG_NOSYSTEM=1",
-		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid", "GIT_COMMITTER_NAME=t",
-		"GIT_COMMITTER_EMAIL=t@example.invalid"}
-	g := &gitx.Git{Dir: root, Env: gitx.Env(environ, false)}
+	for k, v := range map[string]string{"HOME": t.TempDir(), "GIT_CONFIG_NOSYSTEM": "1",
+		"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+		"GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid", "GIT_INDEX_FILE": ""} {
+		t.Setenv(k, v)
+	}
+	os.Unsetenv("GIT_INDEX_FILE")
+	g := gitx.New(root, 0)
 	git := func(args ...string) {
 		t.Helper()
-		if _, err := g.Run(0, args...); err != nil {
+		if _, err := g.Run(args...); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -47,21 +50,19 @@ func TestCheckStaged(t *testing.T) {
 	git("add", "-A")
 	git("commit", "-q", "-m", "seed")
 
-	run := func(env []string) (string, int) {
+	run := func() (string, int) {
 		var out, errb bytes.Buffer
-		e := &Env{Stdout: &out, Stderr: &errb, Environ: env, Now: time.Now, Store: root, StoreSet: true,
+		e := &Env{Stdout: &out, Stderr: &errb, Now: time.Now, Store: root, StoreSet: true,
 			Getenv: func(k string) string {
-				for _, kv := range env {
-					if len(kv) > len(k) && kv[:len(k)+1] == k+"=" {
-						return kv[len(k)+1:]
-					}
+				if k == "MEMEX_CONFIG" {
+					return "/nonexistent/config.toml"
 				}
-				return ""
+				return os.Getenv(k)
 			}}
 		code := Check(e, CheckOptions{Staged: true, Limit: DefaultCheckLimit})
 		return out.String() + errb.String(), code
 	}
-	if out, code := run(environ); code != 0 || out != "check: 0 errors, 0 warnings\n" {
+	if out, code := run(); code != 0 || out != "check: 0 errors, 0 warnings\n" {
 		t.Errorf("nothing staged: exit %d\n%s", code, out)
 	}
 	// A staged entry linking to the target: both are checked, from the index; the
@@ -71,17 +72,16 @@ func TestCheckStaged(t *testing.T) {
 	write("rules/2026-01-10-new.md", "unstaged edit")
 	want := "rules/2026-01-10-target.md: E-LINK [[2026-01-10-missing]] on line 10 is not the id of an entry\n" +
 		"check: 1 errors, 0 warnings\n"
-	if out, code := run(environ); code != 1 || out != want {
+	if out, code := run(); code != 1 || out != want {
 		t.Errorf("staged: exit %d\n%s\nwant\n%s", code, out, want)
 	}
 	// An alternative index, as `git commit -- <paths>` uses: GIT_INDEX_FILE is kept.
 	alt := filepath.Join(root, ".git", "alt-index")
-	altEnv := append(environ, "GIT_INDEX_FILE="+alt)
-	ga := &gitx.Git{Dir: root, Env: gitx.Env(altEnv, true)}
-	if _, err := ga.Run(0, "read-tree", "HEAD"); err != nil {
+	t.Setenv("GIT_INDEX_FILE", alt)
+	if _, err := gitx.New(root, 0, gitx.Staged()).Run("read-tree", "HEAD"); err != nil {
 		t.Fatal(err)
 	}
-	if out, code := run(altEnv); code != 0 || out != "check: 0 errors, 0 warnings\n" {
+	if out, code := run(); code != 0 || out != "check: 0 errors, 0 warnings\n" {
 		t.Errorf("GIT_INDEX_FILE: exit %d\n%s", code, out)
 	}
 }

@@ -18,12 +18,12 @@ func TestEnv(t *testing.T) {
 	}
 	want := []string{"HOME=/h", "GIT_AUTHOR_NAME=kept", "GIT_TERMINAL_PROMPT=0", "GIT_EDITOR=true",
 		"GIT_SSH_COMMAND=ssh -o BatchMode=yes", "LC_ALL=C"}
-	if got := Env(base, false); !slices.Equal(got, want) {
-		t.Errorf("Env = %q\nwant  %q", got, want)
+	if got := environ(base, false); !slices.Equal(got, want) {
+		t.Errorf("environ = %q\nwant  %q", got, want)
 	}
-	got := Env(append(base, "GIT_SSH_COMMAND=ssh -i key"), true)
+	got := environ(append(base, "GIT_SSH_COMMAND=ssh -i key"), true)
 	if !slices.Contains(got, "GIT_INDEX_FILE=/tmp/idx") || !slices.Contains(got, "GIT_SSH_COMMAND=ssh -i key -o BatchMode=yes") {
-		t.Errorf("Env(keepIndex) = %q", got)
+		t.Errorf("environ(keepIndex) = %q", got)
 	}
 }
 
@@ -31,19 +31,22 @@ func TestRunTimeout(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not on PATH")
 	}
-	g := &Git{Dir: t.TempDir(), Env: Env([]string{"PATH=" + pathOf(t)}, false)}
-	out, err := g.Run(0, "--version")
+	t.Setenv("PATH", pathOf(t))
+	t.Setenv("GIT_DIR", "/nonexistent/.git") // scrubbed by New
+	dir := t.TempDir()
+	g := New(dir, 0)
+	out, err := g.Run("--version")
 	if err != nil || !strings.HasPrefix(out, "git version") {
 		t.Fatalf("git --version: %q, %v", out, err)
 	}
-	_, err = g.Run(0, "rev-parse", "HEAD")
+	_, err = g.Run("rev-parse", "HEAD")
 	var ge *Error
-	if !errors.As(err, &ge) || ge.ExitCode == 0 || ge.Stderr == "" {
+	if !errors.As(err, &ge) || ge.ExitCode == 0 || !strings.Contains(ge.Stderr, "not a git repository") {
 		t.Errorf("rev-parse outside a repository: %v", err)
 	}
 	// An alias that runs a shell sleeping longer than the timeout.
 	start := time.Now()
-	_, err = g.Run(200*time.Millisecond, "-c", "alias.nap=!sleep 5", "nap")
+	_, err = New(dir, 200*time.Millisecond).Run("-c", "alias.nap=!sleep 5", "nap")
 	if !errors.As(err, &ge) || !ge.TimedOut || time.Since(start) > 3*time.Second {
 		t.Errorf("timeout: %v after %v", err, time.Since(start))
 	}

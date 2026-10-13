@@ -75,7 +75,7 @@ type indexFile struct {
 // ReadIndex loads every path of the index with its contents, and returns the paths that are
 // added or modified relative to HEAD (every path when there is no HEAD).
 func ReadIndex(g *gitx.Git) (*IndexTree, []string, error) {
-	out, err := g.Run(0, "ls-files", "--stage", "-z")
+	out, err := g.Run("ls-files", "--stage", "-z")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,12 +130,12 @@ func ReadIndex(g *gitx.Git) (*IndexTree, []string, error) {
 	}
 
 	var changed []string
-	if _, err := g.Run(0, "rev-parse", "--verify", "-q", "HEAD"); err != nil {
+	if _, err := g.Run("rev-parse", "--verify", "-q", "HEAD"); err != nil {
 		for p := range t.files {
 			changed = append(changed, p)
 		}
 	} else {
-		out, err := g.Run(0, "diff", "--cached", "--name-only", "--no-renames", "--diff-filter=AM", "-z", "HEAD")
+		out, err := g.Run("diff", "--cached", "--name-only", "--no-renames", "--diff-filter=AM", "-z", "HEAD")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -155,7 +155,7 @@ func catBlobs(g *gitx.Git, objects []string) (map[string][]byte, error) {
 	if len(objects) == 0 {
 		return blobs, nil
 	}
-	out, err := g.RunInput(0, []byte(strings.Join(objects, "\n")+"\n"), "cat-file", "--batch")
+	out, err := g.RunInput([]byte(strings.Join(objects, "\n")+"\n"), "cat-file", "--batch")
 	if err != nil {
 		return nil, err
 	}

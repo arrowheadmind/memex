@@ -17,7 +17,6 @@ import (
 type Env struct {
 	Stdout, Stderr io.Writer
 	Getenv         config.Env
-	Environ        []string // KEY=VALUE pairs, for child processes
 	Now            func() time.Time
 	Store          string // the --store value
 	StoreSet       bool   // whether --store was given
@@ -25,7 +24,7 @@ type Env struct {
 
 // OSEnv returns the Env of this process.
 func OSEnv(stdout, stderr io.Writer) *Env {
-	return &Env{Stdout: stdout, Stderr: stderr, Getenv: os.Getenv, Environ: os.Environ(), Now: time.Now}
+	return &Env{Stdout: stdout, Stderr: stderr, Getenv: os.Getenv, Now: time.Now}
 }
 
 // fail prints a diagnostic and returns code.

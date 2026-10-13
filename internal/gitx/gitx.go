@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -19,10 +20,10 @@ var scrubbed = []string{
 	"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
 }
 
-// Env returns the environment given to git: base (KEY=VALUE pairs) with the scrub list
+// environ returns the environment given to git: base (KEY=VALUE pairs) with the scrub list
 // removed, except GIT_INDEX_FILE when keepIndex is set (`check --staged`), and with
 // GIT_TERMINAL_PROMPT=0, GIT_EDITOR=true, GIT_SSH_COMMAND in batch mode and LC_ALL=C.
-func Env(base []string, keepIndex bool) []string {
+func environ(base []string, keepIndex bool) []string {
 	out := make([]string, 0, len(base)+4)
 	ssh := ""
 	for _, kv := range base {
@@ -57,10 +58,30 @@ func isScrubbed(k string) bool {
 	return false
 }
 
-// Git runs git in one repository.
+// Git runs git in one repository, always with the environment of SPEC §3.3. New is the only
+// way to make one.
 type Git struct {
-	Dir string   // working directory, the store root
-	Env []string // the result of Env
+	dir     string
+	env     []string
+	timeout time.Duration
+}
+
+// Option changes how New builds a Git.
+type Option func(*options)
+
+type options struct{ staged bool }
+
+// Staged keeps GIT_INDEX_FILE, for `check --staged` only (SPEC §3.3).
+func Staged() Option { return func(o *options) { o.staged = true } }
+
+// New returns a Git for the repository at dir. Every command runs with the caller's
+// environment changed as SPEC §3.3 says; a timeout of zero means none.
+func New(dir string, timeout time.Duration, opts ...Option) *Git {
+	var o options
+	for _, f := range opts {
+		f(&o)
+	}
+	return &Git{dir: dir, env: environ(os.Environ(), o.staged), timeout: timeout}
 }
 
 // Error is a failed git command: its arguments, exit status and captured stderr.
@@ -82,26 +103,31 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("git %s: %s", strings.Join(e.Args, " "), msg)
 }
 
-// Run runs git with args and returns its standard output. A timeout of zero means none;
-// otherwise the whole process group is killed when it expires, so that an ssh child does not
-// linger.
-func (g *Git) Run(timeout time.Duration, args ...string) (string, error) {
-	return g.RunInput(timeout, nil, args...)
+// Run runs git with args and returns its standard output. When the timeout expires the whole
+// process group is killed, so that an ssh child does not linger.
+func (g *Git) Run(args ...string) (string, error) {
+	return g.RunInput(nil, args...)
 }
 
 // RunInput is Run with stdin as git's standard input.
-func (g *Git) RunInput(timeout time.Duration, stdin []byte, args ...string) (string, error) {
+func (g *Git) RunInput(stdin []byte, args ...string) (string, error) {
 	ctx := context.Background()
-	if timeout > 0 {
+	if g.timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		ctx, cancel = context.WithTimeout(ctx, g.timeout)
 		defer cancel()
 	}
 	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Dir = g.Dir
-	cmd.Env = g.Env
+	cmd.Dir = g.dir
+	cmd.Env = g.env
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.Cancel = func() error {
+		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		if errors.Is(err, syscall.ESRCH) { // the group has already exited
+			return os.ErrProcessDone
+		}
+		return err
+	}
 	cmd.WaitDelay = time.Second
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
