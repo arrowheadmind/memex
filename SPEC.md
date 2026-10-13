@@ -435,8 +435,9 @@ The last line is `check: N errors, M warnings`. Exit 0 if there are no errors. W
 `--strict`, warnings count as errors.
 
 **Bounding the output.** `--errors-only` prints only errors. `--limit N` (default 200) prints
-the first N finding lines and then one line per remaining code, `<CODE>: K more`, so that a
-large imported store does not flood the caller. The summary line is always last.
+the first N finding lines and then one line per remaining code, in code-point order of the
+code, `<CODE>: K more (raise --limit)`, so that a large imported store does not flood the
+caller. The summary line is always last.
 
 **Messages.** Every message follows the template in the tables below, exactly. A message
 starts with the thing that is wrong, names the value when there is one, and ends with the fix
@@ -1629,8 +1630,9 @@ cases.
   lines beyond the outcome line.
 - **Triage before reading.** Results show title, summary and a one-line snippet, enough to
   decide whether to open the entry. That is why `summary` is required on new entries.
-- **Truncation is announced.** Whenever output is cut, a final line says so and names the
-  option that lifts the cut. Silent truncation is a defect.
+- **Truncation is announced.** Whenever output is cut, a line at the end of the output, before
+  the summary or outcome line when one exists, says so and names the option that lifts the
+  cut. Silent truncation is a defect.
 
 ### 17.3 Unambiguous and stable output
 
