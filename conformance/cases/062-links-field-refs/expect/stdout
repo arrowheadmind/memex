@@ -1,0 +1,6 @@
+plans/2026-01-10-orphan.md: E-REF parent "2026-01-10-no-such-plan" is not the id of an entry
+rules/2026-01-10-derived.md: E-REF sources "2026-01-10-nothing" is not the id of an entry
+rules/2026-01-10-derived.md: E-REF sources "former" is not the id of an entry; it is an alias of rules/2026-01-10-aliased.md, write its id "2026-01-10-aliased"
+rules/2026-01-10-replaced.md: E-REF superseded_by "2026-01-10-nowhere" is not the id of an entry
+tasks/2026-01-10-child.md: E-REF parent "2026-01-10-task" is a task, not a plan
+check: 5 errors, 0 warnings

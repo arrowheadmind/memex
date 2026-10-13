@@ -1,0 +1,5 @@
+rules/2026-01-10-one.md: E-ALIAS alias "2026-01-10-three" is the id of rules/2026-01-10-three.md
+rules/2026-01-10-one.md: E-ALIAS alias "shared" is also on rules/2026-01-10-two.md
+rules/2026-01-10-three.md: E-LINK line 10: [[shared]] is an alias of several entries (rules/2026-01-10-one.md, rules/2026-01-10-two.md); link an id
+rules/2026-01-10-two.md: E-ALIAS alias "shared" is also on rules/2026-01-10-one.md
+check: 4 errors, 0 warnings

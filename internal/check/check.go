@@ -232,9 +232,13 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 		}
 	}
 	for _, r := range fileRefs {
+		line := p.bodyLine + r.Line - 1
 		clean := path.Clean(r.Path)
-		if clean != r.Path && clean+"/" != r.Path || !strings.HasPrefix(clean, "files/") || !c.tree.Exists(clean) {
-			c.add(p.Path, "E-FILE-LINK", "line %d: %s does not exist", p.bodyLine+r.Line-1, r.Path)
+		switch {
+		case clean != r.Path && clean+"/" != r.Path:
+			c.add(p.Path, "E-FILE-LINK", "line %d: %s is not a plain path under files/; write it without . or ..", line, r.Path)
+		case !c.tree.Exists(clean):
+			c.add(p.Path, "E-FILE-LINK", "line %d: %s does not exist", line, r.Path)
 		}
 	}
 

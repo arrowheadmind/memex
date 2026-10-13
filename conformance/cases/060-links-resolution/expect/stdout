@@ -1,0 +1,6 @@
+rules/2026-01-10-source.md: E-LINK line 12: [[2026-01-10-missing-too]] is not the id of an entry
+rules/2026-01-10-source.md: E-LINK line 12: [[2026-01-10-missing]] is not the id of an entry
+rules/2026-01-10-source.md: E-LINK line 22: [[2026-01-10-after-fence]] is not the id of an entry
+rules/2026-01-10-source.md: W-ALIAS-LINK line 11: [[old-name]] resolves through an alias; link [[2026-01-10-target]] instead
+rules/2026-01-10-source.md: W-ALIAS-LINK line 11: [[rules/old-path.md]] resolves through an alias; link [[2026-01-10-target]] instead
+check: 3 errors, 2 warnings
