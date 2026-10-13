@@ -78,8 +78,60 @@ func (im *Importer) resolveRef(src *Source, ref string) *Unit {
 	return nil
 }
 
-// rewriteLinks replaces resolvable path references with [[id]] in a body and makes
-// unresolvable existing wikilinks inline code (SPEC §13.5).
+// codeSpans returns the byte ranges of the inline code spans of a line, with CommonMark's
+// rule: a run of N backticks is closed by the next run of exactly N (SPEC §6).
+func codeSpans(line string) [][2]int {
+	var spans [][2]int
+	i := 0
+	for i < len(line) {
+		if line[i] != '`' {
+			i++
+			continue
+		}
+		j := i
+		for j < len(line) && line[j] == '`' {
+			j++
+		}
+		n := j - i
+		k := j
+		closed := false
+		for k < len(line) {
+			if line[k] != '`' {
+				k++
+				continue
+			}
+			m := k
+			for m < len(line) && line[m] == '`' {
+				m++
+			}
+			if m-k == n {
+				spans = append(spans, [2]int{i, m})
+				i = m
+				closed = true
+				break
+			}
+			k = m
+		}
+		if !closed {
+			i = j
+		}
+	}
+	return spans
+}
+
+func inSpans(spans [][2]int, start, end int) bool {
+	for _, sp := range spans {
+		if start < sp[1] && end > sp[0] {
+			return true
+		}
+	}
+	return false
+}
+
+// rewriteLinks replaces resolvable path references with [[id]] in a body (SPEC §13.5). A
+// reference wrapped in single backticks loses them, because a link inside a code span is not
+// a link (§6); a reference inside any other code span, or in fenced code, stays as it is.
+// Unresolvable wikilinks that look like ids become inline code.
 func (im *Importer) rewriteLinks(u *Unit, body string) string {
 	lines := strings.Split(body, "\n")
 	code := fenced(lines)
@@ -89,21 +141,49 @@ func (im *Importer) rewriteLinks(u *Unit, body string) string {
 		prefixAlt = append(prefixAlt, regexp.QuoteMeta(p))
 	}
 	full := regexp.MustCompile(`(?:` + strings.Join(prefixAlt, "|") + `)?` + refRe.String())
+	wrapped := regexp.MustCompile("`" + full.String() + "`")
+	rewrite := func(m string) (string, bool) {
+		sm := full.FindStringSubmatch(m)
+		suffix := sm[len(sm)-1]
+		target := strings.TrimSuffix(m, suffix)
+		if t := im.resolveRef(u.Src, target); t != nil {
+			return "[[" + t.ID + "]]" + suffix, true
+		}
+		im.unresolved[target]++
+		return m, false
+	}
 	for i, l := range lines {
 		if code[i] {
 			continue
 		}
-		l = full.ReplaceAllStringFunc(l, func(m string) string {
-			sm := full.FindStringSubmatch(m)
-			suffix := sm[len(sm)-1]
-			target := strings.TrimSuffix(m, suffix)
-			if t := im.resolveRef(u.Src, target); t != nil {
-				im.report.Links.Rewritten = append(im.report.Links.Rewritten, rewriteRec{Entry: u.ID, From: m, To: "[[" + t.ID + "]]" + suffix})
-				return "[[" + t.ID + "]]" + suffix
+		// pass 1: `ref` -> [[id]]
+		l = wrapped.ReplaceAllStringFunc(l, func(m string) string {
+			inner := m[1 : len(m)-1]
+			if to, ok := rewrite(inner); ok {
+				im.report.Links.Rewritten = append(im.report.Links.Rewritten, rewriteRec{Entry: u.ID, From: m, To: to})
+				return to
 			}
-			im.unresolved[target]++
 			return m
 		})
+		// pass 2: bare references outside code spans
+		spans := codeSpans(l)
+		var b strings.Builder
+		last := 0
+		for _, loc := range full.FindAllStringIndex(l, -1) {
+			if inSpans(spans, loc[0], loc[1]) {
+				continue
+			}
+			m := l[loc[0]:loc[1]]
+			to, ok := rewrite(m)
+			b.WriteString(l[last:loc[0]])
+			if ok {
+				im.report.Links.Rewritten = append(im.report.Links.Rewritten, rewriteRec{Entry: u.ID, From: m, To: to})
+			}
+			b.WriteString(to)
+			last = loc[1]
+		}
+		b.WriteString(l[last:])
+		l = b.String()
 		l = wikiRe.ReplaceAllStringFunc(l, func(m string) string {
 			sm := wikiRe.FindStringSubmatch(m)
 			target := sm[1]

@@ -17,6 +17,7 @@ var (
 	dateRe       = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
 	trailDateRe  = regexp.MustCompile(`\s*\((\d{4}-\d{2}-\d{2})\)\s*$`)
 	foundDateRe  = regexp.MustCompile(`,\s*found (\d{4}-\d{2}-\d{2})\s*$`)
+	dashDateRe   = regexp.MustCompile(`\s+—\s+(\d{4}-\d{2}-\d{2})\s*$`)
 	tableSepRe   = regexp.MustCompile(`^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$`)
 	mdLinkRe     = regexp.MustCompile(`\[([^\]]*)\]\([^)]*\)`)
 	filenameDate = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})`)
@@ -66,6 +67,9 @@ func headingDate(text string) (title, date, removed string) {
 		return strings.TrimSpace(text[:m[0]]), text[m[2]:m[3]], text[m[0]:]
 	}
 	if m := foundDateRe.FindStringSubmatchIndex(text); m != nil {
+		return strings.TrimSpace(text[:m[0]]), text[m[2]:m[3]], text[m[0]:]
+	}
+	if m := dashDateRe.FindStringSubmatchIndex(text); m != nil {
 		return strings.TrimSpace(text[:m[0]]), text[m[2]:m[3]], text[m[0]:]
 	}
 	all := dateRe.FindAllString(text, -1)
