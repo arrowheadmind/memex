@@ -116,8 +116,9 @@ Rules:
 - A relative path is an error.
 - The path MUST be a directory containing `memex.toml`, otherwise the command fails with
   exit 2.
-- If nothing is set, every command except `init`, `doctor`, `version` and `help` fails with
-  exit 2 and this message on stderr:
+- If nothing is set, every command except `init PATH`, `import`, `doctor`, `version` and `help`
+  fails with exit 2 and this message on stderr (`init --pointers` needs the store, because the
+  pointer text names it):
 
   ```
   memex: no store configured; use --store, MEMEX_STORE, or store = "..." in <config path>
@@ -141,7 +142,9 @@ Keys:
 | `host` | string | short hostname (text before the first `.`, lowercased) | Default `hosts` value on new entries |
 | `workspace` | string | none | Root for pointer checks and the leak scan (§12) |
 | `sync_on_preflight` | boolean | `true` | `preflight` syncs the store first |
-| `search_limit` | integer ≥ 1 | `12` | Default `--limit` |
+| `search_limit` | integer ≥ 1 | `12` | Default `--limit` for `search` and `preflight` |
+| `list_limit` | integer ≥ 1 | `50` | Default `--limit` for `list` |
+| `network_timeout` | integer ≥ 1 | `20` | Seconds allowed for each `git fetch`, `pull` or `push` (§9.1) |
 
 The config file holds settings only, never knowledge.
 
@@ -154,8 +157,21 @@ The config file holds settings only, never knowledge.
 | `MEMEX_TODAY` | Overrides today's date (`YYYY-MM-DD`). Exists for tests and imports. If it is malformed: exit 2. |
 | `MEMEX_HOST` | Overrides the `host` setting |
 
-memex reads no other variables of its own. It passes the environment through to `git`
-unchanged.
+memex reads no other variables of its own.
+
+**Environment given to `git`.** memex runs `git` with the caller's environment, changed in
+exactly these ways:
+- These are removed, so that memex called from another repository's git hook still addresses
+  the store: `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_COMMON_DIR`, `GIT_PREFIX`,
+  `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`. The one exception is
+  `check --staged`, which keeps `GIT_INDEX_FILE`, because `git commit -- <paths>` runs the
+  pre-commit hook against a temporary index that only this variable names. The predecessor
+  silently validated the wrong repository from a hook for this reason.
+- `GIT_TERMINAL_PROMPT=0`, `GIT_EDITOR=true` and `GIT_SSH_COMMAND` extended with
+  `-o BatchMode=yes` (set to `ssh -o BatchMode=yes` when it was unset), so that git never
+  prompts (Principle 9). A credential that would need a prompt is a failed fetch or push,
+  reported as such.
+- `LC_ALL=C`, so that git's messages, which memex parses for the outcome reasons, are stable.
 
 ---
 
@@ -458,7 +474,8 @@ Warnings:
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) |
 | `W-SECRET` | A body line looks like a credential: a PEM private-key header, `password=`/`token=`/`secret=` followed by a non-placeholder value, or a run of 40+ base64 characters. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body |
 
-`check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-LEAK`).
+`check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
+`W-LEAK`).
 
 ---
 
@@ -603,25 +620,35 @@ Every mutating command (`new`, `capture`, `promote`, `set`, `fmt`, `save`, `sync
 unit:
 
 1. **Lock.** Take an exclusive advisory lock on `.memex/write.lock`, creating `.memex/` if
-   needed. Wait up to 60 s, then exit 4.
-2. **Freshen** (not for `sync`, which does its own): `git fetch` the current branch's upstream.
-   If the branch is strictly behind, `git merge --ff-only`. If the fetch fails, continue and
-   record the reason for the final report.
+   needed. Wait up to 60 s (10 s when the caller is `preflight`), then exit 4.
+2. **Freshen** (not for `sync`, which does its own): `git fetch` the current branch's upstream,
+   bounded by `network_timeout`. If the branch is strictly behind and the working tree has no
+   uncommitted changes to tracked files, `git merge --ff-only`. If the fetch fails or times out,
+   continue and record the reason for the final report. A dirty tree is never merged or
+   rebased by this step.
 3. **Validate inputs** and compute the full new contents of every file to write. Nothing has
-   been written yet; any error here exits without changes.
+   been written yet; any error here exits 1 (or 2 for a usage error) with the reason on
+   standard error and no outcome line, because no state changed.
 4. **Write** each file via a temporary file in the same directory, then rename it into place.
 5. **Read back.** Re-read every written file, check its bytes equal what was intended, and run
    §7 validation on the written entries and their link targets. On failure, restore the
-   previous contents (or delete new files) and exit 1.
+   previous contents (or delete new files) and exit 1. For `save`, which wrote nothing, this
+   step is validation only: on failure the working tree is left exactly as found.
 6. **Commit.** `git add -- <paths>`, then `git commit -m <message> -- <paths>`. Only these paths
    are committed. Other changes in the working tree or index are left as they are.
 7. **Integrate.** If there is no upstream, stop here (outcome `committed, no upstream`).
-   Otherwise:
-   - `git pull --rebase --autostash`, then `git push`.
+   If tracked files other than `<paths>` are modified, stop here too: the outcome is
+   `committed <sha7>, NOT pushed: uncommitted changes (run memex save)`. memex never rebases or
+   autostashes a dirty tree, because an autostash that fails to re-apply leaves conflict
+   markers inside entries. Otherwise:
+   - `git pull --rebase`, then `git push`, each bounded by `network_timeout`.
    - If the push is rejected as non-fast-forward, repeat this step, at most 5 attempts in total.
    - If the rebase conflicts, run `git rebase --abort`; the local commit is kept and the outcome
      is `conflict` (exit 6).
-8. **Unlock and report** (§9.4).
+   - If the fetch, pull or push fails or times out, the outcome is `NOT pushed` (exit 5) with
+     git's first stderr line, or `timed out after <N>s`, as the reason.
+8. **Unlock and report** (§9.4). `<sha7>` in the outcome line is the commit's hash *after* any
+   rebase, which is the hash that exists on the remote.
 
 If git reports the index is locked by another process, retry with delays of 0.2, 0.4, 0.8, 1.6
 and 3.2 s, then fail with exit 4.
@@ -637,16 +664,18 @@ Exactly:
 |---|---|
 | new / capture | `memex: new <type> <id>` |
 | promote | `memex: promote <source-id> to <type> <new-id>` |
-| set | `memex: set <id> <field>=<value>[ <field>=<value>…]`, in argument order |
+| set | `memex: set <id> <field>=<value>[ <field>=<value>…]`, in argument order; a value longer than 40 code points is cut to 39 plus `…` |
 | fmt | `memex: fmt <n> entries` |
 | save | `memex: save <n> files`, or the `-m` text if given |
 
 ### 9.3 Direct edits
 
 **Editing is first-class.** People and agents MAY edit entries with any editor.
-`memex save [-m MSG] [PATHS…]` commits them through §9.1, steps 1–2 and 5–8. With no paths it
-takes every added, modified or untracked file under the type directories, `files/`,
-`AGENT.md` and `memex.toml`.
+`memex save [-m MSG] [PATHS…] [--allow-delete] [--fmt]` commits them through §9.1, steps 1–2
+and 5–8. With no paths it takes every added, modified, deleted or untracked file under the
+store except `.memex/` and anything `.gitignore` excludes. `--fmt` first rewrites the selected
+entries into canonical form (§11.9) and commits that together with the edits; without it, a
+non-canonical entry is committed as is and `check` reports `W-CANONICAL`.
 
 **Deletions:**
 - A deleted entry is refused (exit 1), unless `--allow-delete` is given.
@@ -668,21 +697,29 @@ The last line of every mutating command's standard output is exactly one of thes
 | `committed <sha7>, NOT pushed: <reason>` | 5 |
 | `committed <sha7>, NOT integrated: rebase conflict in <paths>` | 6 |
 
-A commit is never undone automatically.
+`<reason>` is one of `uncommitted changes (run memex save)`, `timed out after <N>s`,
+`rebase in progress`, or git's first line of standard error.
+
+A commit is never undone automatically. A command that fails before step 6 of §9.1 changed
+nothing and prints no outcome line; its exit code and standard error carry the reason.
 
 ### 9.5 Sync
 
 `memex sync` performs §9.1 steps 1 and 7 without a commit:
-1. Fetch.
-2. If ahead or behind, pull with rebase and autostash, then push if ahead.
+1. Fetch, bounded by `network_timeout`.
+2. If behind and the tree is clean, fast-forward. If ahead and behind, rebase and push. If
+   only ahead, push.
 
-It prints:
-- `fetched <time>`, where time is now in RFC 3339 UTC,
-- then one of `up to date`, `fast-forwarded N commits`, `pushed N commits`, or
-  `rebased and pushed N commits`,
+It prints exactly two lines:
+- `fetched <time>`, where time is now in RFC 3339 UTC;
+- the **state line**, one of `up to date`, `fast-forwarded N commits`, `pushed N commits`,
+  `rebased and pushed N commits`, `no upstream`, or `NOT SYNCED: <reason>`.
 
-followed by the outcome line where one applies. If the fetch fails, it prints
-`NOT SYNCED: <reason>` and exits 5.
+Exit 0 for the first five. `NOT SYNCED` exits 5, with `<reason>` one of
+`uncommitted changes (run memex save)`, `rebase in progress`, `timed out after <N>s`,
+`rebase conflict in <paths>` (after `git rebase --abort`), or git's first stderr line. A
+dirty tree is never rebased; behind-only with a dirty tree is `NOT SYNCED: uncommitted
+changes (run memex save)` as well, because a fast-forward could overwrite an edit in progress.
 
 ---
 
@@ -746,7 +783,7 @@ It also sets `git config core.hooksPath .githooks`.
 - It does not commit.
 
 **Pointer form.** `memex init --pointers DIR` writes `CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
-into `DIR` with the pointer text of §12.
+into `DIR` with the pointer text of §12. It requires a resolved store (§3.1).
 - A file that already exists with any other content is left alone and reported, and the
   command exits 1.
 - `--force` replaces such a file and prints its previous content to standard output first.
@@ -934,10 +971,12 @@ where `truncated` is the number of findings not listed because of `--limit`.
 ### 11.13 `doctor`
 
 ```
-memex doctor
+memex doctor [--json]
 ```
 
-Read-only. Prints one line per check, `PASS|WARN|FAIL <id> <message>`, in this order:
+Read-only. Prints one line per check, `PASS|WARN|FAIL <id> <message>`, in this order. With
+`--json`: `{"checks":[{"id":"git","result":"PASS","message":"…","details":[]}],"failed":N}`,
+where `details` holds the `LEAK <path>` lines of the `leaks` check and is otherwise empty.
 
 | Id | Check |
 |---|---|
@@ -946,7 +985,7 @@ Read-only. Prints one line per check, `PASS|WARN|FAIL <id> <message>`, in this o
 | `store` | The store resolves and `memex.toml` is valid (FAIL if not; later store checks are skipped) |
 | `format` | The store format is supported |
 | `upstream` | The current branch has an upstream (WARN if not) |
-| `fetch-age` | Age of `.git/FETCH_HEAD`'s mtime: WARN over 8 h, or if it doesn't exist |
+| `fetch-age` | Age of `FETCH_HEAD`'s mtime in the store's git directory: WARN over 8 h, or if it doesn't exist. A fleet check can watch this through `--json` |
 | `clean` | WARN if the store has uncommitted changes, unpushed commits, or a rebase in progress |
 | `hooks` | `core.hooksPath` is `.githooks` and the pre-commit hook exists |
 | `path` | Every `memex` executable on `PATH` resolves to the same file (WARN when shadowed) |
@@ -981,9 +1020,13 @@ the tool changes.
    Read <store>/AGENT.md before starting work, and follow it.
    ```
 
-   `<store>` is the store path as configured (with `~` kept if it was written that way).
-   `check --workspace` reports `E-POINTER <path>` for every `CLAUDE.md`, `AGENTS.md` or
-   `GEMINI.md` under the workspace whose content differs.
+   `<store>` is the `store` string from the config file if that is where the store came from,
+   otherwise the resolved absolute path. The check compares the pointer's path after §3.1
+   expansion with the resolved store, so `~/memex-store` and `/home/x/memex-store` are the same
+   pointer. `check --workspace` reports `E-POINTER <path>` for every `CLAUDE.md`,
+   `CLAUDE.local.md`, `.claude/CLAUDE.md`, `AGENTS.md` or `GEMINI.md` under the workspace whose
+   content differs, and `W-NO-POINTER <dir>` for every git top-level directory under the
+   workspace that has no `CLAUDE.md` and no `AGENTS.md`.
    - The scan reaches depth 4.
    - It does not enter `.git`, `node_modules`, `vendor`, `.worktrees` or the store itself.
    - It does not follow symlinks.
@@ -994,7 +1037,11 @@ the tool changes.
    - `~/.codex/AGENTS.md`
    - `~/.gemini/GEMINI.md`
    - under the workspace (same depth and exclusions as rule 2): `.cursorrules`,
-     `.cursor/rules/**`, `.github/copilot-instructions.md`, `.windsurfrules`
+     `.cursor/rules/**`, `.claude/rules/**`, `.github/copilot-instructions.md`,
+     `.windsurfrules`
+
+   `doctor` prints the same findings as `LEAK <path>` lines (§11.13); the two spellings name
+   the same scan.
 
    This list lives in the specification. Adding a tool means adding a line here and a
    conformance case. `capture --from PATH` (§11.2) moves the content into the store.
@@ -1387,6 +1434,9 @@ Language models predictably make certain mistakes. memex catches each one and sa
   or reports exactly what was left.
 - Concurrent agents on one host are serialized by the write lock. Agents on different hosts are
   reconciled by rebase, and a true conflict is reported with exit 6, never resolved by guessing.
+- **Every network operation is bounded** by `network_timeout` (§3.2), so an offline host or a
+  stuck remote costs seconds, not a hung session. The predecessor had both: a fetch with no
+  bound, and a stale DNS entry that failed every sync for days before anyone noticed.
 
 ### 17.6 Writing for the next agent
 
@@ -1423,10 +1473,22 @@ Operator-specific instructions follow.
 
 ```sh
 #!/bin/sh
-exec memex check --staged
+# Written by memex init. Add your own checks as executables in .githooks/pre-commit.d/.
+store=$(git rev-parse --show-toplevel) || exit 1
+memex --store "$store" check --staged || exit 1
+if [ -d "$store/.githooks/pre-commit.d" ]; then
+  for hook in "$store"/.githooks/pre-commit.d/*; do
+    [ -x "$hook" ] && { "$hook" || exit 1; }
+  done
+fi
+exit 0
 ```
 
-The file mode is `0755`.
+The file mode is `0755`. The hook passes `--store` explicitly because memex never infers the
+store from the current directory (Principle 6), and a commit made by hand, by another user or
+by automation may run without `MEMEX_STORE` or a config file. The `pre-commit.d/` loop exists
+so that an operator's own checks (for example a secret scanner) chain after memex's without
+editing a file that `init` owns.
 
 ## Appendix B. Body templates
 
