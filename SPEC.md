@@ -507,16 +507,21 @@ There is no stemming and no stop-word list.
 
 **Parsing:**
 - A `"double-quoted"` span is a **phrase**: its tokens must appear consecutively in one field.
-- Every other token is a **term**. A term of 4 or more characters is a **prefix term**,
-  matching any token that begins with it. Shorter terms match whole tokens only.
+- Every other token is a **term**. A term whose normalized form (§8.2) is 4 or more code points
+  long is a **prefix term**, matching any token that begins with it. Shorter terms match whole
+  tokens only.
 - If an unmatched `"` remains, it is treated as a separator.
-- Duplicate terms are dropped.
+- Duplicate items (same kind and same normalized tokens) are dropped, keeping the first. Items
+  are numbered in query order after this step.
 - A query with no terms and no phrases is a usage error (exit 2).
 
 Terms and phrases (together, *query items*) combine with **OR**: a document matches if any item
-matches it.
+matches it. Each result reports *which* items matched it (§8.5), because a document that
+matched one common word must not look like one that matched the whole query. The predecessor
+learned this the hard way: an approximate hit read as an exact one is worse than silence.
 
-**Score** (BM25, as computed by SQLite FTS5's `bm25()`, with k1 = 1.2 and b = 0.75):
+**Score** (BM25 with k1 = 1.2 and b = 0.75; the formula below is normative, and it is the one
+SQLite FTS5's `bm25()` computes, with the sign flipped):
 
 ```
 N        = number of documents
@@ -537,72 +542,99 @@ Where:
   journal 0.8.
 
 `N`, `n(q)` and `avgdl` are computed over **all** entries, whatever their status. Visibility
-filters apply after scoring.
+and `--type`/`--tag`/`--repo`/`--host` filters apply after scoring.
 
-**Ranking:** descending score, then type in the order of §5.2's table, then ascending id.
+**Arithmetic.** All values are IEEE 754 binary64. The sums run in a fixed order: over fields in
+the order of §8.1's table, over items in query order. `ln` is the natural logarithm of the
+platform's math library; the rounding below absorbs last-bit differences.
 
-Scores are compared after rounding to 9 significant digits, so that implementations whose
-floating-point arithmetic differs in the last bits still rank identically.
+**Ranking:** descending rounded score, then type in the order of §5.2's table, then ascending
+id.
+
+**Rounding.** The *rounded score* is the score rounded to 9 significant decimal digits, round
+half to even on the exact binary value, and parsed back to binary64. Ranking and JSON output
+use the rounded score. Two documents whose exact scores straddle a 9-digit boundary may still
+order differently across implementations; the conformance suite avoids such cases.
 
 ### 8.4 Filters and visibility
 
 - `--type T`, `--tag X`, `--repo R`, `--host H` are each repeatable. Values within one option are
-  OR'd, and different options are AND'd.
+  OR'd, and different options are AND'd. `--type` accepts the type name or its directory name
+  (`rule` or `rules`).
 - An entry is **visible** if its status is in the type's "visible by default" set (§5.2). `--all`
   makes every status visible.
-- `--limit N` caps the number of visible results printed.
+- A matching document is therefore in exactly one of four groups: **shown** (passes the
+  filters, visible, within the limit), **more** (passes the filters, visible, beyond the
+  limit), **hidden** (passes the filters, not visible), or **excluded** (fails a filter).
+- `--limit N` (default `search_limit`) caps the number of results printed.
 
 ### 8.5 Output
 
 **Text output:** one block per result, numbered from 1:
 
 ```
-1. [rule, active] rules/2026-09-12-bare-rebuild-leaves-the-closure-uncached.md
-   Bare rebuild leaves the closure uncached
+1. [rule, active] rules/2026-09-12-bare-rebuild-leaves-the-closure-uncached.md  matched 2/3: cache, rebuild
+   Bare rebuild leaves the closure uncached — Push the closure before switching, or the next boot rebuilds it.
    …the closure was never pushed to the **cache** so the weekly…
 ```
 
-- **Line 1:** rank, then `[<type>, <status>]`, then the entry's path relative to the store root.
-  The id is the filename stem, and an agent can open the path directly with its own file tools.
+- **Line 1:** rank, then `[<type>, <status>]`, then the entry's path relative to the store root,
+  then two spaces and `matched <k>/<n>: <items>`, where `n` is the number of query items, `k`
+  how many matched this document, and `<items>` the matched items in query order, separated by
+  `, `, phrases in double quotes. The id is the filename stem, and an agent can open the path
+  directly with its own file tools.
 - **Line 2:** three spaces and the title, then ` — ` and the summary if one is present.
-- **Line 3 (snippet):** three spaces, then the first body line (outside fenced code) that
-  contains a matching token. If no body line matches, line 3 is omitted.
-  - In the snippet, each matching token is wrapped in `**`.
-  - If the line is longer than 160 code points, a window of 160 is taken, starting 40 code
-    points before the first match (or at the start). `…` is added at each cut end.
-  - Leading and trailing whitespace is trimmed.
+- **Line 3 (snippet):** three spaces, then the snippet, built like this:
+  1. Take the first body line, outside fenced code, that contains a match. A line contains a
+     match when, tokenized by §8.2, it has a token matching a term, or the consecutive tokens of
+     a phrase.
+  2. Trim leading and trailing whitespace from that line.
+  3. Tokens are located in the *original* line: a token is a maximal run of code points of
+     category L* or N* in the original text, and it matches when its normalized form (§8.2)
+     matches. This keeps positions exact when NFKD changes lengths (`Café`, `ﬁ`).
+  4. If the trimmed line is longer than 160 code points, keep a window of 160 code points that
+     starts 40 code points before the first matching token's start (or at 0), moved left so
+     that it ends at the line's end if it would overrun. If the window starts after 0, prefix
+     `…`; if it ends before the line's end, append `…`. The window never splits a matching
+     token: a token cut by the window edge is dropped from the window.
+  5. Wrap each matching token inside the window in `**`. For a phrase, wrap each of its tokens.
+     Markers and `…` are not counted in the 160.
+  If no body line contains a match, line 3 is omitted.
 
 **After the results, zero or more of these lines, in this order:**
 
 ```
 N more visible matches not shown (raise --limit)
 N matches hidden by status (use --all)
+N matches excluded by filters (drop --type/--tag/--repo/--host)
 Store root: <absolute store path>
 ```
 
-The `Store root` line is printed whenever there is at least one result, so that relative paths
-can be resolved without another call.
+A count line is printed only when its N is at least 1. The `Store root` line is printed
+whenever there is at least one result, so that relative paths can be resolved without another
+call.
 
-**When nothing matches at all,** including hidden entries:
+**When no document matches at all:**
 
 ```
 No entries matched any term of: <query as given>
 ```
 
-That case exits 3. If the only matches are hidden, the hidden-count line is printed and the
-command still exits 3. Otherwise it exits 0.
+That case exits 3. If documents matched but none is shown (all hidden or excluded), the count
+lines are printed and the command still exits 3. Otherwise it exits 0.
 
 **JSON output** (`--json`): a single object followed by LF, keys in this order:
 
 ```json
-{"query":"...","results":[{"rank":1,"type":"rule","status":"active","id":"...","title":"...","summary":null,"score":12.345679,"path":"rules/....md","snippet":"..."}],"more":0,"hidden":0}
+{"query":"...","items":["cache","rebuild","\"nix build\""],"results":[{"rank":1,"type":"rule","status":"active","id":"...","title":"...","summary":null,"score":12.345679,"path":"rules/....md","matched":["cache","rebuild"],"snippet":"..."}],"more":0,"hidden":0,"excluded":0}
 ```
 
 - `score` is the rounded score, printed in fixed notation with exactly 6 digits after the
-  decimal point.
+  decimal point, round half to even.
 - `snippet` is `null` when absent, and has no `**` markers.
-- JSON output is compact (no spaces), with keys in the documented order and non-ASCII characters
-  written literally.
+- `--json` always prints this object, also when nothing matched (`"results":[]`); the exit code
+  is the same as in text mode.
+- The encoding rules are those of §10.
 
 ### 8.6 Cache
 
@@ -736,6 +768,17 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   - Diagnostics go to standard error, prefixed `memex: `.
   - No color, no progress bars, no paging, no prompts.
 - **`--body FILE`** reads the file. `--body -` reads standard input to EOF.
+- **Ids as arguments.** Wherever a command takes an entry id (`show`, `set`, `promote`,
+  `--parent`, `--source`, `superseded_by=`), it also accepts the entry's store-relative path
+  (`rules/2026-….md`) or an alias, because search and list print paths. The value is resolved
+  to the id before anything else happens.
+- **JSON.** Every `--json` output is one compact JSON text (no spaces outside strings) followed
+  by one LF, with keys in the order this specification lists. Strings escape exactly these
+  characters: `"` as `\"`, `\` as `\\`, U+000A as `\n`, U+000D as `\r`, U+0009 as `\t`, and every
+  other code point below U+0020 as `\u` followed by four lowercase hex digits. Nothing else is
+  escaped: `/`, `<`, `>`, `&`, U+007F, U+2028, U+2029 and all non-ASCII characters are written
+  literally. Numbers that are integers are written without a fraction; the only non-integer is
+  `score` (§8.5).
 - **Titles and other values** that begin with `-` MUST be passed as `--title=-x`. A positional
   value or a bare `--title -x` beginning with `-` is a usage error, never a silently accepted
   title. The predecessor created junk entries from `capture --help`.
@@ -1210,7 +1253,7 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | `env` | `KEY=VALUE` lines added to the environment. The runner always sets `MEMEX_STORE` (to the temporary store), `MEMEX_CONFIG` (to an empty file), `MEMEX_TODAY=2026-01-15`, `MEMEX_HOST=testhost`, `HOME` (a temporary directory), `TZ=UTC` and `LC_ALL=C`. |
 | `cmd` | The argument vector, one argument per line, without the program name |
 | `stdin` | Standard input (optional; empty if absent) |
-| `expect/stdout` | Exact expected standard output. `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp |
+| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is whatever `memex version` reports |
 | `expect/exit` | Expected exit code |
 | `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex` |
 | `expect/commits` | Optional. Expected `git log --format=%s` of the store, newest first |
@@ -1218,6 +1261,14 @@ implementation runs it through a runner that takes the path of the `memex` execu
 
 A case with several steps uses `steps/01/`, `steps/02/`, …, each holding its own `cmd`, `stdin`
 and `expect/`, sharing one store.
+
+The same placeholders apply to the ` ```example ` blocks of the help pages (§16.9), so that a
+help example can show `pushed <SHA7>` and `Store root: <STORE>` and still be executed.
+
+**Network cases.** A case directory may contain `origin-unreachable`, which makes the runner
+point `origin` at a non-routable address instead of the bare clone, so that `network_timeout`
+behavior (§9.1) is tested; the runner sets `MEMEX_CONFIG` to a file with `network_timeout = 2`
+for such cases.
 
 Every section of this specification marked Implemented MUST have at least one case, and each
 `E-` and `W-` code MUST have a case that triggers it.
