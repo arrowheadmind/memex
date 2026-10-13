@@ -104,13 +104,23 @@ func TestHeadingMarker(t *testing.T) {
 	}
 }
 
+func TestTrimSeparators(t *testing.T) {
+	cases := map[string]string{"— three files": "three files", "Fix it —": "Fix it", ": Revisit: x": "Revisit: x", "plain": "plain"}
+	for in, want := range cases {
+		if got := trimSeparators(in); got != want {
+			t.Errorf("trimSeparators(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestSearchKey(t *testing.T) {
 	cases := map[string]string{
-		"### ✓ CLOSED 2026-10-07 — three plaintext secret files":                              "— three plaintext secret files",
+		"### ✓ CLOSED 2026-10-07 — three plaintext secret files":                              "three plaintext secret files",
 		"| **Short** | row \\| x | - |":                                                       "**Short**",
 		"| Public/private separation | App code repos are public (login-ui) |":                "Public/private separation",
 		"| abc | a first cell that is too short to identify the row |":                        "abc | a first cell that is too short to identify the row",
 		"### Item SUPERSEDED by the big plan":                                                 "by the big plan",
+		"### ✓ DONE 2026-09-22 — Revisit: migrate the thing (filed 2026-09-12)":               "Revisit: migrate the thing (filed",
 		"## Mistake: a very long heading that keeps going well past the sixty code point cut": "Mistake: a very long heading that keeps going well past the",
 	}
 	for in, want := range cases {

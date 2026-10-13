@@ -387,7 +387,7 @@ func searchKey(line string) string {
 	pieces := volatileRe.Split(s, -1)
 	best := ""
 	for _, p := range pieces {
-		p = strings.TrimSpace(p)
+		p = strings.Trim(p, pieceEdges)
 		if len([]rune(p)) > len([]rune(best)) {
 			best = p
 		}
@@ -396,6 +396,19 @@ func searchKey(line string) string {
 		best = strings.TrimSpace(string(r[:60]))
 	}
 	return best
+}
+
+// pieceEdges are trimmed from both ends of a key piece: the separators and punctuation that
+// arrive together with a marker ("— Revisit:" only exists since the marker was added).
+const pieceEdges = " \t—-:(),."
+
+// separatorEdges are the separator runs removed from a title's ends after a marker is
+// taken out (SPEC §13.3).
+const separatorEdges = " \t—-:"
+
+// trimSeparators removes a leading or trailing separator run from a title.
+func trimSeparators(title string) string {
+	return strings.Join(strings.Fields(strings.Trim(title, separatorEdges)), " ")
 }
 
 // volatileRe matches the tokens that change when a backlog item or rule changes state:

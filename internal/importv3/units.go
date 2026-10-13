@@ -609,6 +609,9 @@ func (im *Importer) extractBacklog(f *fileRec) {
 			if rem != "" {
 				u.Removed = append(u.Removed, rem)
 			}
+			if marker != "" {
+				rest = trimSeparators(rest) // the separator that joined the marker goes with it
+			}
 			u.Date = date
 			u.TitleSource = rest
 			full := stripMarkup(rest)
