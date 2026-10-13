@@ -1215,9 +1215,15 @@ items, 474 INDEX rows, 116 plans), and the counts in the notes are from it.
   written in between.
 - **Lossless, and accounted for** (§13.6).
 - **Valid.** `memex check` on `DIR` reports zero errors. It MAY report `W-NO-SUMMARY`,
-  `W-NO-TERMS`, `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-RAW-OLD` and `W-SECRET`. Any other finding
-  is an import defect. This is what makes the operator's commit possible, since the pre-commit
-  hook runs `check --staged`.
+  `W-NO-TERMS`, `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-RAW-OLD`, `W-SECRET` and
+  `W-PROMOTED-UNCITED` (the predecessor had no `sources` field, so every promoted
+  investigation is uncited by construction). Any other finding is an import defect. This is
+  what makes the operator's commit possible, since the pre-commit hook runs `check --staged`.
+- **Isolated from the machine.** Every read of a source runs git with `GIT_CONFIG_GLOBAL`
+  pointing at `/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, and `-c blame.ignoreRevsFile=`,
+  `-c log.showSignature=false`, `-c diff.renames=true`, so that two machines read the same
+  history the same way. The manifest's `name` is the primary SRC's basename (the only place
+  where `DIR`'s own name would otherwise leak into the output).
 - **Status comes from structure, never from prose.** A status is set only from an explicit
   status carrier: an INDEX row, a `## Status` section, a `**Status:**` line, the backlog's
   `## In Progress` / `## To Do` / `## Done` sections and the markers in backlog headings. Words
@@ -1253,9 +1259,14 @@ A **unit** is the smallest piece of source that becomes one entry.
   collapsed to one space. "First heading" means the first ATX heading of any level. A heading
   that is hard-wrapped over consecutive `## ` lines (no blank line between them) is one
   heading. A trailing `(YYYY-MM-DD)`, `, found YYYY-MM-DD` or ` — YYYY-MM-DD` in a heading is
-  removed from the title and becomes the unit's date; otherwise the last `YYYY-MM-DD` anywhere
-  in the heading becomes the date and the text is kept. When the cut shortens a title, the
-  heading line stays in the body instead of moving to the frontmatter, so no text is lost.
+  removed from the title; the unit's date is the **earliest** `YYYY-MM-DD` written anywhere in
+  the heading (`found 2026-09-11, resolved 2026-09-12` is dated the 11th), and text that is
+  not one of the three trailing forms is kept. When the cut shortens a title, the heading line
+  stays in the body instead of moving to the frontmatter, so no text is lost.
+- **Ids never carry two dates.** When the slug of a title begins with a `YYYY-MM-DD` (its own
+  date or, for a heading with several, a later one), that prefix and the hyphen after it are
+  removed before the id is formed, so a backlog item headed `2026-10-12 — rotate the password`
+  becomes `2026-10-12-rotate-the-password`; the heading's date stays in the title.
 - **YAML blocks.** When a file (an investigation or a `--leak` file) has no heading at all
   and begins with a YAML block (`---` on the first line, up to the next `---`), the block's
   `name:` value is the title and its `description:` value, when present, is the summary;
@@ -1265,10 +1276,14 @@ A **unit** is the smallest piece of source that becomes one entry.
   (so `complete — 2026-07-06` is `complete`, and `- [x] Colors changed` is empty, which maps
   to the default). The rest of the section stays in the body.
 - **Dates.** A unit's date is, in order: the date in its filename; the date taken from its
-  heading; the `YYYY-MM-DD` part of `%aI` (author time in its recorded offset) of the earliest
-  commit that touches any line of the unit (`git log --follow` for file units, the earliest
-  `git blame` date over the unit's lines for line units). Blame alone would re-date a row to
-  the commit that last edited it.
+  heading; else the `YYYY-MM-DD` part of `%aI` (author time in its recorded offset) of the
+  oldest commit in the unit's history. For a file unit that is `git log --follow`. For a line
+  unit it is the earlier of two readings, because neither alone is right: the commit of
+  `git log -L<first>,<last>:<file>` that created the range (the newest commit whose hunk has
+  an empty old side, else the oldest commit listed), which follows the lines through edits so
+  an edited row keeps its date; and the oldest commit of `git log -S<first line>` for the
+  unit's first line, which a move inside the file does not touch, so a moved backlog item
+  keeps its date. Blame alone would date a one-line row by its last edit.
 - **Tables.** Only the table before the first `## ` heading of `known-mistakes.md` and
   `constraints.md` yields row units. A table inside a `## ` section is part of that rule's
   body.
@@ -1289,11 +1304,11 @@ A **unit** is the smallest piece of source that becomes one entry.
 | Any non-`.md` file under `plans/`, and every file under another `plans/<dir>/` at any depth | attachment | — | Goes to `files/<owner>/<path below plans/>`. The owner is the top-level plan whose source filename stem equals `<dir>` (or the file's stem) or is its longest proper prefix; when none exists, the owner is the SRC's **attachments entry**: one `reference` per SRC titled `Import attachments from <SRC basename>`, whose body lists the files it owns, one `- files/<id>/<path>` line each |
 | Dispatch log file | attachment | — | `files/<owner>/dispatch-logs/<filename>`, where the owner is the plan whose stem is a prefix of the filename after its `YYYYMMDDTHHMMSSZ-<host>-` prefix; else the attachments entry |
 | `known-mistakes.md` table row | rule | Symptom cell | `active` |
-| `known-mistakes.md` `## ` section | rule | Heading text with a leading `Mistake:`, `Mistake / technique:`, `Known Noise:`, `Known Problem:`, `Technique:`, `Pattern:` or `Historical mistake …:` prefix removed; the prefix becomes a tag (`mistake`, `technique`, `noise`, `problem`, `pattern`, `historical`) | `active` |
+| `known-mistakes.md` `## ` section | rule | Heading text with a leading `Mistake:`, `Mistake / technique:`, `Known Noise:`, `Known Problem:`, `Technique:`, `Pattern:` or `Historical mistake (…):` prefix removed in full, parenthesis included; the prefix becomes a tag (`mistake`, `technique`, `noise`, `problem`, `pattern`, `historical`). A date inside the historical parenthesis is the unit's date only when the rest of the heading has none | `active` |
 | `constraints.md` table row | rule | First cell | `active` |
 | `constraints.md` `## ` section other than `## Always` | rule | Heading text | `active` |
 | `constraints.md` `## Always` top-level bullet | rule, `always = true` | The bullet's leading bold span if it starts with `**…**`; else its first sentence (up to the first `. `, `: ` or ` — `); markup stripped | `active` |
-| `docs/backlog.md` `### ` item | task | Heading text with markers removed | From the enclosing section: `## In Progress` → `in-progress`, `## To Do` → `open`, `## Done` → `done`. Overridden by markers in the heading: ✓, ✅, `DONE`, `FIXED`, `CLOSED`, `RESOLVED` → `done`; ⏸, `BLOCKED` → `blocked`; `SUPERSEDED`, `MOOT`, `RETIRED`, or a fully struck-through heading → `dropped`. `####` headings and everything below them belong to the item's body |
+| `docs/backlog.md` `### ` item | task | Heading text with the marker tokens removed, and nothing else (📋 stays) | From the enclosing section: `## In Progress` → `in-progress`, `## To Do` → `open`, `## Done` → `done`. Overridden by markers in the heading, matched case-sensitively as whole words, exactly as listed: ✓, ✅, `DONE`, `FIXED`, `CLOSED`, `RESOLVED` → `done`; ⏸, `BLOCKED` → `blocked`; `SUPERSEDED`, `MOOT`, `RETIRED`, or a fully struck-through heading → `dropped`, with `dropped` winning over `blocked` over `done` when several apply. "was closed" or "retired the blog" are words, not markers. `####` headings and everything below them belong to the item's body |
 | Other `docs/**/*.md` | reference | First heading | `active`, `verified` = date of the last commit touching the file |
 | `.brain/AGENT.md` of the primary SRC | `AGENT.md` | — | `DIR/AGENT.md` is Appendix A's text, followed by a blank line and the source file verbatim, so the operator rewrites it with both in view |
 
@@ -1330,9 +1345,11 @@ file order, then remainder and attachments entries; within a directory, by filen
 - **Tags** from INDEX `Tags` and `Context` are split on `,`, trimmed, lowercased; every run of
   characters outside `[a-z0-9]` becomes `-`, and leading or trailing `-` are removed. An empty
   result is dropped. The report lists every tag whose normalized form differs from the source.
-- **`repos`** is the INDEX `Repo` cell, else the SRC's `BRAIN_REPO` line in `.brain/AGENT.md`,
-  normalized as a tag; the values `programming`, `unknown`, `root`, `all` and `global` mean
-  empty, because in the predecessor they named the workspace, not a repository.
+- **`repos`** is the investigation's `## Source Repo` value (its first word), else the INDEX
+  `Repo` cell, else the SRC's `BRAIN_REPO` line in `.brain/AGENT.md`, normalized as a tag. A
+  value that equals the basename of any SRC's parent directory (the workspace that held the
+  brains), or `unknown`, `root`, `all` or `global`, means empty, because in the predecessor
+  such values named the workspace, not a repository.
 - **`aliases`:** file-based units get every relative path the file was known by (with and
   without the `.brain/` or `docs/` prefix, and the original filename stem when the id differs
   from it). Line-based units get `<source path>#<slug of the heading or first cell>`, made
@@ -1345,8 +1362,14 @@ file order, then remainder and attachments entries; within a directory, by filen
 **Investigation headers:** the brainctl-written header (the `# Task:` line and the `## Status`,
 `## Source Repo`, `## Context` sections, in any order, each at most once, directly after the
 title with only blank lines between them) is removed from the body, because its values now
-live in the frontmatter. The value of each section is its first non-blank line; further lines
-stay in the body. The removed lines are accounted as `moved-to-frontmatter`. A `## Context`
+live in the frontmatter. The value of each section is read from its first non-blank line:
+the status value (first word), the repository (first word), and the context tags (the line
+split on commas, each normalized as a tag). That line moves to the frontmatter only when it
+consists of the value alone, a single token with no space or comma; a line that says more
+(`COMPLETE — all apps reachable with valid TLS`) stays in the body and counts as body text,
+so nothing is lost. The heading lines and the moved value lines are accounted as
+`moved-to-frontmatter`. The Status section's lines are the only "superseded by" hints of an
+investigation; a decision's hints are its Status section and its blockquotes. A `## Context`
 or `## Summary` heading that appears later in the file is content. A leading YAML block
 (`---` … `---`, present in a few early files) stays in the body untouched.
 
@@ -1379,11 +1402,13 @@ resolve to exactly one unit. A path reference is a substring matching
 
 not inside fenced code, where `PREFIX` is any of: each SRC path as given on the command line
 and as an absolute path, the same with `$HOME` written as `~`, the SRC's basename followed by
-`/`, or `./`. A line or anchor suffix (`:12`, `#L12`) is kept after the link as text. Nothing
-operator-specific is in the tool: the prefixes come from the arguments. A reference is
-resolved first among the units of its own SRC, then among the primary's; `runbooks/x.md`
-matches either runbook directory when exactly one has the file. INDEX `File` values are
-resolved the same way.
+`/`, or `./`, for every SRC of the run, longest first. A match that is glued on its left to a
+path character (a letter, digit, `.`, `/`, `_`, `-` or `~`, as in `](../.brain/plans/x.md)`)
+is part of a longer path and is left alone. A line or anchor suffix (`:12`, `#L12`) is kept
+after the link as text. Nothing operator-specific is in the tool: the prefixes come from the
+arguments. A reference is resolved first among the units of its own SRC, then among the
+primary's; `runbooks/x.md` matches either runbook directory when exactly one has the file.
+INDEX `File` values are resolved the same way.
 
 - **Code spans.** A reference wrapped in exactly one pair of backticks (`` `path` ``, the form
   the predecessor used for most references) becomes `[[id]]` without the backticks, because a
@@ -1421,16 +1446,15 @@ committed with the import) and prints a summary.
 - The import exits 1 if any source line is unattributed. It also exits 1 if, for any unit, the
   non-whitespace characters of its source text differ from those of its output text. For this
   comparison:
-  - source text is the text of the heading that became the title (without its `#` marks),
-    then the unit's body lines in order; text the importer took out of the heading on the
-    way to the frontmatter (a `Task:`-style prefix, a `Mistake:`-style prefix, a removed date,
-    the leading markers of a backlog heading) is removed from the source side once, and an
-    INDEX summary that was prepended to the body is added to it;
+  - source text is the text of the heading that became the title (without its `#` marks)
+    after the importer's removals at their known positions (a `Task:`-style prefix, a
+    `Mistake:`-style prefix, a trailing date form, the listed backlog marker tokens), then
+    the unit's body lines in order, then an INDEX summary that was prepended to the body;
   - output text is the entry's title, when the title came from a removed heading, followed
     by the written body with every link rewrite mapped back to its original text through the
-    `rewritten` record; for a table row the output text is its cells, because the title
-    repeats the first cell and the column labels are generated; for an Always bullet it is the
-    body alone, because the title is taken from text that stays in the body;
+    `rewritten` record and each generated column label (`**<Column header>:** `) removed
+    where it was put; for a table row or an Always bullet the title is not part of the output
+    text, because it repeats text that is in the body;
   - both sides are compared after markup stripping (§13.4) and with `|` and `\|` removed;
   - the import's own additions (`was-*` and `marker-*` tags, `**<Column header>:** ` and
     `**Index summary:** ` labels) are not text.
@@ -1491,6 +1515,7 @@ implementation runs it through a runner that takes the path of the `memex` execu
 |---|---|
 | `store/` | Initial store contents (optional). The runner copies it to a temporary directory, runs `git init`, commits everything as `test <test@example.invalid>` with the message `conformance: seed`, and adds a bare clone as `origin` with upstream tracking. Symbolic links in `store/` are copied as links. Without `store/`, the store path is an empty temporary directory with no git repository and no origin, and when the case also has `src/`, that empty directory is removed so that a command may create the store. |
 | `src/<name>/` | Optional, one per directory. Source repositories for `import` (§13): each is copied to a temporary directory and committed as the seed with the message `conformance: seed`, author `test <test@example.invalid>` and author and committer date `2026-01-10T12:00:00+00:00`, so that commit hashes, blame dates and first-commit dates are the same on every run. `<SRC:name>` in `cmd`, `env` and `expect/stdout` is that directory's absolute path. |
+| `src2/<name>/` | Optional. A second commit of `src/<name>/`, dated `2026-01-11T12:00:00+00:00`: the paths listed in its `.remove` file (one per line) are deleted, its files are copied over the first commit's, and the result is committed as `conformance: seed 2`. This is how a case exercises history: a rename, an edit, a moved item. |
 | `home/` | Optional. Files copied into the temporary `HOME` before the command runs, for commands that read files outside the store (`import --leak`, the leak scan). |
 | `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. `<STORE>` and `<HOME>` in a value are replaced by the paths they name in `expect/stdout`. |
 | `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
