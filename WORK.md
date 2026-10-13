@@ -29,3 +29,14 @@ Rules of the ledger:
   cutover) with what was learned.
 - The next session starts with the model the next row names. The session-start hook says so;
   an agent that is not that model stops and asks the operator to switch.
+
+Open items for later blocks:
+
+- B6: capture's `--title`, `--summary` and `--body` are marked optional in `internal/spec`,
+  because `capture --from PATH` makes them so. Decide how `help --json` expresses
+  "required unless --from".
+- B6: preflight's "search options" are taken to exclude `--json`, because SPEC defines no
+  preflight JSON shape although §17.3 says every command that prints data accepts `--json`.
+- B6: option summaries are Go code in `internal/spec`, so another implementation would have to
+  copy them. Operator leans towards a language-neutral `help/interface.json` that
+  `internal/spec` loads and the conformance suite compares with `help --json`.
