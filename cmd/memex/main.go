@@ -7,9 +7,11 @@ import (
 	"io/fs"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/arrowheadmind/memex/help"
+	"github.com/arrowheadmind/memex/internal/commands"
 	"github.com/arrowheadmind/memex/internal/spec"
 )
 
@@ -37,7 +39,7 @@ func run(args []string, stdout, stderr io.Writer) (code int) {
 			code = spec.ExitInternal
 		}
 	}()
-	code, err := dispatchFunc(args, stdout)
+	code, err := dispatchFunc(args, stdout, stderr)
 	if err != nil {
 		if err.usage == "" {
 			// An unknown name has no usage line; the message is one line (SPEC §16.2).
@@ -53,7 +55,8 @@ func run(args []string, stdout, stderr io.Writer) (code int) {
 // dispatchFunc is dispatch, replaceable by tests to exercise panic recovery.
 var dispatchFunc = dispatch
 
-func dispatch(args []string, stdout io.Writer) (int, *usageError) {
+func dispatch(args []string, stdout, stderr io.Writer) (int, *usageError) {
+	env := commands.OSEnv(stdout, stderr)
 	globalErr := func(problem string) *usageError {
 		return &usageError{problem, spec.GlobalUsage, "memex help"}
 	}
@@ -80,6 +83,9 @@ func dispatch(args []string, stdout io.Writer) (int, *usageError) {
 			}
 			return printVersion(stdout)
 		case "--store":
+			if env.StoreSet {
+				return 0, globalErr("option --store given more than once")
+			}
 			if !hasValue {
 				if i+1 >= len(args) {
 					return 0, globalErr("missing value for --store")
@@ -90,8 +96,11 @@ func dispatch(args []string, stdout io.Writer) (int, *usageError) {
 					return 0, globalErr(fmt.Sprintf("value for --store starts with \"-\"; write --store=%s", value))
 				}
 			}
-			// The store is resolved by the commands that need one (SPEC §3.1); none does yet.
-			_ = value
+			if value == "" {
+				return 0, globalErr("empty value for --store")
+			}
+			// The store is resolved by the commands that need one (SPEC §3.1).
+			env.Store, env.StoreSet = value, true
 		default:
 			return 0, globalErr(unknownOption(name, globalOptionNames()))
 		}
@@ -118,9 +127,52 @@ func dispatch(args []string, stdout io.Writer) (int, *usageError) {
 		return printVersion(stdout)
 	case "help":
 		return runHelp(rest, stdout, cmdErr)
+	case "check":
+		a, problem := parseCommand(cmd, rest, env)
+		if problem != "" {
+			return 0, cmdErr(problem)
+		}
+		return runCheck(env, a, cmdErr)
 	default:
 		return 0, cmdErr(fmt.Sprintf("command %q is not implemented yet", cmd.Name))
 	}
+}
+
+// parseCommand parses a command's arguments and takes --store from them, which may appear
+// after the command as well as before it, but only once.
+func parseCommand(cmd *spec.Command, argv []string, env *commands.Env) (*args, string) {
+	a, problem := parseArgs(cmd, argv)
+	if problem != "" {
+		return nil, problem
+	}
+	if v, ok := a.value("--store"); ok {
+		if env.StoreSet {
+			return nil, "option --store given more than once"
+		}
+		env.Store, env.StoreSet = v, true
+	}
+	return a, ""
+}
+
+func runCheck(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	if a.has("--workspace") {
+		return 0, cmdErr("option --workspace is not implemented yet")
+	}
+	o := commands.CheckOptions{
+		Staged:     a.has("--staged"),
+		Strict:     a.has("--strict"),
+		ErrorsOnly: a.has("--errors-only"),
+		JSON:       a.has("--json"),
+		Limit:      commands.DefaultCheckLimit,
+	}
+	if v, ok := a.value("--limit"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 || strings.HasPrefix(v, "+") {
+			return 0, cmdErr(fmt.Sprintf("value for --limit must be a non-negative integer, not %q", v))
+		}
+		o.Limit = n
+	}
+	return commands.Check(env, o), nil
 }
 
 // wantsHelp reports whether --help or -h appears among the options (before any "--").

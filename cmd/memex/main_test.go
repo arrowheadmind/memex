@@ -2,8 +2,12 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
+
+	"github.com/arrowheadmind/memex/internal/spec"
 )
 
 func invoke(args ...string) (string, string, int) {
@@ -79,9 +83,68 @@ func TestRun(t *testing.T) {
 func TestPanicExits70(t *testing.T) {
 	saved := dispatchFunc
 	defer func() { dispatchFunc = saved }()
-	dispatchFunc = func([]string, io.Writer) (int, *usageError) { panic("boom") }
+	dispatchFunc = func([]string, io.Writer, io.Writer) (int, *usageError) { panic("boom") }
 	_, errOut, code := invoke("version")
 	if code != 70 || errOut != "memex: internal error: boom\n" {
 		t.Errorf("got exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestParseArgs(t *testing.T) {
+	check, _ := spec.LookupCommand("check")
+	newCmd, _ := spec.LookupCommand("new")
+	save, _ := spec.LookupCommand("save")
+	cases := []struct {
+		cmd     *spec.Command
+		argv    []string
+		want    string // fmt of values and positionals, or the problem
+		problem bool
+	}{
+		{check, []string{"--strict", "--limit", "3", "--json"}, "map[--json:[] --limit:[3] --strict:[]] []", false},
+		{check, []string{"--limit=3", "--store", "/s"}, "map[--limit:[3] --store:[/s]] []", false},
+		{check, []string{"--limit=-3"}, "map[--limit:[-3]] []", false},
+		{check, []string{"--limit", "-3"}, `value for --limit starts with "-"; write --limit=-3`, true},
+		{check, []string{"--limit"}, "missing value for --limit", true},
+		{check, []string{"--limit=1", "--limit=2"}, "option --limit given more than once", true},
+		{check, []string{"--json=yes"}, "option --json takes no value", true},
+		{check, []string{"--stagd"}, "unknown option --stagd (did you mean --staged?)", true},
+		{check, []string{"-x"}, "unknown option -x", true},
+		{check, []string{"--store="}, "empty value for --store", true},
+		{check, []string{"pos"}, `unexpected argument "pos"`, true},
+		{check, []string{"--", "--json"}, `unexpected argument "--json"`, true},
+		{newCmd, []string{"rule", "--tag", "a", "--title=-x", "--tag=b", "--body", "-"},
+			"map[--body:[-] --tag:[a b] --title:[-x]] [rule]", false},
+		{newCmd, []string{"--title", "-x", "rule"}, `value for --title starts with "-"; write --title=-x`, true},
+		{save, []string{"-m", "msg", "a.md", "--", "-b.md"}, "map[-m:[msg]] [a.md -b.md]", false},
+		{save, []string{"--m", "msg"}, "unknown option --m (did you mean -m?)", true},
+	}
+	for _, c := range cases {
+		a, problem := parseArgs(c.cmd, c.argv)
+		got := problem
+		if problem == "" {
+			got = fmt.Sprint(a.values, " ", a.positionals)
+			got = strings.Replace(got, "  ", " ", 1)
+		}
+		if got != c.want || (problem != "") != c.problem {
+			t.Errorf("%s %q:\n got %s\nwant %s", c.cmd.Name, c.argv, got, c.want)
+		}
+	}
+}
+
+func TestStoreAnywhere(t *testing.T) {
+	cases := []struct {
+		args   []string
+		stderr string
+	}{
+		{[]string{"--store=", "version"}, "memex: empty value for --store\n"},
+		{[]string{"--store=/a", "check", "--store=/b"}, "memex: option --store given more than once\n"},
+		{[]string{"check", "--store=/nonexistent/x"}, "memex: store /nonexistent/x: no such file or directory\n"},
+		{[]string{"check", "--store", "relative"}, "memex: store path \"relative\" is relative; give an absolute path\n"},
+	}
+	for _, c := range cases {
+		_, errOut, code := invoke(c.args...)
+		if code != 2 || !strings.HasPrefix(errOut, c.stderr) {
+			t.Errorf("%q: exit %d, stderr %q", c.args, code, errOut)
+		}
 	}
 }
