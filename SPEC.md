@@ -536,6 +536,9 @@ Every entry is a search document with five fields:
 | aliases | `aliases` joined with spaces |
 | body | The body |
 
+The corpus holds every entry whatever its other problems; the fields that are valid are used.
+An entry that cannot be parsed (`E-ENCODING`, or an `E-FRONTMATTER` that leaves no fields) is left out, with `memex: skipped <path>: <problem>; run memex check` on standard error.
+
 ### 8.2 Tokenization
 
 Applied identically to documents and queries:
@@ -553,6 +556,8 @@ There is no stemming and no stop-word list.
 - Every other token is a **term**. A term whose normalized form (§8.2) is 4 or more code points
   long is a **prefix term**, matching any token that begins with it. Shorter terms match whole
   tokens only.
+- A phrase matches whole tokens, never prefixes, also when it has one token; such a phrase is
+  a different item from the term with the same token. A phrase with no tokens is no item.
 - If an unmatched `"` remains, it is treated as a separator.
 - Duplicate items (same kind and same normalized tokens) are dropped, keeping the first. Items
   are numbered in query order after this step.
@@ -579,7 +584,8 @@ score(D) = bm25(D) × type_weight(D)
 
 Where:
 - `hits(q, D, c)` is the number of matching tokens (terms) or phrase occurrences (phrases) in
-  field `c`.
+  field `c`. A phrase occurrence is counted at every start position, so occurrences may
+  overlap (`"a a"` occurs twice in `a a a`).
 - Field weights `w_c`: title 10, keywords 8, tags 5, aliases 3, body 1.
 - Type weights: rule 1.5, runbook 1.3, reference 1.3, decision 1.2, task 1.0, plan 1.0,
   journal 0.8.
@@ -609,7 +615,8 @@ order differently across implementations; the conformance suite avoids such case
 - A matching document is therefore in exactly one of four groups: **shown** (passes the
   filters, visible, within the limit), **more** (passes the filters, visible, beyond the
   limit), **hidden** (passes the filters, not visible), or **excluded** (fails a filter).
-- `--limit N` (default `search_limit`) caps the number of results printed.
+- `--limit N` (default `search_limit`) caps the number of results printed; `--limit 0` means
+  no limit.
 
 ### 8.5 Output
 
@@ -624,7 +631,9 @@ order differently across implementations; the conformance suite avoids such case
 - **Line 1:** rank, then `[<type>, <status>]`, then the entry's path relative to the store root,
   then two spaces and `matched <k>/<n>: <items>`, where `n` is the number of query items, `k`
   how many matched this document, and `<items>` the matched items in query order, separated by
-  `, `, phrases in double quotes. The id is the filename stem, and an agent can open the path
+  `, `, phrases in double quotes. An item is printed in its normalized form (§8.2): a term as
+  its token, a phrase as its tokens joined by single spaces (`Café` prints `cafe`, `"Nix  Build"`
+  prints `"nix build"`); the JSON `items` and `matched` arrays use the same strings. The id is the filename stem, and an agent can open the path
   directly with its own file tools.
 - **Line 2:** three spaces and the title, then ` — ` and the summary if one is present.
 - **Line 3 (snippet):** three spaces, then the snippet, built like this:
@@ -639,7 +648,8 @@ order differently across implementations; the conformance suite avoids such case
      starts 40 code points before the first matching token's start (or at 0), moved left so
      that it ends at the line's end if it would overrun. If the window starts after 0, prefix
      `…`; if it ends before the line's end, append `…`. The window never splits a matching
-     token: a token cut by the window edge is dropped from the window.
+     token: a matching token cut by the window edge is dropped from the window, which then
+     starts after it or ends before it. A token that does not match may be cut.
   5. Wrap each matching token inside the window in `**`. For a phrase, wrap each of its tokens.
      Markers and `…` are not counted in the 160.
   If no body line contains a match, line 3 is omitted.
@@ -939,8 +949,12 @@ no task text. It prints:
 1. **Sync line.** Unless `--no-sync` is given or `sync_on_preflight = false`, it runs `sync`
    (§9.5) and prints its state line, prefixed `store: `, for example `store: up to date` or
    `store: NOT SYNCED: timed out after 20s`. A failed sync never stops preflight. With sync
-   skipped, it prints `store: not synced (last fetch <time or "never">)`.
-2. **Blank line, then `## Always`.** For each visible rule with `always = true`, in id order,
+   skipped, it prints `store: not synced (last fetch <time or "never">)`, where the time is the
+   modification time of the store's `FETCH_HEAD` (`git rev-parse --git-path FETCH_HEAD`) in
+   RFC 3339 UTC to the second, and `never` when that file does not exist.
+2. **Blank line, then `## Always`.** The heading is printed even when no rule follows it.
+   For each rule with `always = true` that is visible by default (§5.2; `--all` applies only to
+   the results), in id order,
    one line: `- <path>: <title> — <summary>` (the summary is omitted, with the ` — `, when
    absent). The summary is what is printed, not the body, because `summary` is required to be
    the one sentence that tells an agent whether to open the entry, and because the body's first
@@ -952,10 +966,15 @@ no task text. It prints:
 code points.
 - The sync line and the `## Always` section are never cut.
 - If they alone exceed half the budget, a final line
-  `warning: always rules use <n> of <N> characters; review them` is added.
+  `warning: always rules use <n> of <N> characters; review them` is added, where `<n>` is the
+  code-point count of the sync line, the blank line and the `## Always` section, line ends
+  included.
 - Search results are then dropped from the end, whole blocks at a time, until the output fits.
 - When any result was dropped, a last line reads:
   `output budget reached: <k> results not shown (raise --max-chars or run memex search)`.
+  When both lines are printed, the warning comes first and the budget line is last.
+- The count lines of §8.5 are kept, and the `Store root` line is printed only when at least
+  one result block remains.
 
 **Exit code.** 0 when there is no query. With a query, the search's exit code, except that a
 search that found nothing exits 0 when at least one Always rule was printed: the output is
@@ -982,9 +1001,15 @@ memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]�
 - **Text output:** one line per entry, `<created> <type> <status> <path> <title>`, separated by
   single spaces; the title is last because it contains spaces.
 - **Fields:** `--fields` selects and orders the columns, from `created, type, status, id, path,
-  title, summary, tags`. Columns are separated by a tab in text output.
+  title, summary, tags`. Columns are separated by a tab in text output; `tags` is the tags
+  joined with `,`, and an absent summary is empty. `--fields` changes only text output; an
+  unknown field is a usage error.
+- **Statuses:** `--status` selects entries by status whatever their visibility, also with
+  `--all`; a status that no type has is a usage error.
 - **JSON output:** `{"entries":[{"id":"…","type":"…","status":"…","created":"…","title":"…",
   "summary":null,"tags":[],"path":"…"}],"more":0}`.
+
+The JSON shape is the same with or without `--fields`. An entry that cannot be parsed is left out, with the `memex: skipped` line of §8.1 on standard error.
 
 `list` replaces the predecessor's committed INDEX file.
 
@@ -1012,9 +1037,14 @@ linked from: <path>
 - **links to:** `[[...]]` targets in the body.
 - **linked from:** entries whose body links to ID.
 
-Lines with no entries are omitted. Several IDs are separated by a line `---`, so that an agent
+Lines with no entries are omitted, but the `--- links` line is always printed. A file that does
+not end in LF gets one before the blank line. `links to` lists each resolved target (§6) once,
+in body order; unresolved targets are left out. The other lines are in path order, and are
+separated by `, `. Several IDs are separated by a line `---`, so that an agent
 can read a handful of entries in one call. An unknown id exits 1 after printing the known ones
-(§17.4).
+(§17.4); the JSON output then holds only the known ones. An alias held by more than one entry
+names none of them: stderr reads `memex: no entry "<alias>": it is an alias of <N> entries;
+give an id`, then its holders as `  candidate:` lines. An entry that cannot be parsed is left out, with the `memex: skipped` line of §8.1 on standard error.
 
 **JSON output:** `{"entries":[{"id":"…","type":"…","path":"…","frontmatter":{…},"body":"…",
 "links":{"cited_by":[],"supersedes":[],"children":[],"links_to":[],"linked_from":[]}}]}`,
@@ -1779,7 +1809,7 @@ Language models predictably make certain mistakes. memex catches each one and sa
 | Mistake | memex's response |
 |---|---|
 | A misspelled command, option, type, status, field or topic | Exit 2 with `did you mean "<nearest>"?` (Levenshtein distance ≤ 3), plus the help command |
-| An unknown or invented id (`show`, `set`, `promote`, `--parent`, `--source`) | Exit 1 with `no entry "<id>"`, plus up to 3 nearest ids by search score of the given text, one per line, as `  candidate: <path>` |
+| An unknown or invented id (`show`, `set`, `promote`, `--parent`, `--source`) | Exit 1 with `no entry "<id>"`, plus up to 3 candidates, one per line, as `  candidate: <path>`: first every entry whose id is within Levenshtein distance 3 of the given text (the smaller of the distances to the whole id and to the id without its `DATE-` prefix), nearest first, then by id; then the entries that rank highest for the given text as a search query (§8.3), skipping those already listed |
 | The same capture run twice | Idempotent no-op (§11.2) |
 | A second entry with the same title on the same day | Refused with the existing entry's title and summary and the three correct moves (§11.2) |
 | A phrase typed as `"two words"` that the shell unquoted | Not detectable; `help search` and `help agents` show the `'"…"'` form |
