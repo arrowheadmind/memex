@@ -1135,106 +1135,193 @@ the tool changes.
 ## 13. Importing a brain v3 store
 
 ```
-memex import brain-v3 SRC… --out DIR
+memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…
 ```
 
-Converts one or more brainctl v3 brains into a new store at `DIR`.
+Converts one or more brainctl v3 brains into a new store at `DIR`. The rules below were
+written against the real predecessor data (457 investigations, 487 sections and 113 table rows
+of known mistakes, 35 sections, 77 rows and 9 "Always" bullets of constraints, 271 backlog
+items, 474 INDEX rows, 116 plans), and the counts in the notes are from it.
 
 ### 13.1 Guarantees
 
-- **Read-only on sources.** Each SRC is a git working tree, and memex never writes to it. A
-  dirty SRC is refused (exit 1), since the import must describe a commit.
-- **Fresh output.** `DIR` MUST NOT exist. memex creates it as in §11.1 and writes all files. It
-  does not commit. The operator reviews and commits.
-- **Deterministic.** The same SRC commits, in the same order, with the same `MEMEX_TODAY`,
-  produce byte-identical `DIR` contents. Re-running against later commits brings over what was
+- **Read-only on sources.** Each SRC is a git repository, and memex never writes to it. memex
+  reads it through git (`git -C SRC show REV:path`, `git log`, `git blame`), never through the
+  working tree, because dates come from history. `REV` defaults to `HEAD`; without `@REV`, a
+  dirty SRC is refused (exit 1), since the import must describe a commit. With `@REV` the
+  working tree is irrelevant.
+- **Fresh output.** `DIR` MUST NOT exist. memex creates it as in §11.1, except that `AGENT.md`
+  is built as §13.3 says, and writes all files. It does not commit. The operator reviews and
+  commits.
+- **Deterministic.** The same SRC revisions, in the same order, with the same `MEMEX_TODAY`,
+  produce byte-identical `DIR` contents. Re-running against later revisions brings over what was
   written in between.
 - **Lossless, and accounted for** (§13.6).
+- **Valid.** `memex check` on `DIR` reports zero errors. It MAY report `W-NO-SUMMARY`,
+  `W-NO-TERMS`, `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-RAW-OLD` and `W-SECRET`. Any other finding
+  is an import defect. This is what makes the operator's commit possible, since the pre-commit
+  hook runs `check --staged`.
+- **Status comes from structure, never from prose.** A status is set only from an explicit
+  status carrier: an INDEX row, a `## Status` section, a `**Status:**` line, the backlog's
+  `## In Progress` / `## To Do` / `## Done` sections and the markers in backlog headings. Words
+  such as `STALE` or `RESOLVED` inside a rule's title or body become tags (§13.4), not a status,
+  because deciding whether a rule is still true is the reviewed curation pass, not the import.
 
 ### 13.2 Source layout recognized
 
-The first SRC is the primary (global) brain. Each SRC contributes:
+The first SRC is the **primary** brain. Each SRC contributes:
 - `.brain/investigations/*.md`, `.brain/decisions/*.md`, `.brain/runbooks/*.md`;
-- `.brain/plans/**` (top-level files, plus `prompts/`, `reports/` and other subdirectories);
+- `.brain/plans/**` (top-level files, `prompts/`, `reports/` and any other subdirectory);
 - `.brain/dispatch-logs/*`;
-- `.brain/known-mistakes.md`, `.brain/constraints.md`, `.brain/INDEX.md`, `.brain/AGENT.md`;
-- `docs/**/*.md`, including `docs/runbooks/*.md` and `docs/backlog.md`.
+- `.brain/known-mistakes.md`, `.brain/constraints.md`, `.brain/INDEX.md`, `.brain/AGENT.md`.
 
-Everything else tracked in SRC is listed in the report as `not-knowledge` (scripts, hooks,
-templates, pointer files, configuration). It is accounted for, and not imported.
+The primary SRC alone also contributes `docs/**/*.md`, including `docs/runbooks/*.md` and
+`docs/backlog.md`. In a secondary SRC (an application repository with a `.brain/`), `docs/` is
+the application's documentation, not knowledge.
+
+**Not knowledge.** These tracked paths are listed in the report as `not-knowledge` and not
+imported: `.brain/templates/**`, `.brain/scripts/**`, `.brain/README.md`, `.brain/plans/README.md`,
+every `.gitkeep`, `.githooks/**`, `.envrc`, `.gitattributes`, `.gitignore`, `CLAUDE.md`,
+`AGENTS.md`, `GEMINI.md`, and everything outside the paths above. Anything under a recognized
+directory that is not a `.md` file is an attachment (§13.3).
 
 ### 13.3 Units and mapping
 
 A **unit** is the smallest piece of source that becomes one entry.
 
-| Source unit | Type | Title | Date | Status |
-|---|---|---|---|---|
-| Investigation file | journal | `# Task:` text, else first ATX heading, else filename | Filename date, else first-commit date | INDEX row status, else the `## Status` section's first line. Mapped as `raw`/`in-progress` → `raw`; `promoted` → `promoted`; `superseded` → `superseded` if resolvable (§13.5), else `kept` plus tag `was-superseded`; anything else → `kept` |
-| Decision file | decision | `# Decision:` text, else first heading | Filename date, else first-commit date | `accepted`; `superseded` if the `## Status` section's first line contains "supersed" and a target resolves |
-| Runbook file (either directory) | runbook | `# Runbook:` text, else first heading | First-commit date | `active` |
-| Plan file under `plans/` (top level) | plan | First heading | Filename date, else first-commit date | `active`; `done` if the first 20 lines contain `DONE` or `COMPLETE` in bold (`**…**`) |
-| File under `plans/prompts/` | plan, `kind = "prompt"` | First heading | as plans | `done` |
-| File under `plans/reports/` | plan, `kind = "report"` | First heading | as plans | `done` |
-| Other `plans/<dir>/**` | attachment | — | — | Goes to `files/<id>/`, where `<id>` is the plan whose source filename stem is the longest prefix of `<dir>`; if there is none, a `reference` entry titled `<dir>` is created to own it |
-| Dispatch log file | log | Filename | Timestamp in the filename | `kept` |
-| `known-mistakes.md` table row | rule | Symptom cell, markup stripped (§13.4), cut to 300 characters | Commit that introduced the row's line (`git blame`) | `active`, or `retired` per §13.4 |
-| `known-mistakes.md` `## ` section | rule | Heading text without a `Mistake:` prefix | blame of the heading line | as above |
-| `constraints.md` table row | rule | First cell, markup stripped, cut to 300 | blame | as above |
-| `constraints.md` `## ` section other than `## Always` | rule | Heading text | blame | as above |
-| `constraints.md` `## Always` top-level bullet | rule, `always = true` | First sentence of the bullet (up to the first `. ` or `—`), markup stripped, cut to 300 | blame | as above |
-| `docs/backlog.md` `### ` item | task | Heading text | blame of the heading | From the enclosing `## In Progress` → `in-progress`, `## To Do` → `open`, `## Done` → `done`. Overridden by markers in the heading: ✓, `DONE` or `FIXED` → `done`; `SUPERSEDED`, `MOOT`, `RETIRED` or a fully struck-through heading → `dropped` |
-| Other `docs/*.md` | reference | First heading | First-commit date | `active`, `verified` = last-commit date |
-| `.brain/AGENT.md` of the primary SRC | `AGENT.md` | — | — | Copied verbatim into `DIR/AGENT.md`, for manual rewriting |
+**Common rules**, which the table assumes:
+- **Titles** are cut to 300 code points after markup stripping (§13.4). A heading that is
+  hard-wrapped over consecutive `## ` lines is one heading. A trailing `(YYYY-MM-DD)` or
+  `, found YYYY-MM-DD` in a heading is removed from the title and becomes the unit's date.
+- **Status lines.** The *value* of a `## Status` section or a `**Status:**` line is the first
+  word of its first non-blank line, lowercased, with trailing punctuation removed (so
+  `complete — 2026-07-06` is `complete`, and `- [x] Colors changed` is `-`, which maps to the
+  default). The rest of the section stays in the body.
+- **Dates.** A unit's date is, in order: the date in its filename; the date removed from its
+  heading; the `YYYY-MM-DD` part of `%aI` (author time in its recorded offset) of the earliest
+  commit that touches any line of the unit (`git log --follow` for file units, `git blame` for
+  line units). Blame alone would re-date a row to the commit that last edited it.
+- **Prefix stripping.** A first heading of the form `# <Word>: <text>` where `<Word>` is `Task`,
+  `Investigation`, `Plan`, `Decision` or `Runbook` yields `<text>`.
+- **`was-<status>` tags.** Whenever a source status maps to a different memex status, the
+  entry gets the tag `was-<source status>` (normalized as a tag), so that nothing is flattened
+  silently.
+
+| Source unit | Type | Title | Status |
+|---|---|---|---|
+| Investigation file | journal | Prefix-stripped first heading, else filename stem | The file's status value; if the file has none, the INDEX row's. `raw`, `in-progress` → `raw`; `promoted` → `promoted`; `superseded` → `superseded` when §13.5 resolves a target, else `kept`; anything else → `kept`. Plus `was-<status>` where it changed |
+| Decision file | decision | Prefix-stripped first heading | `accepted`; `superseded` when the status value or a superseded callout (§13.5) resolves a target; otherwise `accepted` plus `was-superseded` if the status value contains `supersed` |
+| Runbook file (either directory) | runbook | Prefix-stripped first heading | `active` |
+| Plan file under `plans/` (top level, `.md`) | plan | First heading | From the status value: `done`, `complete`, `completed`, `executed`, `shipped`, `landed` → `done`; `proposal`, `proposed`, `planned`, `ready`, `draft`, `not` → `draft`; anything else, or no status → `active` |
+| File under `plans/prompts/` | plan, `kind = "prompt"` | First heading | `done` |
+| File under `plans/reports/` | plan, `kind = "report"` | First heading | `done` |
+| Any non-`.md` file under `plans/`, and every file under another `plans/<dir>/` at any depth | attachment | — | Goes to `files/<owner>/<path below plans/>`. The owner is the top-level plan whose source filename stem equals `<dir>` (or the file's stem) or is its longest proper prefix; when none exists, the owner is the SRC's **attachments entry**: one `reference` per SRC titled `Import attachments from <SRC basename>`, whose body lists the files it owns, one `- files/<id>/<path>` line each |
+| Dispatch log file | attachment | — | `files/<owner>/dispatch-logs/<filename>`, where the owner is the plan whose stem is a prefix of the filename after its `YYYYMMDDTHHMMSSZ-<host>-` prefix; else the attachments entry |
+| `known-mistakes.md` table row | rule | Symptom cell | `active` |
+| `known-mistakes.md` `## ` section | rule | Heading text with a leading `Mistake:`, `Mistake / technique:`, `Known Noise:`, `Known Problem:`, `Technique:`, `Pattern:` or `Historical mistake …:` prefix removed; the prefix becomes a tag (`mistake`, `technique`, `noise`, `problem`, `pattern`, `historical`) | `active` |
+| `constraints.md` table row | rule | First cell | `active` |
+| `constraints.md` `## ` section other than `## Always` | rule | Heading text | `active` |
+| `constraints.md` `## Always` top-level bullet | rule, `always = true` | The bullet's leading bold span if it starts with `**…**`; else its first sentence (up to the first `. `, `: ` or ` — `); markup stripped | `active` |
+| `docs/backlog.md` `### ` item | task | Heading text with markers removed | From the enclosing section: `## In Progress` → `in-progress`, `## To Do` → `open`, `## Done` → `done`. Overridden by markers in the heading: ✓, ✅, `DONE`, `FIXED`, `CLOSED`, `RESOLVED` → `done`; ⏸, `BLOCKED` → `blocked`; `SUPERSEDED`, `MOOT`, `RETIRED`, or a fully struck-through heading → `dropped`. `####` headings and everything below them belong to the item's body |
+| Other `docs/**/*.md` | reference | First heading | `active`, `verified` = date of the last commit touching the file |
+| `.brain/AGENT.md` of the primary SRC | `AGENT.md` | — | `DIR/AGENT.md` is Appendix A's text, followed by a blank line and the source file verbatim, so the operator rewrites it with both in view |
+
+`###` headings inside a `##` rule section stay in that rule's body. A `## ` line that is only a
+date or a grouping label (it has no content before the next `## ` or `### `) is `structural`.
 
 **Ids** are computed by §5.4 from the date and title, with one exception: file-based units
-whose source filename stem is already a valid id keep it.
-- **Collisions** inside one import get suffixes in source order: `-2`, `-3`, ….
+whose source filename stem is already a valid id (§5.4) keep it, provided no other unit keeps
+the same stem. Units are processed in this order, which also decides who keeps a stem and who
+gets a suffix: investigations, decisions, runbooks, plans, `plans/prompts`, `plans/reports`,
+`docs`, `docs/runbooks`, then `known-mistakes.md`, `constraints.md` and `docs/backlog.md` in
+file order, then remainder and attachments entries; within a directory, by filename.
+- **Collisions** inside one import get suffixes in that order: `-2`, `-3`, ….
 - **Units from a secondary SRC** whose id collides with an identical body are dropped and listed
   as `duplicate-of <id>`. A different body gets the suffix `-<repo>`, where `<repo>` is the
   SRC's directory basename.
 
 **Frontmatter of imported entries:**
-- `summary`, `tags` and `repos` come from the INDEX row when one exists. INDEX `Context` values
-  become tags.
-- `aliases` gets every source path the unit was known by: the relative path, and the path with
-  `.brain/` or `docs/` prefixes.
-- Every non-INDEX `repos` value is the SRC's `BRAIN_REPO` from `.brain/AGENT.md`, if stated.
+- **INDEX rows** are matched to files by the `File` cell: a bare filename is looked up in
+  `.brain/investigations/`; a value with a directory is resolved by §13.5, with `runbooks/x.md`
+  tried in both runbook directories. When two rows name the same file, the last wins and the
+  first is reported as `index-duplicate`. The row provides `summary` and `tags` only when the
+  file's own header has none, and `status` only when the file has no status value; where the
+  two disagree, the report lists `index-conflict` with both values.
+- **INDEX placeholders.** A `Summary` of `manual-summary` and a `Tags`/`Context` of `manual`
+  are treated as absent (165 rows carry them).
+- **Summary length.** A summary longer than 500 code points is cut at the last space before
+  500, and the full text is prepended to the body as a paragraph `**Index summary:** <text>`,
+  accounted as a unit body line.
+- **Tags** from INDEX `Tags` and `Context` are split on `,`, trimmed, lowercased; every run of
+  characters outside `[a-z0-9]` becomes `-`, and leading or trailing `-` are removed. An empty
+  result is dropped. The report lists every tag whose normalized form differs from the source.
+- **`repos`** is the INDEX `Repo` cell, else the SRC's `BRAIN_REPO` line in `.brain/AGENT.md`,
+  normalized as a tag; the values `programming`, `unknown`, `root`, `all` and `global` mean
+  empty, because in the predecessor they named the workspace, not a repository.
+- **`aliases`:** file-based units get every relative path the file was known by (with and
+  without the `.brain/` or `docs/` prefix, and the original filename stem when the id differs
+  from it). Line-based units get `<source path>#<slug of the heading or first cell>`, made
+  unique with `-2`, `-3`, … in file order. `## Always` bullets get
+  `.brain/constraints.md#always-<n>`. Remainder and attachments entries get the source path (or
+  SRC basename) itself. No alias may repeat across the store (`E-ALIAS`).
 
-**Investigation headers:** the brainctl-written header (`# Task:` line and `## Status`,
-`## Source Repo`, `## Context` sections, each holding one value line) is removed from the body,
-because its values now live in the frontmatter. The removed lines are accounted as
-`moved-to-frontmatter`.
+**Investigation headers:** the brainctl-written header (the `# Task:` line and the `## Status`,
+`## Source Repo`, `## Context` sections) is removed from the body, because its values now live in
+the frontmatter. Only the first value line of each section moves; further lines stay in the
+body. The removed lines are accounted as `moved-to-frontmatter`. A leading YAML block
+(`---` … `---`, present in a few early files) stays in the body untouched.
 
 ### 13.4 Rule text
 
 - **Body:**
   - A table row becomes a body with one paragraph per column: `**<Column header>:** <cell>`.
+    Cells are split on `|` not preceded by `\`; when a row has more cells than the header, the
+    surplus is joined back into the last cell with ` | ` and the row is reported as
+    `row-shape`. `\|` inside a cell becomes `|`.
   - A section becomes its content without the heading line.
 - **Stripping markup** for titles removes `**`, `__`, `~~`, backticks, and link syntax (keeping
   link text).
-- **Retired:** a rule becomes `retired` when its title or the first 200 characters of its body
-  contain `STALE`, `RESOLVED`, `NO LONGER`, `RETIRED` or `SUPERSEDED` (case-sensitive), or its
-  title is fully struck through. The text is kept unchanged.
+- **Marker tags.** When the title, or the first paragraph of the body, contains one of these
+  words (case-insensitive, whole word), the rule gets the tag: `stale` → `marker-stale`;
+  `resolved` → `marker-resolved`; `fixed` → `marker-fixed`; `no longer` → `marker-no-longer`;
+  `retired` → `marker-retired`; `superseded` → `marker-superseded`; `moot` → `marker-moot`;
+  `closed` → `marker-closed`. A fully struck-through title gets `marker-struck`. The status
+  stays `active` and the text is kept unchanged. `memex list --tag marker-stale` is the
+  curation pass's worklist.
 
 ### 13.5 Link rewriting
 
 In every imported body, path references to imported units are replaced by `[[id]]` when they
 resolve to exactly one unit. A path reference is a substring matching
-`(~/Programming/brain/|\./)?(\.brain/)?(investigations|decisions|plans|plans/prompts|plans/reports|runbooks|docs|docs/runbooks)/[A-Za-z0-9._-]+\.md`,
-not inside fenced code. INDEX `File` values are resolved the same way.
 
-- Unresolved references stay unchanged and are counted in the report.
+```
+(PREFIX)?(\.brain/)?(investigations|decisions|plans|plans/prompts|plans/reports|runbooks|docs|docs/runbooks)/[A-Za-z0-9._-]+\.md(:[0-9]+|#L[0-9]+)?
+```
+
+not inside fenced code, where `PREFIX` is any of: each SRC path as given on the command line,
+the same with `$HOME` written as `~`, the SRC's basename followed by `/`, or `./`. A line or
+anchor suffix (`:12`, `#L12`) is kept after the link as text. Nothing operator-specific is in
+the tool: the prefixes come from the arguments. INDEX `File` values are resolved the same way.
+
+- Unresolved references stay unchanged and are counted in the report, grouped by target.
+  Mentions of `known-mistakes.md`, `constraints.md`, `docs/backlog.md`, `INDEX.md` and
+  `AGENT.md` as whole files are expected (over 1,700 of them) and are listed under
+  `unresolved-file`.
 - `body_sha256` is computed after rewriting.
-- "Superseded by" resolution for statuses uses the first such reference found in a superseded
-  callout (a line starting with `>` containing "Superseded").
+- **"Superseded by" resolution** for statuses looks, case-insensitively, for `supersed` in the
+  unit's status value or in a blockquote (consecutive lines starting with `>`), and takes the
+  first path reference in that status section or blockquote. The predecessor wrote the target
+  on the line after the marker, so a single-line rule finds nothing.
 
 ### 13.6 Accounting
 
-The import writes `DIR/.memex/import-report.json` and prints a summary.
+The import writes `DIR/import-report.json` (a top-level file memex ignores, §4, meant to be
+committed with the import) and prints a summary.
 
 - **Every line of every recognized source file** is attributed to exactly one of: a unit body,
-  `moved-to-frontmatter`, `structural` (table header and separator rows, top-level file title,
-  `## ` lines that only group `### ` items), or a **remainder**.
+  `moved-to-frontmatter` (including every INDEX row that matched a file, and every heading line
+  that became a title), `structural` (table header and separator rows, top-level file title,
+  `## ` lines that only group `### ` items, blank lines between units), or a **remainder**.
 - **Remainder** text, meaning text in a source file that belongs to no unit (preambles,
   comments, closing notes), becomes one `reference` entry per source file. It is titled
   `<source path> (import remainder)` and contains the lines in source order, so nothing is
@@ -1244,13 +1331,20 @@ The import writes `DIR/.memex/import-report.json` and prints a summary.
 - The import exits 1 if any source line is unattributed. It also exits 1 if, for any unit, the
   non-whitespace characters of its source text differ from those of its output text. For this
   comparison:
-  - table-cell delimiters (`|`) are excluded from the source text;
-  - generated labels (`**<Column header>:** `) are excluded from the output text;
+  - source text is the unit's lines including its heading line or table row; output text is
+    the entry's title followed by its body;
+  - both sides are compared after markup stripping (§13.4) and with `|` and `\|` removed;
+  - generated labels (`**<Column header>:** `, `**Index summary:** `) and the `was-*` and
+    `marker-*` tags are excluded from the output text;
   - link rewrites are compared through the `rewritten` record, which holds each original path
     and its replacement.
 - **INDEX rows** pointing to missing files are listed as `index-orphan`, with their summary
-  preserved in the report.
+  preserved in the report; `index-duplicate` and `index-conflict` rows likewise.
+- **Short bodies:** every entry below the content measure of 80 is listed under `short-body`,
+  so the curation pass can decide what to merge.
 - **Every `not-knowledge` file** is listed by path.
+- **Leaks:** each `--leak PATH` becomes a `raw` journal entry exactly as `capture --from PATH`
+  would make it (§11.2), without committing, and is listed under `leaks`.
 
 **Never automatic:** deduplication, rewording, or judging whether a rule is still true. Those
 are a separate, reviewed curation pass, done with ordinary memex commands.
