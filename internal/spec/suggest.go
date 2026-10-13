@@ -17,6 +17,9 @@ func Nearest(name string, candidates []string) (string, bool) {
 	return best, bestDist <= MaxSuggestDistance
 }
 
+// Distance is the Levenshtein distance between a and b, counted in code points.
+func Distance(a, b string) int { return levenshtein(a, b) }
+
 func levenshtein(a, b string) int {
 	ra, rb := []rune(a), []rune(b)
 	prev := make([]int, len(rb)+1)
