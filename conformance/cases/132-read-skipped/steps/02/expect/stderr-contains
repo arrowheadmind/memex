@@ -1,0 +1,2 @@
+memex: skipped rules/2026-01-10-bad-toml.md: invalid TOML in the frontmatter at line 2; run memex check
+memex: skipped rules/2026-01-10-no-close.md: missing closing +++ line after the frontmatter; run memex check
