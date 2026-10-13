@@ -1076,6 +1076,16 @@ Exit 1 if any check FAILs, else 0.
 
 §16.
 
+### 11.16 `version`
+
+```
+memex version
+```
+
+Prints one line, `memex <version> (store format 1)`, and exits 0. `memex --version` is the
+same. It needs no store and accepts no options other than `--help`/`-h`. `<version>` is the
+release version, or `0.0.0-dev` for a build that is not a release.
+
 ---
 
 ## 12. Tool neutrality
@@ -1425,7 +1435,7 @@ from the behavior it describes.
 | `memex help COMMAND`, `memex COMMAND --help`, `memex COMMAND -h` | The command page (§16.5) |
 | `memex help TOPIC` | The topic page (§16.6) |
 | `memex help topics` | One line per command and topic: name, two spaces, one-line description |
-| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11. Pages are separated by a line `---`. |
+| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11 (§11.1 `init` through §11.16 `version`). Pages are separated by a line `---`. |
 | `memex help --json` | The machine-readable interface (§16.7) |
 
 - An unknown name exits 2 and prints, on stderr:
