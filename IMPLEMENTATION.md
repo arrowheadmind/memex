@@ -78,7 +78,10 @@ conformance/cases/    §15 cases (data, language-neutral)
   `strconv.FormatFloat(x, 'f', 6, 64)` (Go rounds half to even on the exact binary value, as
   required). No reflection, no struct tags.
 - **Rounding (§8.3):** `strconv.ParseFloat(strconv.FormatFloat(s, 'g', 9, 64), 64)` is exactly
-  the rounded score. Sum in the order §8.3 fixes; don't reorder for speed.
+  the rounded score. Sum in the order §8.3 fixes; don't reorder for speed. The Go
+  specification lets the compiler fuse `x*y + z` into one FMA instruction (it does on arm64),
+  which rounds once instead of twice; `internal/search` wraps every product in `float64()`,
+  the documented way to force the intermediate rounding.
 - **Unicode (§5.1):** `unicode` (stdlib) and `golang.org/x/text/unicode/norm` each ship their
   own tables, which can be a Unicode version apart. Pin `x/text` to a release whose tables
   match the toolchain's `unicode.Version`, and add a test that asserts `unicode.Version` and

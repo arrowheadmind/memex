@@ -46,6 +46,10 @@ Open items for later blocks:
 - B2 pin (2026-10-13): primary brain ~/Programming/brain@1e3e921629461a714f415b0c1eb5db8466a21f65;
   secondaries ~/Programming/apps/mesorobots-page@8ccd0c59b94c4179b1e2b61497e99e4af8800f03 and
   ~/Programming/apps/arrowheadmind-page@0859f9057d58905ed1dab493b8fe6bc5f34de62b. Every importer run in B2 uses these.
+- B5: `preflight` without `--no-sync` and with `sync_on_preflight = true` is a usage error
+  ("sync is not implemented yet") until §9.5 exists; replace it with the sync line. The
+  skipped-sync line's `last fetch` time is the modification time of the store's FETCH_HEAD
+  (`git rev-parse --git-path FETCH_HEAD`), which `sync`'s fetch must keep meaningful.
 - B5: `init` reuses `store.CreateLayout` (written in B2 for `import`); keep the two in one
   place. The store manifest's `name` defaults to the directory basename, as §11.1 says.
 - B2 facts for the real run: the pinned brain has 463 investigations and 480 INDEX rows (the
