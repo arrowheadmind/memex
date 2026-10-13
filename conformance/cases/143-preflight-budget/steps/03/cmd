@@ -1,0 +1,7 @@
+preflight
+--no-sync
+budget
+--max-chars
+2000
+--limit
+3

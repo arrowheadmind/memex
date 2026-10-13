@@ -1,0 +1,16 @@
+store: not synced (last fetch <TIME>)
+
+## Always
+
+## Results
+1. [runbook, active] runbooks/2026-01-10-step-alpha.md  matched 1/1: budget
+   Budget step alpha — A summary that takes a lot of room in the output of the result block, so that each block is long and the budget cut does not depend on the length of the store path that the Store root line prints.
+   The **budget** word sits in a line that is long enough to fill most of a snippet window, alpha xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+2. [runbook, active] runbooks/2026-01-10-step-bravo.md  matched 1/1: budget
+   Budget step bravo — A summary that takes a lot of room in the output of the result block, so that each block is long and the budget cut does not depend on the length of the store path that the Store root line prints.
+   The **budget** word sits in a line that is long enough to fill most of a snippet window, bravo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+3. [runbook, active] runbooks/2026-01-10-step-charlie.md  matched 1/1: budget
+   Budget step charlie — A summary that takes a lot of room in the output of the result block, so that each block is long and the budget cut does not depend on the length of the store path that the Store root line prints.
+   The **budget** word sits in a line that is long enough to fill most of a snippet window, charlie xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+7 more visible matches not shown (raise --limit)
+Store root: <STORE>

@@ -1,0 +1,7 @@
+preflight
+--no-sync
+cache
+--type
+journal
+--limit
+1

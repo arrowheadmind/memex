@@ -1,0 +1,9 @@
+store: not synced (last fetch <TIME>)
+
+## Always
+
+## Results
+1. [rule, active] rules/2026-01-10-plain.md  matched 1/1: cache
+   Plain rule
+   A **cache** rule that is not always.
+Store root: <STORE>

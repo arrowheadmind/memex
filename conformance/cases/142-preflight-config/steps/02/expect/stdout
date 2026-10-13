@@ -1,0 +1,12 @@
+store: not synced (last fetch <TIME>)
+
+## Always
+- rules/2026-01-10-a-no-summary.md: Never force-push the store
+- rules/2026-01-10-b-push-first.md: Push the closure first — Run the cache push before any switch.
+
+## Results
+1. [rule, active] rules/2026-01-10-a-no-summary.md  matched 1/1: push
+   Never force-push the store
+   Force **pushes** lose other hosts' commits.
+1 more visible matches not shown (raise --limit)
+Store root: <STORE>

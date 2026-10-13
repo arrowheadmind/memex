@@ -1,0 +1,3 @@
+memex: value for --max-chars must be an integer of at least 2000, not "1999"
+memex preflight [QUERY…] [--no-sync] [--max-chars N] [search options]
+Run: memex help preflight

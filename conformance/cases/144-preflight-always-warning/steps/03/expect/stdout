@@ -1,0 +1,25 @@
+store: not synced (last fetch <TIME>)
+
+## Always
+- rules/2026-01-10-always-alpha.md: Always rule alpha with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-bravo.md: Always rule bravo with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-charlie.md: Always rule charlie with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-delta.md: Always rule delta with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-echo.md: Always rule echo with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-foxtrot.md: Always rule foxtrot with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-golf.md: Always rule golf with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-hotel.md: Always rule hotel with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-india.md: Always rule india with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+- rules/2026-01-10-always-juliet.md: Always rule juliet with a long title that takes room — A long summary sentence that an agent reads at the start of every session, which makes it costly.
+
+## Results
+1. [runbook, active] runbooks/2026-01-10-step-alpha.md  matched 1/1: budget
+   Budget step alpha — A summary that takes a lot of room in the output of the result block, so that each block is long and the budget cut does not depend on the length of the store path that the Store root line prints.
+   The **budget** word sits in a line that is long enough to fill most of a snippet window, alpha xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+2. [runbook, active] runbooks/2026-01-10-step-bravo.md  matched 1/1: budget
+   Budget step bravo — A summary that takes a lot of room in the output of the result block, so that each block is long and the budget cut does not depend on the length of the store path that the Store root line prints.
+   The **budget** word sits in a line that is long enough to fill most of a snippet window, bravo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+3. [runbook, active] runbooks/2026-01-10-step-charlie.md  matched 1/1: budget
+   Budget step charlie — A summary that takes a lot of room in the output of the result block, so that each block is long and the budget cut does not depend on the length of the store path that the Store root line prints.
+   The **budget** word sits in a line that is long enough to fill most of a snippet window, charlie xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+Store root: <STORE>
