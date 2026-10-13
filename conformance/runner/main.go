@@ -291,7 +291,7 @@ func runCase(dir, memex, git, version string) (problems []string, tmp string, er
 			if !strings.Contains(line, "=") {
 				return nil, tmp, fmt.Errorf("env: line %q is not KEY=VALUE", line)
 			}
-			s.env = append(s.env, line)
+			s.env = append(s.env, s.paths(line))
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return nil, tmp, err
@@ -327,6 +327,11 @@ func runCase(dir, memex, git, version string) (problems []string, tmp string, er
 	return problems, tmp, nil
 }
 
+// paths replaces <STORE> and <HOME> in an env value or argument (SPEC §15).
+func (s *sandbox) paths(text string) string {
+	return strings.NewReplacer("<STORE>", s.store, "<HOME>", s.home).Replace(text)
+}
+
 func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error) {
 	cmdText, err := os.ReadFile(filepath.Join(dir, "cmd"))
 	if err != nil {
@@ -335,6 +340,9 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	args := strings.Split(string(cmdText), "\n")
 	if args[len(args)-1] == "" {
 		args = args[:len(args)-1]
+	}
+	for i := range args {
+		args[i] = s.paths(args[i])
 	}
 	stdin, err := os.ReadFile(filepath.Join(dir, "stdin"))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
