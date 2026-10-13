@@ -4,4 +4,7 @@ go 1.27.0
 
 toolchain go1.27.2
 
-require golang.org/x/text v0.43.0
+require (
+	github.com/BurntSushi/toml v1.6.0
+	golang.org/x/text v0.43.0
+)
