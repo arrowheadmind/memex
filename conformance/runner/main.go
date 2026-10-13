@@ -344,6 +344,22 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	for i := range args {
 		args[i] = s.paths(args[i])
 	}
+	// A git step runs before the command, in the store, with the runner's environment
+	// (SPEC §15, git).
+	if gitText, err := os.ReadFile(filepath.Join(dir, "git")); err == nil {
+		gitArgs := strings.Split(string(gitText), "\n")
+		if gitArgs[len(gitArgs)-1] == "" {
+			gitArgs = gitArgs[:len(gitArgs)-1]
+		}
+		for i := range gitArgs {
+			gitArgs[i] = s.paths(gitArgs[i])
+		}
+		if _, err := s.git(s.store, gitArgs...); err != nil {
+			return nil, err
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
 	stdin, err := os.ReadFile(filepath.Join(dir, "stdin"))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
