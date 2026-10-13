@@ -430,3 +430,42 @@ func TopicNames() []string {
 	}
 	return names
 }
+
+// LookupField returns the §5.3 field named name, or nil.
+func LookupField(name string) *Field {
+	for i := range Fields {
+		if Fields[i].Name == name {
+			return &Fields[i]
+		}
+	}
+	return nil
+}
+
+// FieldNames returns every field name, in canonical order.
+func FieldNames() []string {
+	names := make([]string, len(Fields))
+	for i, f := range Fields {
+		names[i] = f.Name
+	}
+	return names
+}
+
+// AllowedOnType reports whether the field may appear on entries of the named type.
+func (f *Field) AllowedOnType(typ string) bool {
+	for _, t := range f.AllowedOn {
+		if t == AllTypes || t == typ {
+			return true
+		}
+	}
+	return false
+}
+
+// LookupType returns the type whose name or directory is s, or nil.
+func LookupType(s string) *Type {
+	for i := range Types {
+		if Types[i].Name == s || Types[i].Directory == s {
+			return &Types[i]
+		}
+	}
+	return nil
+}
