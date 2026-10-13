@@ -222,9 +222,12 @@ func (im *Importer) extractFile(f *fileRec, kind, typ string) *Unit {
 func (im *Importer) extractHeader(f *fileRec, u *Unit, title int, consumed map[int]bool, moved *[]int) {
 	i := title + 1
 	seen := map[string]bool{}
+	keptLine := false // a value line stayed in the body: the blank lines after it stay too
 	for i < len(f.Lines) {
 		if strings.TrimSpace(f.Lines[i]) == "" {
-			f.Attr[i] = attrStructural
+			if !keptLine {
+				f.Attr[i] = attrStructural
+			}
 			i++
 			continue
 		}
@@ -232,6 +235,7 @@ func (im *Importer) extractHeader(f *fileRec, u *Unit, title int, consumed map[i
 		if lvl != 2 || !headerSections[text] || seen[text] {
 			break
 		}
+		keptLine = false
 		seen[text] = true
 		consumed[i] = true
 		*moved = append(*moved, i)
@@ -270,6 +274,8 @@ func (im *Importer) extractHeader(f *fileRec, u *Unit, title int, consumed map[i
 				if alone {
 					consumed[j] = true
 					*moved = append(*moved, j)
+				} else {
+					keptLine = true
 				}
 				j++
 			}
@@ -591,11 +597,14 @@ func (im *Importer) extractBacklog(f *fileRec) {
 			default:
 				u.Status = "open"
 			}
-			if s := backlogStatus(text); s != "" {
-				u.Status = s
+			st, rest, marker := headingMarker(text)
+			if st != "" {
+				u.Status = st
 			}
-			rest, removed := removeMarkers(text)
-			u.Removed = append(u.Removed, removed...)
+			if marker != "" {
+				u.Removed = append(u.Removed, marker)
+				im.report.MarkersRemoved = append(im.report.MarkersRemoved, rewriteRec{Entry: fmt.Sprintf("%s:%d", f.Path, i+1), From: marker, To: st})
+			}
 			rest, date, rem := headingDate(rest)
 			if rem != "" {
 				u.Removed = append(u.Removed, rem)

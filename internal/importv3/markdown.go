@@ -290,37 +290,108 @@ func firstParagraph(body string) string {
 	return strings.Join(out, "\n")
 }
 
-// Backlog markers (SPEC §13.3): the listed tokens only, case-sensitive, whole words, in
-// precedence order dropped > blocked > done.
-var backlogDropped = regexp.MustCompile(`\b(SUPERSEDED|MOOT|RETIRED)\b`)
-var backlogBlocked = regexp.MustCompile(`⏸|\bBLOCKED\b`)
-var backlogDone = regexp.MustCompile(`✓|✅|\b(DONE|FIXED|CLOSED|RESOLVED)\b`)
-var markerToken = regexp.MustCompile(`✓|✅|⏸|\b(DONE|FIXED|CLOSED|RESOLVED|SUPERSEDED|MOOT|RETIRED|BLOCKED)\b`)
-
-// backlogStatus returns the status a backlog heading's markers imply, or "".
-func backlogStatus(text string) string {
-	switch {
-	case struck(text), backlogDropped.MatchString(text):
-		return "dropped"
-	case backlogBlocked.MatchString(text):
-		return "blocked"
-	case backlogDone.MatchString(text):
-		return "done"
-	}
-	return ""
+// Backlog markers (SPEC §13.3). A marker is one of the listed tokens, case-sensitive, found
+// outside code spans: a symbol anywhere (with the marker word right after it, if any), or a
+// word at the start of the heading (after an optional "YYYY-MM-DD — " prefix) or as its last
+// token. The first marker found decides the status, and only it is removed from the title.
+var markerWords = map[string]string{
+	"DONE": "done", "FIXED": "done", "CLOSED": "done", "RESOLVED": "done",
+	"BLOCKED":    "blocked",
+	"SUPERSEDED": "dropped", "MOOT": "dropped", "RETIRED": "dropped",
 }
+var markerSymbols = map[string]string{"✓": "done", "✅": "done", "⏸": "blocked", "✗": ""}
 
-// removeMarkers removes the listed marker tokens (and a full strikethrough's ~~) from a
-// heading, and nothing else; it returns the rest and the removed tokens.
-func removeMarkers(text string) (rest string, removed []string) {
+// headingMarker finds the first marker of a backlog heading. It returns the status it
+// implies ("" when there is none), the heading with that marker removed, and the removed
+// text. A fully struck-through heading is dropped, and loses its ~~.
+func headingMarker(text string) (status, rest, removed string) {
 	if struck(text) {
 		t := strings.TrimSpace(text)
-		text = strings.TrimSpace(t[2 : len(t)-2])
-		removed = append(removed, "~~")
+		return "dropped", strings.TrimSpace(t[2 : len(t)-2]), "~~"
 	}
-	rest = markerToken.ReplaceAllStringFunc(text, func(m string) string {
-		removed = append(removed, m)
-		return ""
-	})
-	return strings.Join(strings.Fields(rest), " "), removed
+	spans := codeSpans(text)
+	type tok struct {
+		start, end int
+		s          string
+	}
+	var toks []tok
+	i := 0
+	for i < len(text) {
+		if text[i] == ' ' || text[i] == '\t' {
+			i++
+			continue
+		}
+		j := i
+		for j < len(text) && text[j] != ' ' && text[j] != '\t' {
+			j++
+		}
+		toks = append(toks, tok{i, j, text[i:j]})
+		i = j
+	}
+	word := func(s string) string { return strings.TrimRight(s, ":;,.") }
+	isDate := func(s string) bool { return dateRe.MatchString(s) && len(s) == 10 }
+	cut := func(a, b int) (string, string) {
+		rest := strings.TrimSpace(text[:a] + " " + text[b:])
+		return strings.Join(strings.Fields(rest), " "), text[a:b]
+	}
+	for k, t := range toks {
+		if inSpans(spans, t.start, t.end) {
+			continue
+		}
+		if st, ok := markerSymbols[t.s]; ok {
+			// a symbol, with the marker word right after it if there is one
+			if k+1 < len(toks) && !inSpans(spans, toks[k+1].start, toks[k+1].end) {
+				if ws, ok := markerWords[word(toks[k+1].s)]; ok {
+					rest, removed := cut(t.start, toks[k+1].end)
+					return ws, rest, removed
+				}
+			}
+			if st == "" { // ✗ alone says nothing
+				continue
+			}
+			rest, removed := cut(t.start, t.end)
+			return st, rest, removed
+		}
+		ws, ok := markerWords[word(t.s)]
+		if !ok {
+			continue
+		}
+		atStart := k == 0 || (k == 2 && isDate(toks[0].s) && toks[1].s == "—")
+		if atStart || k == len(toks)-1 {
+			rest, removed := cut(t.start, t.end)
+			return ws, rest, removed
+		}
+	}
+	return "", text, ""
 }
+
+// searchKey is the text `git log -S` looks for when dating a line unit (SPEC §13.3): from
+// the unit's first line without its ATX marks and leading table pipe, the longest piece
+// between marker tokens and dates (which change when an item is closed or re-filed), cut
+// to its first 60 code points. Markup and inner pipes stay, because -S matches the file's
+// bytes literally and a key that is not in the file dates nothing.
+func searchKey(line string) string {
+	s := line
+	if lvl, text := heading(s); lvl > 0 {
+		s = text
+	}
+	s = strings.TrimSpace(s)
+	s = strings.TrimSpace(strings.TrimPrefix(s, "|"))
+	s = strings.TrimSpace(strings.TrimSuffix(s, "|"))
+	pieces := volatileRe.Split(s, -1)
+	best := ""
+	for _, p := range pieces {
+		p = strings.TrimSpace(p)
+		if len([]rune(p)) > len([]rune(best)) {
+			best = p
+		}
+	}
+	if r := []rune(best); len(r) > 60 {
+		best = strings.TrimSpace(string(r[:60]))
+	}
+	return best
+}
+
+// volatileRe matches the tokens that change when a backlog item or rule changes state:
+// marker symbols and words, and dates.
+var volatileRe = regexp.MustCompile(`✓|✅|✗|⏸|\b(DONE|FIXED|CLOSED|RESOLVED|BLOCKED|SUPERSEDED|MOOT|RETIRED)\b|\d{4}-\d{2}-\d{2}`)

@@ -83,67 +83,37 @@ func TestTagify(t *testing.T) {
 	}
 }
 
-func TestBacklogStatus(t *testing.T) {
-	cases := map[string]string{
-		"✓ CLOSED 2026-10-07 — secrets deleted": "done",
-		"⏸ RESUME HERE — state":                 "blocked",
-		"Item SUPERSEDED by other":              "dropped",
-		"~~Struck item~~":                       "dropped",
-		"Plain item":                            "",
-		"Resolved the fixed thing":              "",
-		"retired `es.` blog was closed":         "",
-		"blocked the mesh":                      "",
-		"Retired-service facts":                 "",
-	}
-	for in, want := range cases {
-		if got := backlogStatus(in); got != want {
-			t.Errorf("backlogStatus(%q) = %q, want %q", in, got, want)
-		}
-	}
-	rest, removed := removeMarkers("📋 ✓ CLOSED 2026-10-07 — secrets DONE")
-	if rest != "📋 2026-10-07 — secrets" || !reflect.DeepEqual(removed, []string{"✓", "CLOSED", "DONE"}) {
-		t.Errorf("removeMarkers = %q, %q", rest, removed)
-	}
-}
-
-func TestMarkerTags(t *testing.T) {
-	got := markerTags("This is STALE and was resolved; no longer applies")
-	want := []string{"marker-stale", "marker-resolved", "marker-no-longer"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("markerTags = %v, want %v", got, want)
-	}
-	if markerTags("installed, closedown") != nil {
-		t.Errorf("markerTags matched inside words")
-	}
-}
-
-func TestCompareText(t *testing.T) {
-	if compareText("**a** | b \\| `c`") != "abc" {
-		t.Errorf("compareText = %q", compareText("**a** | b \\| `c`"))
-	}
-}
-
-func TestParseSourceArg(t *testing.T) {
-	p, r := ParseSourceArg("/x/y@abc")
-	if p != "/x/y" || r != "abc" {
-		t.Errorf("ParseSourceArg = %q, %q", p, r)
-	}
-	p, r = ParseSourceArg("/x/y")
-	if p != "/x/y" || r != "" {
-		t.Errorf("ParseSourceArg = %q, %q", p, r)
-	}
-}
-
-func TestIDFor(t *testing.T) {
-	cases := []struct{ date, title, want string }{
-		{"2026-10-12", "2026-10-12 — rotate the password", "2026-10-12-rotate-the-password"},
-		{"2026-10-12", "2026-10-13 — vps-a MySQL (filed 2026-10-12)", "2026-10-12-vps-a-mysql-filed-2026-10-12"},
-		{"2026-10-12", "Plain title", "2026-10-12-plain-title"},
-		{"2026-10-12", "2026-10-12", "2026-10-12-entry"},
+func TestHeadingMarker(t *testing.T) {
+	cases := []struct{ in, status, rest, removed string }{
+		{"Retired-service facts outlive the service, and `constraints.md` misleads — ✓ DONE 2026-09-14 (`brain@45d690b`); 0 `SUPERSEDED` markers remain",
+			"done", "Retired-service facts outlive the service, and `constraints.md` misleads — 2026-09-14 (`brain@45d690b`); 0 `SUPERSEDED` markers remain", "✓ DONE"},
+		{"✓ RESOLVED 2026-09-23 — (was BLOCKED) the two NAS boxes get a certificate", "done", "2026-09-23 — (was BLOCKED) the two NAS boxes get a certificate", "✓ RESOLVED"},
+		{"nas-a strip-down: repo and docs done, host deletion BLOCKED and deliberately held", "", "nas-a strip-down: repo and docs done, host deletion BLOCKED and deliberately held", ""},
+		{"Old plan for the mesh MOOT", "dropped", "Old plan for the mesh", "MOOT"},
+		{"2026-10-07 — RETIRED the queue that waits", "dropped", "2026-10-07 — the queue that waits", "RETIRED"},
+		{"⏸ RESUME HERE — state", "blocked", "RESUME HERE — state", "⏸"},
+		{"~~Struck item~~", "dropped", "Struck item", "~~"},
+		{"retired `es.` blog was closed", "", "retired `es.` blog was closed", ""},
+		{"📋 OPERATOR TO-DO, index", "", "📋 OPERATOR TO-DO, index", ""},
 	}
 	for _, c := range cases {
-		if got := idFor(c.date, c.title); got != c.want {
-			t.Errorf("idFor(%q, %q) = %q, want %q", c.date, c.title, got, c.want)
+		st, rest, removed := headingMarker(c.in)
+		if st != c.status || rest != c.rest || removed != c.removed {
+			t.Errorf("headingMarker(%q) = %q, %q, %q; want %q, %q, %q", c.in, st, rest, removed, c.status, c.rest, c.removed)
+		}
+	}
+}
+
+func TestSearchKey(t *testing.T) {
+	cases := map[string]string{
+		"### ✓ CLOSED 2026-10-07 — three plaintext secret files":                              "— three plaintext secret files",
+		"| **Short** | row \\| x | - |":                                                       "**Short** | row \\| x | -",
+		"### Item SUPERSEDED by the big plan":                                                 "by the big plan",
+		"## Mistake: a very long heading that keeps going well past the sixty code point cut": "Mistake: a very long heading that keeps going well past the",
+	}
+	for in, want := range cases {
+		if got := searchKey(in); got != want {
+			t.Errorf("searchKey(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
