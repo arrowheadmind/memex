@@ -1,0 +1,7 @@
+store = "/elsewhere"
+host = "h"
+workspace = "/w"
+sync_on_preflight = false
+search_limit = 5
+list_limit = 7
+network_timeout = 3

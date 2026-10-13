@@ -1,0 +1,3 @@
+memex: unexpected argument "--json"
+memex check [--staged] [--strict] [--workspace] [--errors-only] [--limit N] [--json]
+Run: memex help check

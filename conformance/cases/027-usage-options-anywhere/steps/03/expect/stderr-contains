@@ -1,0 +1,3 @@
+memex: empty value for --store
+memex [GLOBAL OPTIONS] COMMAND [OPTIONS] [ARGS]
+Run: memex help

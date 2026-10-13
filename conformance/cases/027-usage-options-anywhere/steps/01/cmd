@@ -1,0 +1,5 @@
+check
+--json
+--store
+<STORE>
+--limit=1

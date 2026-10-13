@@ -1,0 +1,4 @@
+check
+--limit
+ten
+--store=<STORE>

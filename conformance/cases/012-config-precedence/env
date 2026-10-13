@@ -1,0 +1,2 @@
+MEMEX_STORE=/nonexistent/store
+MEMEX_CONFIG=<STORE>/.config.toml
