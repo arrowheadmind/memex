@@ -545,8 +545,8 @@ func compareTrees(want, got string) ([]string, error) {
 	return problems, nil
 }
 
-// copyTree copies the regular files and directories under src into dst, keeping the
-// executable bit.
+// copyTree copies the regular files, directories and symbolic links under src into dst,
+// keeping the executable bit and link targets as written.
 func copyTree(src, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -556,6 +556,13 @@ func copyTree(src, dst string) error {
 		target := filepath.Join(dst, rel)
 		if d.IsDir() {
 			return os.MkdirAll(target, 0o755)
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
+			link, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			return os.Symlink(link, target)
 		}
 		info, err := d.Info()
 		if err != nil {
