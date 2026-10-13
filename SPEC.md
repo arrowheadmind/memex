@@ -858,9 +858,19 @@ Behavior:
 2. Normalize the body (§5.1) and check its content measure (§5.6).
 3. Compute the id (§5.4).
    - If the id already exists with the same type and an identical body: print
-     `exists <path>` and `nothing to commit`, and exit 0.
-   - If it exists with a different body or type: print `exists <path>` to standard error and
-     exit 1, changing nothing.
+     `exists <path>` and `nothing to commit`, and exit 0. Only the body is compared; a repeat
+     with different options is still this no-op.
+   - If it exists with a different body or type: exit 1, changing nothing, with this on
+     standard error, so that the agent does not retry with a tweaked title and create a
+     near-duplicate (the predecessor's v2 did exactly that):
+
+     ```
+     memex: exists <path>
+       title: <existing title>
+       summary: <existing summary>
+     To read it: memex show <id>. To add to it: edit the file, then memex save.
+     To create a different entry: choose a more specific --title.
+     ```
 4. Write and commit (§9.1). Standard output gets `created <path>`, then the outcome line.
 
 ### 11.3 `search`
@@ -874,20 +884,24 @@ All positional arguments are joined with single spaces into the query. The rest 
 ### 11.4 `preflight`
 
 ```
-memex preflight QUERY… [--no-sync] [search options]
+memex preflight [QUERY…] [--no-sync] [--max-chars N] [search options]
 ```
 
-This is the start-of-task ritual. It prints:
+This is the start-of-task ritual. With a query it is "sync, always-rules, search"; without
+one it is "sync, always-rules", which is the form a session-start hook runs, since a hook has
+no task text. It prints:
 
-1. **Sync line.** Unless `--no-sync` is given or `sync_on_preflight = false`, it runs `sync` and
-   prints its first status line, prefixed `store: `. On failure it prints
-   `store: NOT SYNCED: <reason>` and continues. With sync skipped, it prints
-   `store: not synced (last fetch <time or "never">)`.
-2. **Blank line, then `## Always`.** For each visible rule with `always = true`, in id order:
-   - `- [[<id>]] <title>`;
-   - then the body's first paragraph (lines up to the first blank line, outside fenced code),
-     each line indented two spaces, cut to 600 code points total, with `…` appended if cut.
-3. **Blank line, then `## Results`,** and the §8.5 text output for the query.
+1. **Sync line.** Unless `--no-sync` is given or `sync_on_preflight = false`, it runs `sync`
+   (§9.5) and prints its state line, prefixed `store: `, for example `store: up to date` or
+   `store: NOT SYNCED: timed out after 20s`. A failed sync never stops preflight. With sync
+   skipped, it prints `store: not synced (last fetch <time or "never">)`.
+2. **Blank line, then `## Always`.** For each visible rule with `always = true`, in id order,
+   one line: `- <path>: <title> — <summary>` (the summary is omitted, with the ` — `, when
+   absent). The summary is what is printed, not the body, because `summary` is required to be
+   the one sentence that tells an agent whether to open the entry, and because the body's first
+   paragraph under the rule template is the symptom, not the instruction. An agent reads the
+   body with `memex show` when it needs the detail.
+3. **With a query: blank line, then `## Results`,** and the §8.5 text output for the query.
 
 **Output budget.** `--max-chars N` (default 12000, minimum 2000) bounds the whole output in
 code points.
@@ -898,7 +912,15 @@ code points.
 - When any result was dropped, a last line reads:
   `output budget reached: <k> results not shown (raise --max-chars or run memex search)`.
 
-The exit code is the search's. A failed sync never changes it.
+**Exit code.** 0 when there is no query. With a query, the search's exit code, except that a
+search that found nothing exits 0 when at least one Always rule was printed: the output is
+then not empty, and a hook that drops the output of a non-zero exit (Claude Code's
+`SessionStart` does) must still deliver the rules. The no-match line is in the body either way.
+A failed sync never changes the exit code.
+
+**Hook budget.** A session-start hook typically caps output lines and time. The Always section
+comes first and is never cut for that reason, and `network_timeout` keeps the sync short.
+`help agents` documents the hook form: `memex preflight --max-chars 4000`.
 
 ### 11.5 `list`
 
@@ -910,33 +932,33 @@ memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]�
 - **Order:** descending `created`, then ascending id.
 - **Visibility:** by default only visible entries are listed. `--status` selects statuses
   explicitly, and `--all` lists every entry.
-- **Limit:** `--limit N` prints the first N entries, then
-  `N more entries not shown (raise --limit)` if any were cut.
-- **Text output:** one line per entry, `<created> <type> <status> <id> <title>`, separated by
-  single spaces.
+- **Limit:** `--limit N` (default `list_limit`, §3.2; `--limit 0` means no limit) prints the
+  first N entries, then `N more entries not shown (raise --limit)` if any were cut.
+- **Text output:** one line per entry, `<created> <type> <status> <path> <title>`, separated by
+  single spaces; the title is last because it contains spaces.
 - **Fields:** `--fields` selects and orders the columns, from `created, type, status, id, path,
   title, summary, tags`. Columns are separated by a tab in text output.
-- **JSON output:** an array of objects with keys `id, type, status, created, title, summary,
-  tags, path`.
+- **JSON output:** `{"entries":[{"id":"…","type":"…","status":"…","created":"…","title":"…",
+  "summary":null,"tags":[],"path":"…"}],"more":0}`.
 
 `list` replaces the predecessor's committed INDEX file.
 
 ### 11.6 `show`
 
 ```
-memex show ID [--json]
+memex show ID… [--json]
 ```
 
-Prints the entry file verbatim, then:
+For each ID (an id, path or alias, §10), prints the entry file verbatim, then:
 
 ```
 
 --- links
-cited by: <id>, <id>
-supersedes: <id>
-children: <id>
-links to: <id>
-linked from: <id>
+cited by: <path>, <path>
+supersedes: <path>
+children: <path>
+links to: <path>
+linked from: <path>
 ```
 
 - **cited by:** entries listing ID in `sources`.
@@ -945,7 +967,14 @@ linked from: <id>
 - **links to:** `[[...]]` targets in the body.
 - **linked from:** entries whose body links to ID.
 
-Lines with no ids are omitted. ID may also be an alias. An unknown id exits 1.
+Lines with no entries are omitted. Several IDs are separated by a line `---`, so that an agent
+can read a handful of entries in one call. An unknown id exits 1 after printing the known ones
+(§17.4).
+
+**JSON output:** `{"entries":[{"id":"…","type":"…","path":"…","frontmatter":{…},"body":"…",
+"links":{"cited_by":[],"supersedes":[],"children":[],"links_to":[],"linked_from":[]}}]}`,
+where `frontmatter` holds the §5.3 fields present, in canonical order, with dates as
+`YYYY-MM-DD` strings, and every `links` array holds ids.
 
 ### 11.7 `set`
 
@@ -976,8 +1005,8 @@ memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new optio
 ```
 
 1. Creates a new entry, as `new`, with `sources` containing SOURCE-ID plus any `--source` values.
-2. If the source is a journal entry, sets its status to `promoted`. Sources of other types are
-   unchanged.
+2. If the source is a journal entry whose status is `raw`, `kept` or `promoted`, sets its
+   status to `promoted`. A `superseded` source and sources of other types are unchanged.
 
 Both files go in one commit. Read-back (§9.1, step 5) covers both. Promoting a source whose
 status is already `promoted` is allowed.
@@ -1088,8 +1117,9 @@ the tool changes.
 
    This list lives in the specification. Adding a tool means adding a line here and a
    conformance case. `capture --from PATH` (§11.2) moves the content into the store.
-4. **Integration is one-way.** Tools' hooks call memex (for example `memex preflight` at session
-   start). memex knows nothing about tools beyond the pointer text and the paths in rule 3.
+4. **Integration is one-way.** Tools' hooks call memex (for example `memex preflight
+   --max-chars 4000` at session start, §11.4). memex knows nothing about tools beyond the
+   pointer text and the paths in rule 3.
 5. **Switching off a tool's own memory is configuration, not memex's job.** `doctor`'s
    `tool-memory` check reports WARN when Claude Code's auto memory isn't disabled. It counts as
    disabled when any of these is true:
@@ -1368,7 +1398,7 @@ In this order (the `--all` order):
 
 | Topic | Covers |
 |---|---|
-| `agents` | Rules of engagement for language-model agents, at most 60 lines: run `preflight` before work; capture after it; never write a tool's own memory; edit then `save`; respect outcome lines and exit codes; journal bodies are immutable; how to supersede instead of editing history. Written as imperatives. |
+| `agents` | Rules of engagement for language-model agents, at most 60 lines: run `preflight` before work; capture after it, with the heredoc form `--body - <<'EOF'` so one shell call suffices; never write a tool's own memory; edit then `save`; respect outcome lines and exit codes; read `matched k/n` before trusting a result; quote a phrase as `'"two words"'` so the shell keeps the quotes; `tags` are for filtering and `keywords` for finding; journal bodies are immutable; how to supersede instead of editing history. Written as imperatives. |
 | `concepts` | The model and the reasoning behind it (§1, §2) |
 | `entries` | Types, statuses, visibility and every frontmatter field, as tables (§5.2, §5.3), then the body outline of each type (Appendix B) |
 | `ids` | The id and slug rules, with worked examples (§5.4) |
@@ -1379,7 +1409,7 @@ In this order (the `--all` order):
 | `check-codes` | Every `E-` and `W-` code, with its condition and the usual fix (§7) |
 | `exit-codes` | The §10 table |
 | `neutrality` | Pointer files, the leak scan and tool memory (§12) |
-| `import` | The brain v3 importer and its report (§13) |
+| `importing` | The brain v3 importer and its report (§13). Named so that it doesn't collide with the `import` command in `memex help import` |
 
 Each topic is at most 200 lines. `memex help --all` as a whole MUST stay under 3,000 lines. The
 conformance suite measures this, so that reading all of memex stays one affordable call.
@@ -1440,9 +1470,10 @@ cases.
 
 ### 17.2 Economical with context
 
-- **Bounded output.** Every command that can print an unbounded amount has a bound: `search`
-  has `--limit`, `preflight` has `--max-chars`, and `list` has `--limit` (default unlimited)
-  and `--fields`.
+- **Bounded output.** Every command that can print an unbounded amount has a bound by
+  default: `search` has `--limit` (`search_limit`), `preflight` has `--max-chars`, `list` has
+  `--limit` (`list_limit`) and `--fields`, and `check` has `--limit` and `--errors-only`.
+  `show` prints whole entries, which the caller chose.
 - **No filler.** No banners, no decorative output, no repeated headers, and no "success!"
   lines beyond the outcome line.
 - **Triage before reading.** Results show title, summary and a one-line snippet, enough to
@@ -1459,7 +1490,10 @@ cases.
   line (§9.4).
 - **Exit codes carry meaning** (§10). An agent can branch on the code without parsing text.
 - **Paths are relative to the store root,** and the root is printed once, so an agent can use
-  its own file tools.
+  its own file tools. Every place that takes an id also takes that path (§10), so what memex
+  prints can be pasted back without transformation.
+- **Partial matches are labeled.** Every search result says which query items it matched
+  (§8.5).
 
 ### 17.4 Forgiving of model mistakes, never silently
 
@@ -1470,6 +1504,9 @@ Language models predictably make certain mistakes. memex catches each one and sa
 | A misspelled command, option, type, status, field or topic | Exit 2 with `did you mean "<nearest>"?` (Levenshtein distance ≤ 3), plus the help command |
 | An unknown or invented id (`show`, `set`, `promote`, `--parent`, `--source`) | Exit 1 with `no entry "<id>"`, plus up to 3 nearest ids by search score of the given text, one per line, as `  candidate: <path>` |
 | The same capture run twice | Idempotent no-op (§11.2) |
+| A second entry with the same title on the same day | Refused with the existing entry's title and summary and the three correct moves (§11.2) |
+| A phrase typed as `"two words"` that the shell unquoted | Not detectable; `help search` and `help agents` show the `'"…"'` form |
+| An id typed as the path search printed | Accepted everywhere (§10) |
 | A title starting with `-`, or an option swallowed as a value | Refused (§10) |
 | An empty or heading-only body | Refused, with the content-measure rule and `memex help entries` |
 | Editing a journal body | `check` fails with `E-HASH`, and the message names `set <id> status=superseded` plus `capture` as the correct path |
@@ -1510,9 +1547,10 @@ that the next agent will find and trust:
 This store is the shared memory for this operator's work. It is managed with `memex`.
 
 - If you are new to memex: `memex help agents` (short), or `memex help --all` (everything).
-- Before any non-trivial task: `memex preflight "<task in your own words>"`.
-- After any non-trivial task: write what you learned to a file and run
-  `memex capture --title="<task>" --summary="<one sentence>" --body FILE`.
+- Before any non-trivial task: `memex preflight "<task in your own words>"`. Read the
+  `matched k/n` label before trusting a result.
+- After any non-trivial task:
+  `memex capture --title="<task>" --summary="<one sentence>" --body - <<'EOF' … EOF`.
 - Never write knowledge into a coding tool's own memory or rules files.
   Knowledge lives here only.
 - Edit entries directly when needed, then run `memex save`.
