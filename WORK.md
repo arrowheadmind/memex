@@ -56,3 +56,10 @@ Open items for later blocks:
   plan's 457 and 474 were a week older), and no `.brain/dispatch-logs/` directory at all, so
   the dispatch-log attachment rule has no real input yet. Most path references in bodies are
   wrapped in single backticks; §13.5 now unwraps them when it rewrites.
+- B4 replay (2026-10-13): `scripts/replay/` holds the harness, the 62-query set, the normalized
+  results and the blind grades; `REPORT.md` there is the gate G1 evidence. Re-run it after B7
+  (curation adds keywords and summaries) and after any change to §8: build memex, set
+  `REPLAY_SCRATCH`, `MEMEX_STORE` (an import of the pinned sources) and `MEMEX_BIN`, run
+  `run.py`, then `metrics.py` with `grades.json`. New entries in the top-10 start ungraded;
+  `packets.py` builds blind packets for them. Spec candidates recorded there, to try with the
+  harness before adopting: coverage bonus on k/n, b = 0.5, reverse prefix matching.
