@@ -32,6 +32,9 @@ Rules of the ledger:
 
 Open items for later blocks:
 
+- B5: the slug algorithm and length cap (§5.4) and body normalization (§5.1) have unit tests
+  only; their conformance cases arrive with `new`, the first command that exposes them.
+
 - B6: capture's `--title`, `--summary` and `--body` are marked optional in `internal/spec`,
   because `capture --from PATH` makes them so. Decide how `help --json` expresses
   "required unless --from".
