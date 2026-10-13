@@ -9,7 +9,7 @@ func TestSecrets(t *testing.T) {
 	body := "-----BEGIN OPENSSH PRIVATE KEY-----\n" +
 		"password=hunter2\n" +
 		"password= token=$TOKEN secret=<redacted> password=\"\" token=*** secret=xxxx\n" +
-		"AKIAabcdefghijklmnopqrstuvwxyz0123456789ABCD\n" +
+		"aws token AKIAabcdefghijklmnopqrstuvwxyz0123456789ABCD and bare AKIAabcdefghijklmnopqrstuvwxyz0123456789ABCD\n" +
 		"short abcDEF123+/\n" +
 		"sha 0123456789abcdef0123456789abcdef01234567 /nix/store/0123456789abcdfghijklmnpqrsvwxyz-x\n" +
 		"no digit ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop\n"

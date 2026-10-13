@@ -305,11 +305,19 @@ func (im *Importer) leaks() error {
 				break
 			}
 		}
+		summary := "Imported from " + shown
+		if title == "" {
+			name, desc := yamlBlock(splitLines(text))
+			title = name
+			if desc != "" {
+				summary = desc
+			}
+		}
 		if title == "" {
 			title = filepath.Base(p)
 		}
 		u := &Unit{Kind: "leak", Type: "journal", Title: cutTitle(stripMarkup(title)), Status: "raw",
-			Summary: "Imported from " + shown, Aliases: []string{shown}, Date: im.today,
+			Summary: summary, Aliases: []string{shown}, Date: im.today,
 			Src: im.primary, File: shown}
 		u.BodyLines = []string{fmt.Sprintf("Imported from `%s` (%s).", shown, im.today), "", strings.TrimRight(text, "\n")}
 		u.Order = len(im.units)

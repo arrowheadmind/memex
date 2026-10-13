@@ -14,6 +14,9 @@ var (
 	pemKey     = regexp.MustCompile(`-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----`)
 	assignment = regexp.MustCompile(`(password|token|secret)=("[^"]*"|'[^']*'|\S*)`)
 	base64Run  = regexp.MustCompile(`[A-Za-z0-9+/]{40,}`)
+	// secretWord must precede a base64 run on the same line for the run to count (SPEC §7);
+	// without it the pattern matched every nix cache key and content hash.
+	secretWord = regexp.MustCompile(`(?i)token|secret|password|passwd|bearer|authorization|api_key|api-key|apikey|private`)
 )
 
 type secretLine struct {
@@ -49,13 +52,15 @@ func secrets(body string) []secretLine {
 }
 
 // hasMixedRun reports a run of 40 or more base64 characters holding at least one uppercase
-// letter, one lowercase letter and one digit, which excludes hex digests (git SHAs) and nix
-// store hashes by construction.
+// letter, one lowercase letter and one digit (which excludes hex digests and nix store hashes
+// by construction), preceded on the same line by a word that says it is a credential.
 func hasMixedRun(line string) bool {
-	for _, run := range base64Run.FindAllString(line, -1) {
+	for _, loc := range base64Run.FindAllStringIndex(line, -1) {
+		run := line[loc[0]:loc[1]]
 		if strings.ContainsAny(run, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
 			strings.ContainsAny(run, "abcdefghijklmnopqrstuvwxyz") &&
-			strings.ContainsAny(run, "0123456789") {
+			strings.ContainsAny(run, "0123456789") &&
+			secretWord.MatchString(line[:loc[0]]) {
 			return true
 		}
 	}

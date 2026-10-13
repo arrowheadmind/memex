@@ -6,3 +6,5 @@ brain-v3
 <STORE>
 --leak
 <HOME>/.claude/projects/p/memory/leak-note.md
+--leak
+<HOME>/.claude/projects/p/memory/yaml-only.md

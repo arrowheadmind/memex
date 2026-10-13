@@ -153,7 +153,14 @@ func (im *Importer) extractFile(f *fileRec, kind, typ string) *Unit {
 			im.extractHeader(f, u, title, consumed, &moved)
 		}
 	} else {
-		u.Title = cutTitle(u.Stem)
+		// no heading: a leading YAML block's name and description, else the filename
+		name, desc := yamlBlock(f.Lines)
+		if name != "" {
+			u.Title = cutTitle(stripMarkup(name))
+			u.Summary = desc
+		} else {
+			u.Title = cutTitle(u.Stem)
+		}
 		u.TitleInText = false
 	}
 	if u.Title == "" {
