@@ -1,4 +1,3 @@
-rules/2026-01-10-empty.md: W-SHORT-BODY body content measure 0 is below 80
-rules/2026-01-10-headings.md: W-SHORT-BODY body content measure 10 is below 80
-rules/2026-01-10-one-short.md: W-SHORT-BODY body content measure 79 is below 80
-check: 0 errors, 3 warnings
+rules/2026-01-10-empty.md: W-SHORT-BODY body content measure 0 is below 80; edit the file, then memex save
+rules/2026-01-10-headings.md: W-SHORT-BODY body content measure 10 is below 80; edit the file, then memex save
+check: 0 errors, 2 warnings

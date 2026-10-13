@@ -1,0 +1,7 @@
+rules/2026-01-10-owner.md: E-FILE-LINK files/./2026-01-10-owner/a%20b.txt on line 15 is not a plain path under files/; write it without . or ..
+rules/2026-01-10-owner.md: E-FILE-LINK files/2026-01-10-owner/../x on line 15 is not a plain path under files/; write it without . or ..
+rules/2026-01-10-owner.md: E-FILE-LINK files/2026-01-10-owner//a%20b.txt on line 15 is not a plain path under files/; write it without . or ..
+rules/2026-01-10-owner.md: E-FILE-LINK files/2026-01-10-owner/dangling on line 14 does not exist
+rules/2026-01-10-owner.md: E-FILE-LINK files/2026-01-10-owner/root on line 13 is outside the store
+rules/2026-01-10-owner.md: E-FILE-LINK files/2026-01-10-owner/up on line 13 is outside the store
+check: 6 errors, 0 warnings

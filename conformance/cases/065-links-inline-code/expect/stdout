@@ -1,0 +1,3 @@
+rules/2026-01-10-code.md: E-LINK [[2026-01-10-literal]] on line 11 is not the id of an entry
+rules/2026-01-10-code.md: E-LINK [[2026-01-10-shown]] on line 10 is not the id of an entry
+check: 2 errors, 0 warnings

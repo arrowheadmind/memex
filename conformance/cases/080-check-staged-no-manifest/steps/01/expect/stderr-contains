@@ -1,1 +1,0 @@
-memex: check --staged: memex.toml is not in the git index
