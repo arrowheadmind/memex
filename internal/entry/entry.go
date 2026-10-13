@@ -57,7 +57,7 @@ func CheckEncoding(data []byte) []Problem {
 // problem.
 func SplitFile(data string) (*Split, *Problem) {
 	if !strings.HasPrefix(data, "+++\n") {
-		p := problem("E-FRONTMATTER", "the file must begin with a line +++")
+		p := problem("E-FRONTMATTER", "missing opening +++ line; the file must begin with the line +++")
 		return nil, &p
 	}
 	rest := data[len("+++\n"):]
@@ -77,7 +77,7 @@ func SplitFile(data string) (*Split, *Problem) {
 		}
 		off += len(line) + 1
 	}
-	p := problem("E-FRONTMATTER", "no closing +++ line after the frontmatter")
+	p := problem("E-FRONTMATTER", "missing closing +++ line after the frontmatter")
 	return nil, &p
 }
 
@@ -141,7 +141,7 @@ var kindText = map[string]string{
 // the status and the superseded pairing. It returns the fields that are well-formed (so that
 // later checks can use them) and every problem found. An invalid TOML document is a single
 // E-FRONTMATTER problem and no fields.
-func ParseFields(s *Split, typ *spec.Type) (Fields, []Problem) {
+func ParseFields(s *Split, typ *spec.Type, id string) (Fields, []Problem) {
 	var raw map[string]any
 	_, err := toml.Decode(s.Frontmatter, &raw)
 	if err != nil {
@@ -162,16 +162,16 @@ func ParseFields(s *Split, typ *spec.Type) (Fields, []Problem) {
 	for _, name := range names {
 		def := spec.LookupField(name)
 		if def == nil {
-			msg := fmt.Sprintf("unknown field %q", name)
+			msg := "unknown field " + Quote(name)
 			if near, ok := spec.Nearest(name, spec.FieldNames()); ok {
-				msg += fmt.Sprintf(" (did you mean %q?)", near)
+				msg += " (did you mean " + Quote(near) + "?)"
 			}
 			ps = append(ps, Problem{"E-FIELD-UNKNOWN", msg})
 			continue
 		}
 		if !def.AllowedOnType(typ.Name) {
-			ps = append(ps, problem("E-FIELD-UNKNOWN", "field %q is not allowed on a %s; it is allowed on: %s",
-				name, typ.Name, strings.Join(def.AllowedOn, ", ")))
+			ps = append(ps, problem("E-FIELD-UNKNOWN", "field %s is not allowed on a %s; it is allowed on: %s",
+				Quote(name), typ.Name, strings.Join(def.AllowedOn, ", ")))
 			continue
 		}
 		v, p := fieldValue(def, raw[name])
@@ -184,13 +184,13 @@ func ParseFields(s *Split, typ *spec.Type) (Fields, []Problem) {
 	}
 	for _, def := range spec.Fields {
 		if def.Required == "yes" && def.AllowedOnType(typ.Name) && raw[def.Name] == nil {
-			ps = append(ps, problem("E-FIELD-MISSING", "missing required field %q", def.Name))
+			ps = append(ps, problem("E-FIELD-MISSING", "missing required field %s", Quote(def.Name)))
 		}
 	}
 	if st, ok := fields["status"].(string); ok && !slices.Contains(typ.Statuses, st) {
-		msg := fmt.Sprintf("status %q is not valid for a %s", st, typ.Name)
+		msg := fmt.Sprintf("status %s is not valid for a %s", Quote(st), typ.Name)
 		if near, ok := spec.Nearest(st, typ.Statuses); ok {
-			msg += fmt.Sprintf(" (did you mean %q?)", near)
+			msg += " (did you mean " + Quote(near) + "?)"
 		}
 		ps = append(ps, problem("E-STATUS", "%s; valid: %s", msg, strings.Join(typ.Statuses, ", ")))
 	}
@@ -198,9 +198,9 @@ func ParseFields(s *Split, typ *spec.Type) (Fields, []Problem) {
 		_, hasBy := raw["superseded_by"]
 		switch {
 		case st == "superseded" && !hasBy:
-			ps = append(ps, problem("E-SUPERSEDED", "status is superseded but superseded_by is missing"))
+			ps = append(ps, problem("E-SUPERSEDED", "status is superseded but superseded_by is missing; add it: memex set %s superseded_by=<new>", id))
 		case st != "superseded" && hasBy:
-			ps = append(ps, problem("E-SUPERSEDED", "superseded_by is set but status is %q, not superseded", st))
+			ps = append(ps, problem("E-SUPERSEDED", "superseded_by is set but status is %s; either memex set %s status=superseded, or memex set %s superseded_by=", Quote(st), id, id))
 		}
 	}
 	return fields, ps
@@ -250,7 +250,7 @@ func fieldValue(def *spec.Field, v any) (any, *Problem) {
 			}
 		case "kind":
 			if s != "prompt" && s != "report" {
-				return bad("must be \"prompt\" or \"report\", not %q", s)
+				return bad("must be \"prompt\" or \"report\", not %s", Quote(s))
 			}
 		case "body_sha256":
 			if !hexPattern.MatchString(s) {
@@ -279,9 +279,9 @@ func fieldValue(def *spec.Field, v any) (any, *Problem) {
 			}
 			switch {
 			case def.Name == "tags" && !tagPattern.MatchString(s):
-				return bad("element %q does not match ^[a-z0-9][a-z0-9-]*$", s)
+				return bad("element %s does not match ^[a-z0-9][a-z0-9-]*$", Quote(s))
 			case strings.Contains(s, "\n"):
-				return bad("element %q contains a line feed", s)
+				return bad("element %s contains a line feed", Quote(s))
 			}
 			out = append(out, s)
 		}
@@ -302,7 +302,7 @@ func Render(fields Fields, body string) string {
 		}
 		switch v := v.(type) {
 		case string:
-			b.WriteString(def.Name + " = " + quote(v) + "\n")
+			b.WriteString(def.Name + " = " + Quote(v) + "\n")
 		case time.Time:
 			b.WriteString(def.Name + " = " + v.Format(time.DateOnly) + "\n")
 		case int64:
@@ -320,7 +320,7 @@ func Render(fields Fields, body string) string {
 			}
 			quoted := make([]string, len(v))
 			for i, s := range v {
-				quoted[i] = quote(s)
+				quoted[i] = Quote(s)
 			}
 			b.WriteString(def.Name + " = [" + strings.Join(quoted, ", ") + "]\n")
 		}
@@ -337,8 +337,9 @@ func SortedSet(ss []string) []string {
 	return slices.Compact(out)
 }
 
-// quote renders s as a TOML basic string (SPEC §5.1).
-func quote(s string) string {
+// Quote renders s as a TOML basic string (SPEC §5.1). Finding messages quote values the
+// same way (SPEC §7).
+func Quote(s string) string {
 	var b strings.Builder
 	b.WriteByte('"')
 	for _, r := range s {

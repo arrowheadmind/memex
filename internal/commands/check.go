@@ -17,7 +17,7 @@ import (
 // CheckOptions are the options of `memex check` (SPEC §11.12).
 type CheckOptions struct {
 	Staged, Strict, ErrorsOnly, JSON bool
-	Limit                            int
+	Limit                            int // 0 means no limit
 }
 
 // DefaultCheckLimit is the default --limit of check (SPEC §7).
@@ -67,7 +67,7 @@ func Check(e *Env, o CheckOptions) int {
 		shown = slices.DeleteFunc(slices.Clone(findings), func(f check.Finding) bool { return !check.IsError(f) })
 	}
 	listed, rest := shown, []check.Finding(nil)
-	if len(shown) > o.Limit {
+	if o.Limit > 0 && len(shown) > o.Limit {
 		listed, rest = shown[:o.Limit], shown[o.Limit:]
 	}
 
@@ -106,7 +106,7 @@ func Check(e *Env, o CheckOptions) int {
 		}
 		slices.Sort(codes)
 		for _, c := range codes {
-			fmt.Fprintf(&b, "%s: %d more\n", c, more[c])
+			fmt.Fprintf(&b, "%s: %d more (raise --limit)\n", c, more[c])
 		}
 		fmt.Fprintf(&b, "check: %d errors, %d warnings\n", errs, warns)
 		io.WriteString(e.Stdout, b.String())

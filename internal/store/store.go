@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/spec"
 )
 
@@ -79,9 +80,9 @@ func ReadManifest(t Tree) (*Manifest, []Finding, error) {
 		case "name":
 			fs = append(fs, bad("name must be a string"))
 		default:
-			msg := fmt.Sprintf("unknown key %q", k)
+			msg := "unknown key " + entry.Quote(k)
 			if near, ok := spec.Nearest(k, []string{"format", "name"}); ok {
-				msg += fmt.Sprintf(" (did you mean %q?)", near)
+				msg += " (did you mean " + entry.Quote(near) + "?)"
 			}
 			fs = append(fs, bad("%s", msg))
 		}
@@ -141,11 +142,11 @@ func Enumerate(t Tree) (*Layout, error) {
 		case strings.HasPrefix(name, "."), slices.Contains(ignored, name):
 		case slices.Contains(known, name):
 			if !it.Regular {
-				notEntry(name, "must be a regular file")
+				notEntry(name, "not a regular file")
 			}
 		case name == "files":
 			if !it.Dir {
-				notEntry(name, "must be a directory of attachments, files/<id>/")
+				notEntry(name, "not a directory; files/ holds attachments as files/<id>/")
 				continue
 			}
 			items, err := t.Children(name)
@@ -155,7 +156,7 @@ func Enumerate(t Tree) (*Layout, error) {
 			for _, o := range items {
 				if !o.Dir {
 					l.Findings = append(l.Findings, Finding{"files/" + o.Name, "E-FILES-OWNER",
-						"attachments go in a directory named after their entry, files/<id>/"})
+						"not a directory; attachments go in files/<id>/"})
 					continue
 				}
 				l.Owners = append(l.Owners, o.Name)
@@ -163,7 +164,7 @@ func Enumerate(t Tree) (*Layout, error) {
 		case spec.LookupDirectory(name) != nil:
 			typ := spec.LookupDirectory(name)
 			if !it.Dir {
-				notEntry(name, "must be the directory of "+typ.Name+" entries")
+				notEntry(name, "not a directory; "+name+"/ holds "+typ.Name+" entries")
 				continue
 			}
 			items, err := t.Children(name)
@@ -174,9 +175,9 @@ func Enumerate(t Tree) (*Layout, error) {
 				p := name + "/" + e.Name
 				switch {
 				case e.Dir:
-					notEntry(p, "type directories are flat; move attachments to files/<id>/")
+					notEntry(p, "subdirectory in a type directory; type directories are flat, attachments go in files/<id>/")
 				case !e.Regular || !strings.HasSuffix(e.Name, ".md"):
-					notEntry(p, "type directories hold only .md entries; move attachments to files/<id>/")
+					notEntry(p, "not a .md file; type directories hold only entries, attachments go in files/<id>/")
 				default:
 					l.Files = append(l.Files, File{Path: p, Type: typ, ID: strings.TrimSuffix(e.Name, ".md")})
 				}

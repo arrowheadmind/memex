@@ -69,7 +69,7 @@ func TestCheckStaged(t *testing.T) {
 	write("rules/2026-01-10-new.md", entryText("New", "[[2026-01-10-target]]\n"))
 	git("add", "rules/2026-01-10-new.md")
 	write("rules/2026-01-10-new.md", "unstaged edit")
-	want := "rules/2026-01-10-target.md: E-LINK line 10: [[2026-01-10-missing]] is not the id of an entry\n" +
+	want := "rules/2026-01-10-target.md: E-LINK [[2026-01-10-missing]] on line 10 is not the id of an entry\n" +
 		"check: 1 errors, 0 warnings\n"
 	if out, code := run(environ); code != 1 || out != want {
 		t.Errorf("staged: exit %d\n%s\nwant\n%s", code, out, want)

@@ -155,9 +155,6 @@ func parseCommand(cmd *spec.Command, argv []string, env *commands.Env) (*args, s
 }
 
 func runCheck(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
-	if a.has("--workspace") {
-		return 0, cmdErr("option --workspace is not implemented yet")
-	}
 	o := commands.CheckOptions{
 		Staged:     a.has("--staged"),
 		Strict:     a.has("--strict"),

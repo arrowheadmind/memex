@@ -329,13 +329,12 @@ var Commands = []Command{
 	{
 		Name:    "check",
 		Summary: "Validate the store",
-		Usage:   "memex check [--staged] [--strict] [--workspace] [--errors-only] [--limit N] [--json]",
+		Usage:   "memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]",
 		Options: []Option{
 			{Name: "--staged", Summary: "Validate only entries added or modified in the git index"},
 			{Name: "--strict", Summary: "Count warnings as errors"},
-			{Name: "--workspace", Summary: "Add pointer-file and leak findings"},
 			{Name: "--errors-only", Summary: "Print only errors"},
-			{Name: "--limit", Value: "N", Default: "200", Summary: "Maximum number of finding lines"},
+			{Name: "--limit", Value: "N", Default: "200", Summary: "Maximum number of finding lines; 0 means no limit"},
 			optJSON,
 		},
 		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},

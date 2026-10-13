@@ -48,7 +48,7 @@ func TestCheckEncoding(t *testing.T) {
 
 func parse(t *testing.T, typ, front string) (Fields, []Problem) {
 	t.Helper()
-	return ParseFields(&Split{Frontmatter: front, FrontLine: 2}, spec.LookupType(typ))
+	return ParseFields(&Split{Frontmatter: front, FrontLine: 2}, spec.LookupType(typ), "2026-01-15-x")
 }
 
 func TestParseFields(t *testing.T) {
@@ -70,8 +70,8 @@ func TestParseFields(t *testing.T) {
 		"title = \"T\"\nstatus = \"active\"\ncreated = 2026-01-15\ntags = [\"A\"]\n":        `E-FIELD-VALUE tags element "A" does not match ^[a-z0-9][a-z0-9-]*$`,
 		"title = \"T\"\nstatus = \"active\"\ncreated = 2026-01-15\ntags = [1]\n":            "E-FIELD-VALUE tags must be an array of strings",
 		"title = \"T\"\nstatus = \"active\"\ncreated = 2026-01-15\ntitel = \"x\"\n":         `E-FIELD-UNKNOWN unknown field "titel" (did you mean "title"?)`,
-		"title = \"T\"\nstatus = \"superseded\"\ncreated = 2026-01-15\n":                    "E-SUPERSEDED status is superseded but superseded_by is missing",
-		"title = \"T\"\nstatus = \"active\"\ncreated = 2026-01-15\nsuperseded_by = \"x\"\n": `E-SUPERSEDED superseded_by is set but status is "active", not superseded`,
+		"title = \"T\"\nstatus = \"superseded\"\ncreated = 2026-01-15\n":                    "E-SUPERSEDED status is superseded but superseded_by is missing; add it: memex set 2026-01-15-x superseded_by=<new>",
+		"title = \"T\"\nstatus = \"active\"\ncreated = 2026-01-15\nsuperseded_by = \"x\"\n": `E-SUPERSEDED superseded_by is set but status is "active"; either memex set 2026-01-15-x status=superseded, or memex set 2026-01-15-x superseded_by=`,
 		"title = \"T\"\nstatus = \"active\"\n\ncreated = 2026-01-15\ntitle = \"U\"\n":       "E-FRONTMATTER invalid TOML in the frontmatter at line 6",
 	}
 	for front, want := range cases {

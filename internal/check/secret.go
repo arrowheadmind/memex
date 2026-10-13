@@ -38,7 +38,7 @@ func secrets(body string) []secretLine {
 			what = "a private key header"
 		case hasSecretAssignment(l):
 			what = "a password, token or secret assignment"
-		case base64Run.MatchString(l):
+		case hasMixedRun(l):
 			what = "a run of 40 or more base64 characters"
 		}
 		if what != "" {
@@ -46,6 +46,20 @@ func secrets(body string) []secretLine {
 		}
 	}
 	return out
+}
+
+// hasMixedRun reports a run of 40 or more base64 characters holding at least one uppercase
+// letter, one lowercase letter and one digit, which excludes hex digests (git SHAs) and nix
+// store hashes by construction.
+func hasMixedRun(line string) bool {
+	for _, run := range base64Run.FindAllString(line, -1) {
+		if strings.ContainsAny(run, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
+			strings.ContainsAny(run, "abcdefghijklmnopqrstuvwxyz") &&
+			strings.ContainsAny(run, "0123456789") {
+			return true
+		}
+	}
+	return false
 }
 
 func hasSecretAssignment(line string) bool {

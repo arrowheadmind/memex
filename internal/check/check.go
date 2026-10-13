@@ -87,7 +87,7 @@ func Run(tree store.Tree, today time.Time, staged []string) ([]Finding, error) {
 	c.checkAliases()
 	for _, owner := range layout.Owners {
 		if len(c.byID[owner]) == 0 {
-			c.add("files/"+owner, "E-FILES-OWNER", "no entry has the id %q; attachments go in files/<id>/", owner)
+			c.add("files/"+owner, "E-FILES-OWNER", "%s is not the id of an entry; attachments go in files/<id>/", q(owner))
 		}
 	}
 	cited := map[string]bool{}
@@ -128,7 +128,7 @@ func (c *checker) parse(f store.File) (*parsed, error) {
 		c.add(f.Path, pr.Code, "%s", pr.Message)
 		return p, nil
 	}
-	fields, ps := entry.ParseFields(split, f.Type)
+	fields, ps := entry.ParseFields(split, f.Type, f.ID)
 	for _, pr := range ps {
 		c.add(f.Path, pr.Code, "%s", pr.Message)
 	}
@@ -157,10 +157,10 @@ func paths(ps []*parsed, except *parsed) string {
 func (c *checker) checkIDs() {
 	for _, p := range c.files {
 		if !slug.ValidID(p.ID) {
-			c.add(p.Path, "E-ID", "the filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most %d characters before .md", slug.MaxIDLength)
+			c.add(p.Path, "E-ID", "filename is not a valid id: YYYY-MM-DD-slug, lowercase a-z, 0-9 and single hyphens, at most %d characters before .md", slug.MaxIDLength)
 		}
 		if same := c.byID[p.ID]; len(same) > 1 {
-			c.add(p.Path, "E-DUP-ID", "the id is also used by %s", paths(same, p))
+			c.add(p.Path, "E-DUP-ID", "id %s is also used by %s", q(p.ID), paths(same, p))
 		}
 	}
 }
@@ -169,10 +169,10 @@ func (c *checker) checkAliases() {
 	for alias, owners := range c.byAlias {
 		for _, p := range owners {
 			if len(owners) > 1 {
-				c.add(p.Path, "E-ALIAS", "alias %q is also on %s", alias, paths(owners, p))
+				c.add(p.Path, "E-ALIAS", "alias %s is also on %s", q(alias), paths(owners, p))
 			}
 			if ids := c.byID[alias]; len(ids) > 0 {
-				c.add(p.Path, "E-ALIAS", "alias %q is the id of %s", alias, paths(ids, nil))
+				c.add(p.Path, "E-ALIAS", "alias %s is the id of %s", q(alias), paths(ids, nil))
 			}
 		}
 	}
@@ -182,15 +182,15 @@ func (c *checker) checkAliases() {
 func (c *checker) resolveRef(p *parsed, field, id string) {
 	targets := c.byID[id]
 	if len(targets) == 0 {
-		msg := fmt.Sprintf("%s %q is not the id of an entry", field, id)
+		msg := fmt.Sprintf("%s %s is not the id of an entry", field, q(id))
 		if owners := c.byAlias[id]; len(owners) == 1 {
-			msg += fmt.Sprintf("; it is an alias of %s, write its id %q", owners[0].Path, owners[0].ID)
+			msg += fmt.Sprintf("; it is an alias of %s, write its id %s", owners[0].Path, q(owners[0].ID))
 		}
 		c.add(p.Path, "E-REF", "%s", msg)
 		return
 	}
 	if field == "parent" && !slices.ContainsFunc(targets, func(t *parsed) bool { return t.Type.Name == "plan" }) {
-		c.add(p.Path, "E-REF", "parent %q is a %s, not a plan", id, targets[0].Type.Name)
+		c.add(p.Path, "E-REF", "parent %s is a %s, not a plan", q(id), targets[0].Type.Name)
 	}
 }
 
@@ -224,11 +224,11 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 		switch {
 		case len(owners) == 1:
 			c.targets[p.Path] = append(c.targets[p.Path], owners[0].Path)
-			c.add(p.Path, "W-ALIAS-LINK", "line %d: [[%s]] resolves through an alias; link [[%s]] instead", line, r.Target, owners[0].ID)
+			c.add(p.Path, "W-ALIAS-LINK", "[[%s]] on line %d resolves through an alias; link [[%s]] instead", r.Target, line, owners[0].ID)
 		case len(owners) > 1:
-			c.add(p.Path, "E-LINK", "line %d: [[%s]] is an alias of several entries (%s); link an id", line, r.Target, paths(owners, nil))
+			c.add(p.Path, "E-LINK", "[[%s]] on line %d is an alias of several entries (%s); link an id", r.Target, line, paths(owners, nil))
 		case slug.ValidID(r.Target):
-			c.add(p.Path, "E-LINK", "line %d: [[%s]] is not the id of an entry", line, r.Target)
+			c.add(p.Path, "E-LINK", "[[%s]] on line %d is not the id of an entry", r.Target, line)
 		}
 	}
 	for _, r := range fileRefs {
@@ -236,46 +236,46 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 		clean := path.Clean(r.Path)
 		switch {
 		case clean != r.Path && clean+"/" != r.Path:
-			c.add(p.Path, "E-FILE-LINK", "line %d: %s is not a plain path under files/; write it without . or ..", line, r.Path)
+			c.add(p.Path, "E-FILE-LINK", "%s on line %d is not a plain path under files/; write it without . or ..", r.Path, line)
 		case !c.tree.Exists(clean):
-			c.add(p.Path, "E-FILE-LINK", "line %d: %s does not exist", line, r.Path)
+			c.add(p.Path, "E-FILE-LINK", "%s on line %d does not exist", r.Path, line)
 		}
 	}
 
 	if p.Type.Name == "journal" {
 		if sum := f.String("body_sha256"); sum != "" && sum != entry.BodySHA256(p.body) {
-			c.add(p.Path, "E-HASH", "the body does not match body_sha256; journal bodies are immutable. "+
-				"Restore the body, or capture the corrected text and run memex set %s status=superseded superseded_by=<new id>", p.ID)
+			c.add(p.Path, "E-HASH", "body does not match body_sha256; journal bodies are immutable, so restore the body, "+
+				"or capture the corrected text and supersede with: memex set %s status=superseded superseded_by=<new>", p.ID)
 		}
 	}
 
 	// Warnings.
 	if len(f.Strings("tags")) == 0 && len(f.Strings("keywords")) == 0 && !isInvalid(f, "tags") && !isInvalid(f, "keywords") {
-		c.add(p.Path, "W-NO-TERMS", "no tags or keywords; add the words a reader would search with to keywords")
+		c.add(p.Path, "W-NO-TERMS", "no tags or keywords; add the words a reader would search with: memex set %s keywords=<word>,<word>", p.ID)
 	}
 	if !f.Has("summary") {
-		c.add(p.Path, "W-NO-SUMMARY", "no summary; add one sentence that tells a reader whether to open the entry")
+		c.add(p.Path, "W-NO-SUMMARY", "no summary; add one sentence that tells a reader whether to open the entry: memex set %s summary=<sentence>", p.ID)
 	}
 	if n := entry.ContentMeasure(p.body); n < entry.MinContent {
-		c.add(p.Path, "W-SHORT-BODY", "the body's content measure is %d, below %d", n, entry.MinContent)
+		c.add(p.Path, "W-SHORT-BODY", "body content measure %d is below %d", n, entry.MinContent)
 	}
 	if p.Type.Name == "reference" {
 		verified, ok := f.Date("verified")
 		days, hasDays := f["review_days"].(int64)
 		if ok && hasDays && verified.AddDate(0, 0, int(days)).Before(c.today) {
-			c.add(p.Path, "W-STALE-REFERENCE", "verified %s is more than review_days (%d) ago; check the facts and set verified",
-				verified.Format(time.DateOnly), days)
+			c.add(p.Path, "W-STALE-REFERENCE", "verified %s is more than review_days (%d) ago; check the facts, then: memex set %s verified=%s",
+				verified.Format(time.DateOnly), days, p.ID, c.today.Format(time.DateOnly))
 		}
 	}
 	if p.Type.Name == "journal" {
 		status := f.String("status")
 		created, ok := f.Date("created")
 		if status == "raw" && ok && created.AddDate(0, 0, rawOldDays).Before(c.today) {
-			c.add(p.Path, "W-RAW-OLD", "raw since %s, more than %d days; review it and set status kept or promoted",
-				created.Format(time.DateOnly), rawOldDays)
+			c.add(p.Path, "W-RAW-OLD", "raw since %s, more than %d days ago; review it, then: memex set %s status=kept, or memex promote %s",
+				created.Format(time.DateOnly), rawOldDays, p.ID, p.ID)
 		}
 		if status == "promoted" && !cited[p.ID] {
-			c.add(p.Path, "W-PROMOTED-UNCITED", "promoted, but no entry lists %q in sources", p.ID)
+			c.add(p.Path, "W-PROMOTED-UNCITED", "promoted, but no entry lists %s in sources", q(p.ID))
 		}
 	}
 	for _, s := range secrets(p.body) {
@@ -283,6 +283,9 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 			p.bodyLine+s.line-1, s.what, allowSecret)
 	}
 }
+
+// q quotes a value in a message as a TOML basic string (SPEC §7).
+func q(s string) string { return entry.Quote(s) }
 
 func isInvalid(f entry.Fields, name string) bool {
 	_, bad := f[name].(entry.Invalid)
