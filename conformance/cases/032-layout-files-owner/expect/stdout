@@ -1,0 +1,3 @@
+files/2026-01-10-nobody: E-FILES-OWNER no entry has the id "2026-01-10-nobody"; attachments go in files/<id>/
+files/loose.txt: E-FILES-OWNER attachments go in a directory named after their entry, files/<id>/
+check: 2 errors, 0 warnings

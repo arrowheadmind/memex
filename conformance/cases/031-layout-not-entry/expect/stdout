@@ -1,0 +1,7 @@
+decisions: E-NOT-ENTRY must be the directory of decision entries
+notes.txt: E-NOT-ENTRY unknown top-level item; it is not part of the store layout
+rules/.hidden: E-NOT-ENTRY type directories hold only .md entries; move attachments to files/<id>/
+rules/notes.txt: E-NOT-ENTRY type directories hold only .md entries; move attachments to files/<id>/
+rules/sub: E-NOT-ENTRY type directories are flat; move attachments to files/<id>/
+scratch: E-NOT-ENTRY unknown top-level item; it is not part of the store layout
+check: 6 errors, 0 warnings

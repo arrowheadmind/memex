@@ -1,0 +1,1 @@
+memex: store format 0 is older than this memex reads (1); run the migration that ships with the memex version that introduced format 1

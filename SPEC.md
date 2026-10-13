@@ -33,7 +33,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | Section | Status |
 |---|---|
 | 3 Configuration | Implemented |
-| 4 Store layout | Planned |
+| 4 Store layout | Implemented |
 | 5 Entries | Planned |
 | 6 Links | Planned |
 | 7 Validation | Planned |

@@ -1,0 +1,3 @@
+memex.toml: E-MANIFEST format must be an integer
+memex.toml: E-MANIFEST name must be a string
+check: 2 errors, 0 warnings
