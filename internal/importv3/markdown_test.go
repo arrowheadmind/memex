@@ -88,7 +88,7 @@ func TestHeadingMarker(t *testing.T) {
 		{"Retired-service facts outlive the service, and `constraints.md` misleads — ✓ DONE 2026-09-14 (`brain@45d690b`); 0 `SUPERSEDED` markers remain",
 			"done", "Retired-service facts outlive the service, and `constraints.md` misleads — 2026-09-14 (`brain@45d690b`); 0 `SUPERSEDED` markers remain", "✓ DONE"},
 		{"✓ RESOLVED 2026-09-23 — (was BLOCKED) the two NAS boxes get a certificate", "done", "2026-09-23 — (was BLOCKED) the two NAS boxes get a certificate", "✓ RESOLVED"},
-		{"nas-a strip-down: repo and docs done, host deletion BLOCKED and deliberately held", "", "nas-a strip-down: repo and docs done, host deletion BLOCKED and deliberately held", ""},
+		{"beta strip-down: repo and docs done, host deletion BLOCKED and deliberately held", "", "beta strip-down: repo and docs done, host deletion BLOCKED and deliberately held", ""},
 		{"Old plan for the mesh MOOT", "dropped", "Old plan for the mesh", "MOOT"},
 		{"2026-10-07 — RETIRED the queue that waits", "dropped", "2026-10-07 — the queue that waits", "RETIRED"},
 		{"⏸ RESUME HERE — state", "blocked", "RESUME HERE — state", "⏸"},
