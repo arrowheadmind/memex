@@ -23,7 +23,7 @@ names. A FAIL line stops the cutover.
 - [ ] memex is installed from this repository's flake and is the only `memex` on `PATH`.
 
   ```sh
-  nix build github:arrowheadmind/memex   # or: nix build .#memex in a checkout
+  nix profile install .#memex            # in a checkout of the tool repository
   memex version
   memex doctor | grep -E '^(PASS|WARN|FAIL) (git|path) '
   ```
@@ -176,17 +176,17 @@ file or `MEMEX_STORE`, never from the directory the session starts in.
   memex doctor | sed -n 's/^LEAK //p'
   ```
 
-- [ ] For each path: the first import may already have brought it in with `--leak` (its alias
-  is the path written with `~/`). If `memex show "<path with ~/>"` prints an entry, the file
-  is already in the store. Otherwise capture it:
+- [ ] Capture each one. A file the first import already brought in with `--leak` is a no-op
+  (`exists <path>`, `nothing to commit`), so every `LEAK` line gets the same command:
 
   ```sh
-  memex capture --from <path>
+  memex doctor | sed -n 's/^LEAK //p' | while read -r p; do memex capture --from "$p"; done
   ```
 
-  Review the entry (`memex show <id>`; fix the title or summary with `memex set`), then delete
-  the file. A `MEMORY.md` that only indexes the other files carries no knowledge of its own:
-  delete it once its entries are in.
+  Review each new entry (`memex show <id>`; fix the title or summary with `memex set`), then
+  delete the files: every capture printed `remove <path> after review`. A `MEMORY.md` that
+  only indexes the other files becomes a short entry of its own; retire it with
+  `memex set <id> status=superseded superseded_by=<id of one of the captured files>` or keep it.
   Check: `memex doctor` shows `PASS leaks`.
   Back: the files are only deleted after their content is committed; `git -C $STORE revert`
   undoes a capture.
@@ -263,6 +263,8 @@ The tool repository is mirrored to GitHub; the store is never mirrored anywhere.
   same hash as `git -C <tool checkout> rev-parse main`; the store's repository has no push
   mirror (Settings → Repository → Mirror Settings is empty) and stays private.
   Back: delete the push mirror in Gitea; delete or make private the GitHub repository.
+  After: other machines can install straight from GitHub with
+  `nix profile install github:arrowheadmind/memex` (or the flake as a configuration input).
 
 ## After the cutover
 
