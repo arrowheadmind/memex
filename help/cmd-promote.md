@@ -40,14 +40,17 @@ changed. The source may be given as an id, a path or an alias.
 
 ## Output
 
-`created <path>`, then the outcome line.
+`created <path>`, then the outcome line. As in `capture`, a repeat whose new entry would have
+the same id and an identical body prints `exists <path>` and `nothing to commit` (exit 0); the
+same id with a different body is refused (exit 1) with `memex: exists <path>`, its title and
+summary, and the three correct moves.
 
 ## Exit codes
 
 | code | when |
 |---|---|
 | 0 | Created |
-| 1 | Unknown source; the source has uncommitted edits; the new entry refused as in `new` |
+| 1 | Unknown source; the source has uncommitted edits; the new entry refused as in `new`, or its id taken by a different body |
 | 2 | Usage error |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |

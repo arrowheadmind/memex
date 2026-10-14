@@ -28,7 +28,7 @@ commit message lists the assignments with resolved ids.
 |---|---|
 | 0 | Committed, or nothing to do |
 | 1 | Unknown ID; the entry has uncommitted edits (`run memex save first`); the result would not validate; a field that cannot be set |
-| 2 | Usage error (a malformed assignment) |
+| 2 | Usage error: a malformed assignment or an unknown field |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |
 | 6 | Committed, rebase conflict |

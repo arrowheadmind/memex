@@ -29,7 +29,8 @@ mapping and the report.
 
 `imported <N> entries from <k> sources into <DIR>`, indented count lines per type and per
 report list, and last `report: <DIR>/import-report.json`. Problems go to standard error as
-`memex: <problem>` after the summary.
+`memex: <problem>` after the summary, then a final `memex: import has <N> problems; see
+<DIR>/import-report.json`, and the exit code is 1.
 
 ## Exit codes
 
@@ -37,7 +38,7 @@ report list, and last `report: <DIR>/import-report.json`. Problems go to standar
 |---|---|
 | 0 | Imported |
 | 1 | `DIR` exists; a SRC is not a repository, is dirty without `@REV`, or REV is unknown; the accounting does not balance |
-| 2 | Unknown FORMAT, missing SRC or `--out` |
+| 2 | A first argument other than `brain-v3`, a missing SRC or a missing `--out` |
 
 ## Examples
 

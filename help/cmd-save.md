@@ -44,12 +44,12 @@ or `committed <sha7>, NOT pushed: <reason>`.
 ## Examples
 
 ```example
-$ memex save
-nothing to commit
+$ memex save -m "note the short key id" runbooks/2026-01-04-rotate-the-backup-key-on-alpha.md
+pushed <SHA7>
 ```
 
 ```example
-$ memex save -m "note the short key id" runbooks/2026-01-04-rotate-the-backup-key-on-alpha.md
+$ memex save
 nothing to commit
 ```
 

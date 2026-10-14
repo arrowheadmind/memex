@@ -1601,9 +1601,10 @@ same revisions are byte-identical whatever the directories.
 then indented lines with the entry counts per type directory, the attachment, not-knowledge
 and leak counts, the INDEX counts, the link and duplicate counts, the warning counts per code,
 and last `report: <DIR>/import-report.json`. Exit 0. With problems, every problem is printed
-on standard error as `memex: <problem>` after the summary, and the exit code is 1; the output
-is written anyway so that the report can be read. An existing `DIR` is exit 1; a FORMAT other
-than `brain-v3`, a missing SRC or a missing `--out` is a usage error (exit 2); a SRC that is
+on standard error as `memex: <problem>` after the summary, followed by a last line
+`memex: import has <N> problems; see <DIR>/import-report.json`, and the exit code is 1; the
+output is written anyway so that the report can be read. An existing `DIR` is exit 1; a first
+argument other than the literal `brain-v3`, a missing SRC or a missing `--out` is a usage error (exit 2); a SRC that is
 not a git repository, a dirty SRC without `@REV`, or an unknown REV is exit 1.
 
 **Never automatic:** deduplication, rewording, or judging whether a rule is still true. Those
@@ -1777,8 +1778,11 @@ omitted.
    then a line `exit N` when the exit code is not 0. The examples of one page run in order
    against one store seeded from `conformance/help-fixture/store/`, with
    `conformance/help-fixture/home/` copied into the temporary home and the working directory
-   set to it, so a mutating example changes what later examples see. The §15 placeholders
-   apply.
+   set to it, so a mutating example changes what later examples see. When
+   `conformance/help-fixture/edits/cmd-<command>/` exists, its files are copied over the
+   store's working tree, without committing, before that page's examples run, so that an
+   example can show a direct edit (`save`) or a non-canonical file (`fmt --check`). The §15
+   placeholders apply.
 8. **Mistakes to avoid:** the misuse the command refuses, and why. Example for `capture`:
    titles starting with `-`, empty bodies, and writing to a tool's memory instead.
 9. **See also:** related commands and topics.

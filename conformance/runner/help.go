@@ -355,6 +355,12 @@ func runExamples(memex, git, version, fixtureDir, page string, examples []exampl
 			return nil, err
 		}
 	}
+	// A page's direct edits are copied over the working tree, uncommitted (§16.5).
+	if edits := filepath.Join(fixtureDir, "edits", page); exists(edits) {
+		if err := copyTree(edits, s.store); err != nil {
+			return nil, err
+		}
+	}
 	subst := map[string]string{"STORE": s.store, "HOME": s.home, "VERSION": version}
 	for _, ex := range examples {
 		words, err := splitShell(ex.command)

@@ -37,8 +37,10 @@ announced.
 `not synced (last fetch <time>)` with `--no-sync`), a blank line, `## Always` with one line per
 rule (`- <path>: <title> — <summary>`), then with a query a blank line, `## Results` and the
 search output, including its `weak results: …` line when the top hit matched fewer than half
-the query items: treat the results as unrelated and search again. When results were dropped
-for the budget, the last line is
+the query items: treat the results as unrelated and search again. When the sync line and the
+Always rules use more than half of `--max-chars`, a line
+`warning: always rules use <n> of <N> characters; review them` follows. When results were
+dropped for the budget, the last line is
 `output budget reached: <k> results not shown (raise --max-chars or run memex search)`.
 
 ## Exit codes

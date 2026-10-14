@@ -1,8 +1,9 @@
 # memex help search
 
-Search is ranked full-text search over every entry. It never filters to nothing: a query
-that matches little still returns what it matched, says what it hid, and ends in a
-`No entries matched any term of: …` line rather than an empty success.
+Search is ranked full-text search over every entry. A query that matches little still returns
+what it matched and says what it hid. When no entry matches any query item at all, the whole
+output is `No entries matched any term of: <query>` and the exit code is 3, never an empty
+success.
 
 ## Query syntax
 

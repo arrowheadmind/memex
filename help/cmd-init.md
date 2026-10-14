@@ -13,8 +13,8 @@ memex init --pointers DIR [--force]
 
 The store form creates `PATH` if needed, runs `git init` if it is not a repository, and writes
 `memex.toml`, `AGENT.md`, the seven type directories, `files/`, `.gitignore` and the pre-commit
-hook, then sets `core.hooksPath`. Existing files are never overwritten; running it again is a
-no-op. It does not commit: run `memex save -m "init store"` next, because a store with no
+hook, then sets `core.hooksPath`. Existing nonempty files are never overwritten; running it again
+is a no-op. It does not commit: run `memex save -m "init store"` next, because a store with no
 commits refuses every other write. Add an upstream with `git remote add origin …` and
 `git push -u origin main` so that writes are pushed.
 
@@ -42,7 +42,7 @@ with other content is reported on standard error and left alone.
 | code | when |
 |---|---|
 | 0 | Done |
-| 1 | A pointer file has other content (without `--force`), or DIR is not a directory |
+| 1 | PATH exists and is not a directory; a pointer file has other content (without `--force`); DIR is not a directory |
 | 2 | Usage error, or no store configured for `--pointers` |
 
 ## Examples

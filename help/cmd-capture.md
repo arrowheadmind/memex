@@ -43,7 +43,7 @@ original is never deleted; `remove PATH after review` reminds you to.
 | `--repo` | R | the current repository | Repository the entry concerns; repeatable |
 | `--no-repo` | | | Do not attribute the entry to the current repository |
 | `--host` | H | | Machine the entry concerns; repeatable |
-| `--always` | | | Not allowed on journal entries |
+| `--always` | | | Rule printed by every preflight (rules only) |
 | `--kind` | K | | Not allowed on journal entries |
 | `--parent` | ID | | Not allowed on journal entries |
 | `--source` | ID | | Entry this one was derived from; repeatable |
@@ -54,7 +54,8 @@ original is never deleted; `remove PATH after review` reminds you to.
 ## Output
 
 `created <path>`, then the outcome line (`pushed <sha7>`, …). A repeat with the same body
-prints `exists <path>` and `nothing to commit`.
+prints `exists <path>` and `nothing to commit`. With `--from`, `remove <PATH> after review`
+follows the `created` or `exists` line.
 
 ## Exit codes
 

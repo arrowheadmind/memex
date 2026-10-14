@@ -42,11 +42,13 @@ non-canonical paths in path order and no outcome line.
 
 ```example
 $ memex fmt --check
+reference/2026-01-13-nas-backup-share.md
+exit 1
 ```
 
 ```example
 $ memex fmt
-nothing to commit
+pushed <SHA7>
 ```
 
 ## Mistakes to avoid
