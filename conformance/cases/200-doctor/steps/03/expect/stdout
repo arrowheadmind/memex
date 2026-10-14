@@ -1,0 +1,12 @@
+PASS git version 2.30 or later
+PASS config config file parses
+PASS store <STORE>, name "fixture"
+PASS format format 1
+PASS upstream main tracks origin/main
+PASS fetch-age last fetch <TIME>
+WARN clean 1 uncommitted change; run memex save; 1 unpushed commit; run memex sync
+PASS hooks core.hooksPath is .githooks and the pre-commit hook exists
+FAIL check 1 errors, 0 warnings; run memex check
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist

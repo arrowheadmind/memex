@@ -1,0 +1,6 @@
+PASS git version 2.30 or later
+PASS config no config file
+FAIL store store <HOME>/nope: no such file or directory
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist

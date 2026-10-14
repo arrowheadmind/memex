@@ -1,0 +1,8 @@
+clone
+-q
+<STORE>
+<HOME>/mystore
+
+init
+-q
+<HOME>/proj

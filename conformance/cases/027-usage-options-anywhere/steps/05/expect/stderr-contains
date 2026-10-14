@@ -1,3 +1,3 @@
 memex: option --strict takes no value
-memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]
 Run: memex help check

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/gitx"
+	"github.com/arrowheadmind/memex/internal/neutral"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
 )
@@ -61,20 +61,10 @@ func (e *Env) pointerStore(cfg *config.Config, root string) string {
 	return root
 }
 
-// pointerPattern is the pointer line of SPEC §12 rule 2, with the store path as its group.
-var pointerPattern = regexp.MustCompile(`^Read (.+)/AGENT\.md before starting work, and follow it\.\n$`)
-
 // samePointer reports whether content is the pointer line naming root, comparing the paths
 // after the §3.1 expansion of both, as check --workspace does (SPEC §11.1, §12).
 func (e *Env) samePointer(content, root string) bool {
-	m := pointerPattern.FindStringSubmatch(content)
-	if m == nil {
-		return false
-	}
-	home := e.Getenv("HOME")
-	got, err1 := config.Expand(m[1], home)
-	want, err2 := config.Expand(root, home)
-	return err1 == nil && err2 == nil && got == want
+	return neutral.IsPointer(content, root, e.Getenv("HOME"))
 }
 
 func (e *Env) initPointers(o InitOptions) int {
@@ -85,13 +75,22 @@ func (e *Env) initPointers(o InitOptions) int {
 	if info, err := os.Stat(o.Pointers); err != nil || !info.IsDir() {
 		return e.fail(spec.ExitFailure, "%s is not a directory", o.Pointers)
 	}
-	text := []byte(fmt.Sprintf("Read %s/AGENT.md before starting work, and follow it.\n", e.pointerStore(cfg, root)))
+	text := []byte(neutral.PointerText(e.pointerStore(cfg, root)))
 	code := spec.ExitOK
 	for _, name := range PointerFiles {
 		p := filepath.Join(o.Pointers, name)
 		old, err := os.ReadFile(p)
+		// A symbolic link is never the pointer file, and writing through it would change its
+		// target, so it is replaced by a file of its own.
+		link := false
+		if info, lerr := os.Lstat(p); lerr == nil && info.Mode()&os.ModeSymlink != 0 {
+			link = true
+			if err != nil {
+				old, err = []byte{}, nil
+			}
+		}
 		switch {
-		case err == nil && (bytes.Equal(old, text) || e.samePointer(string(old), root)):
+		case err == nil && !link && (bytes.Equal(old, text) || e.samePointer(string(old), root)):
 			fmt.Fprintf(e.Stdout, "unchanged %s\n", p)
 			continue
 		case err == nil && !o.Force:
@@ -105,6 +104,11 @@ func (e *Env) initPointers(o InitOptions) int {
 			}
 		case !os.IsNotExist(err):
 			return e.fail(spec.ExitFailure, "%s: %v", p, unwrap(err))
+		}
+		if link {
+			if err := os.Remove(p); err != nil {
+				return e.fail(spec.ExitFailure, "%s: %v", p, unwrap(err))
+			}
 		}
 		if err := os.WriteFile(p, text, 0o644); err != nil {
 			return e.fail(spec.ExitFailure, "%s: %v", p, unwrap(err))

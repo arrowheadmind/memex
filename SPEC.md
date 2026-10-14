@@ -41,11 +41,11 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 9 Writing to the store | Implemented |
 | 10 Command-line conventions | Implemented |
 | 11 Commands | Implemented |
-| 12 Tool neutrality | Planned |
+| 12 Tool neutrality | Implemented |
 | 13 Importing a brain v3 store | Implemented |
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
-| 17 Agent-first requirements | Implemented (the §17.4 leak-scan row waits for §12) |
+| 17 Agent-first requirements | Implemented |
 
 ---
 
@@ -516,7 +516,14 @@ Warnings:
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body | One finding per line: `line <line> looks like a credential (<what>); remove it, or add the line <!-- memex: allow-secret --> if it is not one`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
-`W-LEAK`). It is accepted only once §12 is Implemented (§11.12).
+`W-LEAK`). Their `<path>` is absolute, `<dir>` is the directory that holds the file, and
+`<file>` is the file name relative to it (`.claude/CLAUDE.md` included):
+
+| Code | Condition | Message |
+|---|---|---|
+| `E-POINTER` | A pointer file name under the workspace whose content is not the pointer line naming the store (§12 rule 2) | Content differs, `<file>` is `CLAUDE.md`, `AGENTS.md` or `GEMINI.md`: `is not the pointer to this store; move any knowledge with memex capture --from <path>, then memex init --pointers <dir> --force`; for `CLAUDE.local.md` and `.claude/CLAUDE.md` the part after `then ` is `delete the file`. A symbolic link: `is a symbolic link, not the pointer file; delete it`, followed by `, then: memex init --pointers <dir>` for the three files `init` writes. Anything else that is not a regular file: `is not a regular file; delete it` |
+| `W-NO-POINTER` | A git top-level directory under the workspace with no `CLAUDE.md` and no `AGENTS.md` | `repository has no CLAUDE.md or AGENTS.md; run memex init --pointers <dir>` (the finding's path is `<dir>`) |
+| `W-LEAK` | A file found by the leak scan (§12 rule 3) | `knowledge in a coding tool's own memory; move it into the store: memex capture --from <path>, then delete the file` |
 
 ---
 
@@ -1197,12 +1204,11 @@ Rewrites entries into canonical form (§5.1) without changing any field value or
 ### 11.12 `check`
 
 ```
-memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]
 ```
 
-§7. `--workspace` joins the synopsis when §12 is Implemented; until then it is an unknown
-option, because §16.9 forbids accepting an undocumented option or documenting an
-unimplemented one. With `--json`, the output is one object: `{"findings":[{"path":"…","code":"…",
+§7. `--workspace` adds the §12 pointer and leak findings; it combines with every other option,
+`--staged` included (the workspace is scanned as it is on disk either way). With `--json`, the output is one object: `{"findings":[{"path":"…","code":"…",
 "severity":"error","message":"…"}],"errors":N,"warnings":M,"truncated":K}` in that key order,
 where `truncated` is the number of findings not listed because of `--limit`.
 
@@ -1212,26 +1218,31 @@ where `truncated` is the number of findings not listed because of `--limit`.
 memex doctor [--json]
 ```
 
-Read-only. Prints one line per check, `PASS|WARN|FAIL <id> <message>`, in this order. With
-`--json`: `{"checks":[{"id":"git","result":"PASS","message":"…","details":[]}],"failed":N}`,
+Read-only. It needs no store (§3.1): a store that does not resolve is a failed check, not an
+exit 2. Prints one line per check, `PASS|WARN|FAIL <id> <message>`, in the order of the table.
+With `--json`: `{"checks":[{"id":"git","result":"PASS","message":"…","details":[]}],"failed":N}`,
 where `details` holds the `LEAK <path>` lines of the `leaks` check and is otherwise empty.
 
-| Id | Check |
-|---|---|
-| `git` | `git` is runnable; version ≥ 2.30 |
-| `config` | The config file parses (or is absent) |
-| `store` | The store resolves and `memex.toml` is valid (FAIL if not; later store checks are skipped) |
-| `format` | The store format is supported |
-| `upstream` | The current branch has an upstream (WARN if not) |
-| `fetch-age` | Age of `FETCH_HEAD`'s mtime in the store's git directory: WARN over 8 h, or if it doesn't exist. A fleet check can watch this through `--json` |
-| `clean` | WARN if the store has uncommitted changes, unpushed commits, or a rebase in progress |
-| `hooks` | `core.hooksPath` is `.githooks` and the pre-commit hook exists |
-| `path` | Every `memex` executable on `PATH` resolves to the same file (WARN when shadowed) |
-| `check` | Summary of `memex check` (FAIL if it has errors) |
-| `leaks` | §12 leak scan. WARN with one `LEAK <path>` line per finding, printed after this line |
-| `tool-memory` | §12 rule 5 |
+| Id | Check | Result and message |
+|---|---|---|
+| `git` | `git` is runnable; version ≥ 2.30 | PASS `version 2.30 or later`; FAIL `git is not runnable: <reason>`, `git <x>.<y> is older than 2.30`, or `cannot read the git version from "<output>"` |
+| `config` | The config file parses (or is absent), and `MEMEX_TODAY`, when set, is a date | PASS `config file parses` or `no config file`; FAIL with the §3 error message. With the config file failed, the store is resolved from `--store` and `MEMEX_STORE` only; with `MEMEX_TODAY` failed, `check` uses the local date |
+| `store` | The store resolves (§3.1) and `memex.toml` is valid | PASS `<root>`, followed by `, name "<name>"` when the manifest has a name; FAIL with the §3.1 message or the first `E-MANIFEST` finding as `memex.toml: E-MANIFEST <message>`. When it FAILs, `format` and every check up to `check` are omitted |
+| `format` | The store format is supported (§4) | PASS `format 1`; FAIL with the §4 refusal message. When it FAILs, every check up to `check` is omitted |
+| `upstream` | The current branch has an upstream | PASS `<branch> tracks <upstream>`; WARN `branch <branch> has no upstream, so nothing is pushed; run git -C <root> push -u origin <branch>`, or `HEAD is not on a branch; run git -C <root> switch main` |
+| `fetch-age` | Age of `FETCH_HEAD`'s mtime in the store's git directory. A fleet check can watch this through `--json` | PASS `last fetch <time>`; WARN `last fetch <time>, more than 8 hours ago; run memex sync`, or `never fetched; run memex sync` when the file does not exist. `<time>` is RFC 3339 UTC to the second |
+| `clean` | The store has no uncommitted changes, no unpushed commits and no rebase in progress | PASS `nothing uncommitted or unpushed`; WARN with one or more of `<n> uncommitted changes; run memex save` (`git status --porcelain --untracked-files=all` lines, `change` when 1), `<n> unpushed commits; run memex sync` (`commit` when 1; only with an upstream), `a rebase is in progress; finish it with git -C <root> rebase --continue, or --abort`, joined by `; ` |
+| `hooks` | `core.hooksPath` is `.githooks` and `.githooks/pre-commit` is an executable file | PASS `core.hooksPath is .githooks and the pre-commit hook exists`; WARN `core.hooksPath is not set, so the pre-commit check does not run; run memex init <root>`, `core.hooksPath is "<value>", not .githooks; run git -C <root> config core.hooksPath .githooks`, or `.githooks/pre-commit is missing or not executable; run memex init <root>` |
+| `check` | Summary of `memex check` | PASS `<n> errors, <m> warnings` (with `n` = 0); FAIL `<n> errors, <m> warnings; run memex check` |
+| `path` | Every `memex` executable on `PATH` resolves to the same file, symbolic links resolved. Relative and empty `PATH` elements are skipped | PASS `1 memex on PATH`, or `<n> memex on PATH, all the same file`; WARN `memex on PATH resolves to different files: <paths>; the first one runs` (the paths as found on `PATH`, separated by `, `), or `no memex on PATH; hooks run memex by name` |
+| `leaks` | §12 leak scan, over the home locations and, when `workspace` is configured, the workspace | PASS `no files in coding tools' own memory`; WARN `<n> files in coding tools' own memory; move each into the store with memex capture --from PATH, then delete it` (`file` when 1), followed by one `LEAK <path>` line per finding, absolute paths in code-point order. A configured workspace that does not resolve (§12) appends `; the workspace was not scanned: <message>` and makes the check WARN even with no finding |
+| `tool-memory` | §12 rule 5 | PASS `~/.claude does not exist`, `HOME is not set; no ~/.claude to check`, `Claude Code auto memory is disabled by CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, or `Claude Code auto memory is disabled in <file>` (the first of the rule 5 files that disables it, `~/.claude/settings.json` written so); WARN `Claude Code auto memory is not disabled; set "autoMemoryEnabled": false in ~/.claude/settings.json` |
 
-Exit 1 if any check FAILs, else 0.
+The `store`-dependent checks (`format` to `check`) run only when `store` PASSes, and `upstream`
+to `hooks` only when `git` PASSes too. `path`, `leaks` and `tool-memory` always run. Each git
+command `doctor` runs is bounded by 10 seconds; none of them touches the network.
+
+Exit 1 if any check FAILs, else 0. A usage error is exit 2.
 
 ### 11.14 `import`
 
@@ -1275,9 +1286,26 @@ the tool changes.
    `CLAUDE.local.md`, `.claude/CLAUDE.md`, `AGENTS.md` or `GEMINI.md` under the workspace whose
    content differs, and `W-NO-POINTER <dir>` for every git top-level directory under the
    workspace that has no `CLAUDE.md` and no `AGENTS.md`.
-   - The scan reaches depth 4.
-   - It does not enter `.git`, `node_modules`, `vendor`, `.worktrees` or the store itself.
-   - It does not follow symlinks.
+   - The scan reaches depth 4: it visits the workspace itself (depth 0) and every directory
+     below it down to depth 4 (`<workspace>/a/b/c/d`), and looks up the names above, and those
+     of rule 3, relative to each directory it visits.
+   - It does not enter `.git`, `node_modules`, `vendor`, `.worktrees` or the store itself (the
+     same directory, compared by device and inode).
+   - It does not follow symlinks: a symbolic link to a directory is not visited, and a pointer
+     file name that is a symbolic link is `E-POINTER`, because its content is a link and
+     writing a pointer through it would change the link's target.
+   - A git top-level directory is a visited directory that contains a `.git` entry (a
+     directory, or the file of a worktree or submodule).
+   - Each file is checked once, under the name of the first directory that reaches it, in
+     path order: `a/.claude/CLAUDE.md` is `a`'s `.claude/CLAUDE.md`, not the `CLAUDE.md` of
+     the visited directory `a/.claude`.
+   - The workspace is the `workspace` key (§3.2), expanded and checked like the store path
+     (§3.1): absent, relative, or not a directory is exit 2 for `check --workspace`, with
+     `memex: no workspace configured; set workspace = "..." in <config path>`,
+     `memex: workspace path "<path>" is relative; give an absolute path`, or
+     `memex: workspace <path> is not a directory` (or the reason it cannot be read).
+   - Findings name absolute paths, sort with the store's findings by path (§7), and count in
+     the summary like any other finding.
 3. **Tool stores are scanned and never read as a source.** The leak scan reports, as
    `W-LEAK <path>`, every regular non-empty file at these locations:
    - `~/.claude/projects/*/memory/**`
@@ -1287,6 +1315,13 @@ the tool changes.
    - under the workspace (same depth and exclusions as rule 2): `.cursorrules`,
      `.cursor/rules/**`, `.claude/rules/**`, `.github/copilot-instructions.md`,
      `.windsurfrules`
+
+   `**` is every file below the directory, at any depth, without following symbolic links or
+   entering the names rule 2 excludes; a symbolic link is not a regular file. The three
+   single files under the home directory are each tool's global instructions file: one whose
+   content is the pointer line naming the store (compared as in rule 2) is that tool's pointer,
+   not a leak. Paths are absolute, each listed once, in code-point order. The home locations
+   are skipped when `HOME` is unset, and the workspace ones when no workspace is configured.
 
    `doctor` prints the same findings as `LEAK <path>` lines (§11.13); the two spellings name
    the same scan.
@@ -1304,7 +1339,12 @@ the tool changes.
      `/etc/claude-code/managed-settings.json`, or in any `*.json` under
      `/etc/claude-code/managed-settings.d/`.
 
-   If `~/.claude` doesn't exist, the check PASSes.
+   If `~/.claude` doesn't exist, the check PASSes. "Appears" means the file holds one JSON
+   object whose top-level member `autoMemoryEnabled` is `false`; a file that does not parse
+   counts as not disabling it. Settings files are read through symbolic links (a system
+   configuration manager typically installs them as links). The sources are tried in the
+   order listed, `managed-settings.d/` in code-point order of the file names, and the first
+   that disables auto memory names the PASS message (§11.13).
 
 ---
 
@@ -1745,7 +1785,7 @@ from the behavior it describes.
   help identical across implementations in different languages.
 - **Only implemented behavior is documented.** A command or option enters help in the commit
   that implements it (§0), and leaves `internal/spec`'s table until then, so that `help --json`,
-  `help topics` and the pages always agree (`doctor` and `check --workspace` arrive with §12).
+  `help topics` and the pages always agree.
 
 ### 16.4 Overview
 
@@ -1947,7 +1987,9 @@ Language models predictably make certain mistakes. memex catches each one and sa
 | A title starting with `-`, or an option swallowed as a value | Refused (§10) |
 | An empty or heading-only body | Refused, with the content-measure rule and `memex help entries` |
 | Editing a journal body | `check` fails with `E-HASH`, and the message names `set <id> status=superseded` plus `capture` as the correct path |
-| Writing knowledge into a tool's memory | Detected by the leak scan (§12), with `capture --from PATH` as the fix |
+| Writing knowledge into a tool's memory | Detected by the leak scan (§12), with `capture --from PATH` as the fix: `W-LEAK` in `check --workspace`, `LEAK <path>` under `doctor` |
+| Writing knowledge into a repository's pointer file (`CLAUDE.md`, `AGENTS.md`, …) | `check --workspace` reports `E-POINTER`, naming `capture --from <path>` and `init --pointers <dir> --force` (§12 rule 2) |
+| Starting work in a repository that has no pointer file | `check --workspace` reports `W-NO-POINTER` with `init --pointers <dir>` |
 | A search phrased differently from the stored text | OR-combined ranked terms, prefix matching, and `keywords` (§8). The miss is reported, never silent |
 
 ### 17.5 Safe to run unattended

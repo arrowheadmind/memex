@@ -50,6 +50,7 @@ memex save                                              # after editing an entry
 | `save` | Commit direct edits to the store |
 | `sync` | Fetch, fast-forward or rebase, and push the store |
 | `check` | Validate the store |
+| `doctor` | Check the installation, the store and tool neutrality |
 | `import` | Convert brain v3 stores into a new store |
 | `help` | Print help |
 | `version` | Print the version |

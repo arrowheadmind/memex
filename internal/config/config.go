@@ -255,3 +255,27 @@ func Today(env Env, now time.Time) (time.Time, error) {
 	y, m, d := now.Local().Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
 }
+
+// ResolveWorkspace returns the configured workspace (SPEC §3.2, §12), expanded as §3.1
+// expands the store path. No `workspace` key is an *Error naming the config file, and so is
+// a relative path or one that is not a directory.
+func ResolveWorkspace(env Env, c *Config) (string, error) {
+	if c.Workspace == "" {
+		return "", errorf("no workspace configured; set workspace = \"...\" in %s", c.displayPath())
+	}
+	path, err := Expand(c.Workspace, env("HOME"))
+	if err != nil {
+		return "", err
+	}
+	if !filepath.IsAbs(path) {
+		return "", errorf("workspace path %q is relative; give an absolute path", path)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", errorf("workspace %s: %v", path, unwrapPath(err))
+	}
+	if !info.IsDir() {
+		return "", errorf("workspace %s is not a directory", path)
+	}
+	return filepath.Clean(path), nil
+}

@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/arrowheadmind/memex/internal/check"
+	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/jsonx"
+	"github.com/arrowheadmind/memex/internal/neutral"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
 )
@@ -17,7 +19,8 @@ import (
 // CheckOptions are the options of `memex check` (SPEC §11.12).
 type CheckOptions struct {
 	Staged, Strict, ErrorsOnly, JSON bool
-	Limit                            int // 0 means no limit
+	Workspace                        bool // add the §12 pointer and leak findings
+	Limit                            int  // 0 means no limit
 }
 
 // DefaultCheckLimit is the default --limit of check (SPEC §7).
@@ -25,9 +28,17 @@ const DefaultCheckLimit = 200
 
 // Check runs `memex check` (SPEC §7, §11.12).
 func Check(e *Env, o CheckOptions) int {
-	_, today, root, err := e.openStore()
+	cfg, today, root, err := e.openStore()
 	if err != nil {
 		return e.failErr(err)
+	}
+	var scan *neutral.Scan
+	if o.Workspace {
+		ws, err := config.ResolveWorkspace(e.Getenv, cfg)
+		if err != nil {
+			return e.failErr(err)
+		}
+		scan = &neutral.Scan{Home: e.Getenv("HOME"), Workspace: ws, Store: root}
 	}
 	var tree store.Tree = store.WorkTree{Root: root}
 	var staged []string
@@ -52,6 +63,11 @@ func Check(e *Env, o CheckOptions) int {
 	}
 	if err != nil {
 		panic(err)
+	}
+	if scan != nil {
+		findings = append(findings, scan.Pointers()...)
+		findings = append(findings, neutral.LeakFindings(scan.Leaks())...)
+		check.Sort(findings)
 	}
 
 	errs, warns := 0, 0

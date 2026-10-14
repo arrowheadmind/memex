@@ -92,3 +92,17 @@ Open items for later blocks:
 - Future, not scheduled: a language-neutral `help/interface.json` generated from
   `internal/spec` for a second implementation; today `help --json` is that artifact at run time.
 
+- B8 (2026-10-14): `doctor` (§11.13) and all of §12 are in; §11 and §12 are Implemented.
+  Decisions written into SPEC.md, for review: every doctor message and result (PASS/WARN/FAIL)
+  is now in the §11.13 table, `hooks` is WARN, and PASS messages carry no host-specific text
+  except paths that §15 placeholders cover (the git version and the config path are left out
+  so that cases and help examples stay exact); the store-dependent checks are omitted, not
+  printed, when `store` or `format` fails, and the git ones also when `git` fails. §12: depth
+  counts visited directories (workspace = 0, down to 4); a pointer-file name that is a symlink
+  is `E-POINTER` (and `init --pointers --force` now replaces a symlink instead of writing
+  through it); `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` and `~/.gemini/GEMINI.md` holding
+  exactly the pointer are that tool's global pointer, not a leak; finding paths are absolute;
+  `check --workspace` combines with `--staged`; the E-POINTER, W-NO-POINTER and W-LEAK
+  message templates are in §7. Settings files of rule 5 are read through symlinks (NixOS
+  installs `/etc/claude-code/managed-settings.d/*.json` as links). The tool-memory WARN has a
+  unit test rather than a case, because the runner cannot hide the host's `/etc/claude-code`.

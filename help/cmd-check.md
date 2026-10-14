@@ -5,7 +5,7 @@ Validate the store.
 ## Usage
 
 ```
-memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]
 ```
 
 ## Description
@@ -14,13 +14,16 @@ Checks every entry's name, encoding, frontmatter, fields, status, links, aliases
 the store layout, and prints one line per finding. Errors are what must be fixed; warnings are
 hygiene (no summary, no terms, stale reference, old raw journal entry, a line that looks like
 a credential). The pre-commit hook runs `check --staged` on what is about to be committed, so
-an error never lands. Read-only; `check` takes no lock.
+an error never lands. `--workspace` also scans the configured `workspace` (§12): pointer files
+that are not the pointer (`E-POINTER`), repositories without one (`W-NO-POINTER`) and files in
+coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; `check` takes no lock.
 
 ## Options
 
 | option | value | default | meaning |
 |---|---|---|---|
 | `--staged` | | | Validate only entries added or modified in the git index, plus their link targets |
+| `--workspace` | | | Also check pointer files and scan for leaks in tool memory (`workspace` key) |
 | `--strict` | | | Count warnings as errors for the exit code |
 | `--errors-only` | | | Print only error lines (the summary still counts warnings) |
 | `--limit` | N | 200 | Maximum number of finding lines; 0 means no limit |
@@ -37,7 +40,7 @@ an error never lands. Read-only; `check` takes no lock.
 |---|---|
 | 0 | No errors (no warnings either, with `--strict`) |
 | 1 | Errors found |
-| 2 | Usage error |
+| 2 | Usage error; with `--workspace`, no usable `workspace` in the config file |
 
 ## Examples
 
@@ -60,4 +63,4 @@ check: 0 errors, 1 warnings
 
 ## See also
 
-`memex fmt`, `memex save`, `memex help check-codes`.
+`memex fmt`, `memex save`, `memex doctor`, `memex help check-codes`, `memex help neutrality`.

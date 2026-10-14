@@ -1,0 +1,5 @@
+check
+--workspace
+--errors-only
+--limit
+2

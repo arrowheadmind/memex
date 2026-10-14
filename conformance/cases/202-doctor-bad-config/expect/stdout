@@ -1,0 +1,12 @@
+PASS git version 2.30 or later
+FAIL config config file <HOME>/config.toml: unknown key "stor" (did you mean "store"?)
+PASS store <STORE>, name "fixture"
+PASS format format 1
+PASS upstream main tracks origin/main
+PASS fetch-age last fetch <TIME>
+PASS clean nothing uncommitted or unpushed
+PASS hooks core.hooksPath is .githooks and the pre-commit hook exists
+PASS check 0 errors, 0 warnings
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist

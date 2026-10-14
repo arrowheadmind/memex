@@ -26,6 +26,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id | Remove the duplicate alias |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` is not an id, or a loose file under `files/` | Move it under `files/<id>/` |
 | `E-MANIFEST` | `memex.toml` invalid | Fix `format` (integer) and `name` (string); no other keys |
+| `E-POINTER` | (`--workspace`) A `CLAUDE.md`, `CLAUDE.local.md`, `.claude/CLAUDE.md`, `AGENTS.md` or `GEMINI.md` under the workspace that is not the pointer line, or is a symbolic link | `memex capture --from <path>` for any knowledge in it, then `memex init --pointers <dir> --force` (or delete the file) |
 
 ## Warnings
 
@@ -39,12 +40,16 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `W-NO-TERMS` | Neither `tags` nor `keywords` | `memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | No `summary` | `memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Body content measure below 80 | Edit the file, then `memex save` |
+| `W-NO-POINTER` | (`--workspace`) A git repository under the workspace with no `CLAUDE.md` and no `AGENTS.md` | `memex init --pointers <dir>` |
+| `W-LEAK` | (`--workspace`) A file in a coding tool's own memory (§12 leak scan) | `memex capture --from <path>`, review, then delete the file |
 | `W-SECRET` | A line looks like a credential (private-key header, `password=`/`token=`/`secret=` with a real value, or a long base64 run after a credential word) | Remove it, or add the line `<!-- memex: allow-secret -->` to the body if it is not one |
 
 ## Options
 
 - `--staged` validates the entries added or modified in the git index, plus their link
   targets; the pre-commit hook runs it.
+- `--workspace` adds `E-POINTER`, `W-NO-POINTER` and `W-LEAK` for the configured `workspace`
+  and the home locations of the leak scan; their paths are absolute (`memex help neutrality`).
 - `--errors-only` hides warning lines; `--limit N` (default 200, 0 for no limit) caps the
   finding lines and prints `<CODE>: K more (raise --limit)` for the rest; `--json` prints one
   object with `findings`, `errors`, `warnings` and `truncated`.

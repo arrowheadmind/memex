@@ -342,9 +342,10 @@ var Commands = []Command{
 	{
 		Name:    "check",
 		Summary: "Validate the store",
-		Usage:   "memex check [--staged] [--strict] [--errors-only] [--limit N] [--json]",
+		Usage:   "memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]",
 		Options: []Option{
 			{Name: "--staged", Summary: "Validate only entries added or modified in the git index"},
+			{Name: "--workspace", Summary: "Also check pointer files and scan for leaks in tool memory (§12)"},
 			{Name: "--strict", Summary: "Count warnings as errors"},
 			{Name: "--errors-only", Summary: "Print only errors"},
 			{Name: "--limit", Value: "N", Default: "200", Summary: "Maximum number of finding lines; 0 means no limit"},
@@ -352,7 +353,13 @@ var Commands = []Command{
 		},
 		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},
 	},
-	// doctor (§11.13) joins this table with §12 in the block that implements it.
+	{
+		Name:      "doctor",
+		Summary:   "Check the installation, the store and tool neutrality",
+		Usage:     "memex doctor [--json]",
+		Options:   []Option{optJSON},
+		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},
+	},
 	{
 		Name:    "import",
 		Summary: "Convert brain v3 stores into a new store",

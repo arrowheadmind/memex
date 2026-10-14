@@ -158,6 +158,7 @@ var runners = map[string]func(*commands.Env, *args, func(string) *usageError) (i
 	"save":      runSave,
 	"sync":      runSync,
 	"check":     runCheck,
+	"doctor":    runDoctor,
 	"import":    runImport,
 	"search":    runSearch,
 	"preflight": runPreflight,
@@ -187,6 +188,7 @@ func runCheck(env *commands.Env, a *args, cmdErr func(string) *usageError) (int,
 		Strict:     a.has("--strict"),
 		ErrorsOnly: a.has("--errors-only"),
 		JSON:       a.has("--json"),
+		Workspace:  a.has("--workspace"),
 		Limit:      commands.DefaultCheckLimit,
 	}
 	if v, ok := a.value("--limit"); ok {
@@ -197,6 +199,10 @@ func runCheck(env *commands.Env, a *args, cmdErr func(string) *usageError) (int,
 		o.Limit = n
 	}
 	return commands.Check(env, o), nil
+}
+
+func runDoctor(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	return commands.Doctor(env, a.has("--json")), nil
 }
 
 func runImport(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {

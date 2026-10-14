@@ -1,0 +1,3 @@
+<HOME>/.claude/projects/p/memory/m.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/.claude/projects/p/memory/m.md, then delete the file
+<HOME>/proj: W-NO-POINTER repository has no CLAUDE.md or AGENTS.md; run memex init --pointers <HOME>/proj
+check: 0 errors, 2 warnings

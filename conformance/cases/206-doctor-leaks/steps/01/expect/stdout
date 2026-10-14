@@ -1,0 +1,20 @@
+PASS git version 2.30 or later
+PASS config config file parses
+PASS store <HOME>/mystore, name "fixture"
+PASS format format 1
+PASS upstream main tracks origin/main
+WARN fetch-age never fetched; run memex sync
+PASS clean nothing uncommitted or unpushed
+PASS hooks core.hooksPath is .githooks and the pre-commit hook exists
+PASS check 0 errors, 0 warnings
+PASS path 1 memex on PATH
+WARN leaks 8 files in coding tools' own memory; move each into the store with memex capture --from PATH, then delete it
+LEAK <HOME>/.claude/projects/p/memory/note.md
+LEAK <HOME>/.claude/projects/p/memory/sub/deep.md
+LEAK <HOME>/.codex/AGENTS.md
+LEAK <HOME>/.gemini/GEMINI.md
+LEAK <HOME>/ws/a/b/c/d/.windsurfrules
+LEAK <HOME>/ws/proj/.cursor/rules/a.mdc
+LEAK <HOME>/ws/proj/.cursorrules
+LEAK <HOME>/ws/proj/.github/copilot-instructions.md
+PASS tool-memory Claude Code auto memory is disabled in ~/.claude/settings.json

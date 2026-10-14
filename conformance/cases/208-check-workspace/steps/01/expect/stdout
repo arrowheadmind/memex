@@ -1,0 +1,8 @@
+<HOME>/ws/a/b/c/d/CLAUDE.md: E-POINTER is not the pointer to this store; move any knowledge with memex capture --from <HOME>/ws/a/b/c/d/CLAUDE.md, then memex init --pointers <HOME>/ws/a/b/c/d --force
+<HOME>/ws/repo-bad/.claude/CLAUDE.md: E-POINTER is not the pointer to this store; move any knowledge with memex capture --from <HOME>/ws/repo-bad/.claude/CLAUDE.md, then delete the file
+<HOME>/ws/repo-bad/CLAUDE.local.md: E-POINTER is not the pointer to this store; move any knowledge with memex capture --from <HOME>/ws/repo-bad/CLAUDE.local.md, then delete the file
+<HOME>/ws/repo-bad/CLAUDE.md: E-POINTER is not the pointer to this store; move any knowledge with memex capture --from <HOME>/ws/repo-bad/CLAUDE.md, then memex init --pointers <HOME>/ws/repo-bad --force
+<HOME>/ws/repo-bad/GEMINI.md: E-POINTER is a symbolic link, not the pointer file; delete it, then: memex init --pointers <HOME>/ws/repo-bad
+<HOME>/ws/repo-none: W-NO-POINTER repository has no CLAUDE.md or AGENTS.md; run memex init --pointers <HOME>/ws/repo-none
+<HOME>/ws/repo-none/.github/copilot-instructions.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/ws/repo-none/.github/copilot-instructions.md, then delete the file
+check: 5 errors, 2 warnings

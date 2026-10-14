@@ -1,0 +1,12 @@
+PASS git version 2.30 or later
+PASS config config file parses
+PASS store <STORE>, name "store"
+PASS format format 1
+WARN upstream branch main has no upstream, so nothing is pushed; run git -C <STORE> push -u origin main
+WARN fetch-age never fetched; run memex sync
+WARN clean 4 uncommitted changes; run memex save
+PASS hooks core.hooksPath is .githooks and the pre-commit hook exists
+PASS check 0 errors, 0 warnings
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist

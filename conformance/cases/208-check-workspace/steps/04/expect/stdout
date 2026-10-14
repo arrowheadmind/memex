@@ -1,0 +1,4 @@
+<HOME>/ws/a/b/c/d/CLAUDE.md: E-POINTER is not the pointer to this store; move any knowledge with memex capture --from <HOME>/ws/a/b/c/d/CLAUDE.md, then memex init --pointers <HOME>/ws/a/b/c/d --force
+<HOME>/ws/repo-bad/.claude/CLAUDE.md: E-POINTER is not the pointer to this store; move any knowledge with memex capture --from <HOME>/ws/repo-bad/.claude/CLAUDE.md, then delete the file
+E-POINTER: 3 more (raise --limit)
+check: 5 errors, 2 warnings

@@ -1,0 +1,6 @@
+PASS git version 2.30 or later
+PASS config config file parses
+FAIL store memex.toml: E-MANIFEST unknown key "nmae" (did you mean "name"?)
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist

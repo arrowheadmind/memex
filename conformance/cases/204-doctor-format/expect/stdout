@@ -1,0 +1,7 @@
+PASS git version 2.30 or later
+PASS config config file parses
+PASS store <STORE>
+FAIL format store format 2 is newer than this memex reads (1); upgrade memex
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist

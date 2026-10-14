@@ -1,0 +1,9 @@
+<HOME>/.claude/projects/p/memory/note.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/.claude/projects/p/memory/note.md, then delete the file
+<HOME>/.claude/projects/p/memory/sub/deep.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/.claude/projects/p/memory/sub/deep.md, then delete the file
+<HOME>/.codex/AGENTS.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/.codex/AGENTS.md, then delete the file
+<HOME>/.gemini/GEMINI.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/.gemini/GEMINI.md, then delete the file
+<HOME>/ws/a/b/c/d/.windsurfrules: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/ws/a/b/c/d/.windsurfrules, then delete the file
+<HOME>/ws/proj/.cursor/rules/a.mdc: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/ws/proj/.cursor/rules/a.mdc, then delete the file
+<HOME>/ws/proj/.cursorrules: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/ws/proj/.cursorrules, then delete the file
+<HOME>/ws/proj/.github/copilot-instructions.md: W-LEAK knowledge in a coding tool's own memory; move it into the store: memex capture --from <HOME>/ws/proj/.github/copilot-instructions.md, then delete the file
+check: 0 errors, 8 warnings

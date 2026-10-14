@@ -1,0 +1,10 @@
+clone
+-q
+<STORE>
+<HOME>/mystore
+
+-C
+<HOME>/mystore
+config
+core.hooksPath
+.githooks
