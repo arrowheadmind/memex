@@ -15,8 +15,7 @@ Rules of engagement for a language-model agent, as imperatives.
 
 ## Searching
 
-- Words are OR-combined and ranked; a miss prints `No entries matched any term of: …`, never an
-  empty success. Exit 3 means nothing visible matched.
+- Words are OR-combined and ranked. Exit 3 means nothing visible matched; the output says why.
 - A word of 4 or more letters matches prefixes (`deploy` finds `deployments`); a shorter word
   matches whole words only.
 - Quote a phrase so the shell keeps the quotes: `memex search '"dirty tree"'`.
@@ -38,23 +37,24 @@ Rules of engagement for a language-model agent, as imperatives.
   ```
 
 - `--summary` is required and `--body` must hold real content (80 characters of text, not just
-  headings). Put the reader's likely words in `--keyword`, one per option. In the body, link
-  the entries you used as `[[<id>]]` (the id is the filename without `.md`).
-- memex commits and pushes as you: git must know `user.name` and `user.email`
-  (`git config --global`), or the capture is refused and nothing is changed.
+  headings). One entry per lesson; record evidence in the body (commands, commit pins, measured
+  values). Put the reader's likely words in `--keyword`, one per option. Tags are lowercase
+  `a-z`, `0-9` and hyphens (`--tag backup-keys`).
+- memex commits as you: without git `user.name` and `user.email`, a capture is refused.
 - The last line is the outcome: `pushed <sha>`, `committed <sha>, no upstream`,
-  `nothing to commit`, or `committed <sha>, NOT pushed: <reason>`. Trust it, not the exit code
-  alone: 0 is success, 5 means committed but not pushed, 6 a rebase conflict to resolve.
+  `nothing to commit`, or `committed <sha>, NOT pushed: <reason>`. Branch on the exit code:
+  0 success, 1 refused and nothing changed, 2 usage error (run the printed `Run:` line), 4 lock
+  timeout (retry), 5 committed but not pushed, 6 rebase conflict; the last line says why.
 - The same capture twice is a no-op (`exists <path>`, `nothing to commit`); a different body
   under the same title on the same day is refused: read the existing entry or pick a new title.
 
 ## Editing and history
 
-- Edit an entry file directly when needed, then run `memex save`. `memex set <id> field=value`
-  changes frontmatter without an editor.
-- Journal bodies are immutable. To correct one: capture the correction, then
-  `memex set <old-id> status=superseded superseded_by=<new-id>`. Never edit history in place;
-  supersede it.
-- Link other entries as `[[<id>]]`, not as prose paths. `memex check` fails on a broken link.
+- To correct a current entry, edit its file directly, then run `memex save`.
+  `memex set <id> field=value` changes frontmatter without an editor.
+- To replace a rule or decision, supersede it: create the new entry, then
+  `memex set <old> status=superseded superseded_by=<new>`. Do not rewrite it into another one.
+- Journal bodies are immutable: capture the correction, then supersede the old journal likewise.
+- Link entries as `[[<id>]]` (the filename without `.md`), not prose paths; `check` flags breaks.
 - Never write knowledge into a coding tool's own memory or rules files (`~/.claude/…`,
   `.cursorrules`, …). Knowledge lives in the store only.
