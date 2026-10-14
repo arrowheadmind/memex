@@ -61,6 +61,17 @@ Open items for later blocks:
   showed no retrieval loss after batches 1–3; every top-10 item lost was a closed entry graded
   "related". Summaries and keywords for governing rules continue through B8, measured the same
   way. Each batch is recorded as a journal entry in the store.
+- B7 close (2026-10-14): six batches, 284 rules reviewed, 46 closed (37 retired, 9 superseded),
+  5 rules extracted, 8 Always summaries written. Store at the close: 649 active rules, 8 Always,
+  preflight 2,485 characters, 0 check errors. `scripts/replay/rerun-2026-10-14-final.md`: the
+  only grade-2 result lost is the retired brainctl INDEX.md defect for two old-brain queries.
+  Left for later: 121 kept rules still carry `marker-*` tags (strip in bulk when a batch form of
+  `set` exists or history noise is acceptable); 636 active rules have no summary; the Always
+  rules "Sub-task preflight" and "The brain is the memory" name brainctl and `.brain/` and
+  need rewording at cutover; the `roaming` Always line restates the fleet-alerting rule.
+  Lesson for the curators: Sonnet read accurately but proposed retire+extract far too often
+  (18 of 35 rejected in the last batch); every closure needs a manager check against the entry
+  and earlier decisions.
 - B8: `doctor` (§11.13) and all of §12 (`check --workspace`, the leak scan, the tool-memory
   check) moved here from B5, because they need the fleet configuration to test against. §11
   is marked Implemented except 11.13; `doctor` still answers "not implemented yet". §12 stays
