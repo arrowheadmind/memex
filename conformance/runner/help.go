@@ -17,9 +17,11 @@ import (
 )
 
 type ifaceOption struct {
-	Name     string          `json:"name"`
-	Value    *string         `json:"value"`
-	Required json.RawMessage `json:"required"`
+	Name       string          `json:"name"`
+	Value      *string         `json:"value"`
+	Repeatable bool            `json:"repeatable"`
+	Required   json.RawMessage `json:"required"`
+	Default    *string         `json:"default"`
 }
 
 type ifaceCommand struct {
@@ -186,8 +188,13 @@ func runHelpChecks(memex, git, version, pagesDir, fixtureDir string) ([]string, 
 		accepted := map[string]bool{}
 		for _, o := range c.Options {
 			accepted[o.Name] = true
-			if !documented[o.Name] {
+			row, ok := documented[o.Name]
+			if !ok {
 				fail("help/cmd-%s.md: option %s is accepted but not in the Options table", c.Name, o.Name)
+				continue
+			}
+			for _, p := range compareOption(o, row) {
+				fail("help/cmd-%s.md: option %s: %s", c.Name, o.Name, p)
 			}
 		}
 		for name := range documented {
@@ -480,13 +487,57 @@ func fencedBlock(text string) string {
 
 var optionCell = regexp.MustCompile("^\\| *`(-[^`]*)`")
 
-// optionsTable returns the option names in the first column of a Markdown table.
-func optionsTable(text string) map[string]bool {
-	out := map[string]bool{}
+// optionRow is one row of an Options table: option, value, default, meaning (§16.5).
+type optionRow struct{ value, def, meaning string }
+
+// optionsTable returns the rows of an Options table, by option name.
+func optionsTable(text string) map[string]optionRow {
+	out := map[string]optionRow{}
 	for _, line := range strings.Split(text, "\n") {
-		if m := optionCell.FindStringSubmatch(line); m != nil {
-			out[m[1]] = true
+		m := optionCell.FindStringSubmatch(line)
+		if m == nil {
+			continue
 		}
+		cells := strings.Split(strings.Trim(strings.TrimSpace(line), "|"), "|")
+		for len(cells) < 4 {
+			cells = append(cells, "")
+		}
+		clean := func(c string) string { return strings.ReplaceAll(strings.TrimSpace(c), "`", "") }
+		out[m[1]] = optionRow{value: clean(cells[1]), def: clean(cells[2]), meaning: clean(strings.Join(cells[3:], "|"))}
+	}
+	return out
+}
+
+// compareOption checks a table row against help --json (§16.5): the value and default cells
+// match (empty for none), the meaning says "repeatable" exactly when the option is, and it
+// says "(required)" or "(required <condition>)" exactly when the option is required.
+func compareOption(o ifaceOption, row optionRow) []string {
+	var out []string
+	str := func(p *string) string {
+		if p == nil {
+			return ""
+		}
+		return *p
+	}
+	if row.value != str(o.Value) {
+		out = append(out, fmt.Sprintf("value %q, help --json says %q", row.value, str(o.Value)))
+	}
+	if row.def != str(o.Default) {
+		out = append(out, fmt.Sprintf("default %q, help --json says %q", row.def, str(o.Default)))
+	}
+	if strings.Contains(row.meaning, "repeatable") != o.Repeatable {
+		out = append(out, fmt.Sprintf("meaning %q must say \"repeatable\" exactly when help --json does (%v)", row.meaning, o.Repeatable))
+	}
+	want := ""
+	var cond string
+	switch {
+	case string(o.Required) == "true":
+		want = "(required)"
+	case json.Unmarshal(o.Required, &cond) == nil:
+		want = "(required " + cond + ")"
+	}
+	if has := strings.Contains(row.meaning, "(required"); has != (want != "") || (want != "" && !strings.Contains(row.meaning, want)) {
+		out = append(out, fmt.Sprintf("meaning %q must say %q exactly when help --json requires it", row.meaning, want))
 	}
 	return out
 }

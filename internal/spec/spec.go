@@ -6,6 +6,8 @@
 // §16.7 (shape).
 package spec
 
+import "slices"
+
 // StoreFormat is the store format version this implementation reads and writes (SPEC §4).
 const StoreFormat = 1
 
@@ -143,17 +145,17 @@ var GlobalOptions = []Option{
 var HelpOptions = []string{"--help", "-h"}
 
 var newOptions = []Option{
-	{Name: "--status", Value: "S", Summary: "Initial status; defaults to the type's first status"},
+	{Name: "--status", Value: "S", Default: "first status of the type", Summary: "Initial status"},
 	{Name: "--tag", Value: "X", Repeatable: true, Summary: "Tag for filtering"},
 	{Name: "--keyword", Value: "K", Repeatable: true, Summary: "Word a reader would search with"},
-	{Name: "--repo", Value: "R", Repeatable: true, Summary: "Repository the entry concerns; replaces the current one"},
+	{Name: "--repo", Value: "R", Repeatable: true, Default: "the current repository", Summary: "Repository the entry concerns; replaces the current one"},
 	{Name: "--no-repo", Summary: "Do not attribute the entry to the current repository"},
 	{Name: "--host", Value: "H", Repeatable: true, Summary: "Machine the entry concerns"},
 	{Name: "--always", Summary: "Rule printed by every preflight (rules only)"},
 	{Name: "--kind", Value: "K", Summary: "prompt or report (plans only)"},
 	{Name: "--parent", Value: "ID", Summary: "Enclosing plan (plans and tasks only)"},
 	{Name: "--source", Value: "ID", Repeatable: true, Summary: "Entry this one was derived from"},
-	{Name: "--verified", Value: "DATE", Summary: "When the facts were checked (references only); defaults to today"},
+	{Name: "--verified", Value: "DATE", Default: "today", Summary: "When the facts were checked (references only)"},
 	{Name: "--review-days", Value: "N", Summary: "Staleness threshold for verified (references only)"},
 	{Name: "--alias", Value: "A", Repeatable: true, Summary: "Former name or path that resolves to this entry"},
 }
@@ -172,7 +174,7 @@ var searchFilters = []Option{
 	{Name: "--repo", Value: "R", Repeatable: true, Summary: "Only entries concerning this repository"},
 	{Name: "--host", Value: "H", Repeatable: true, Summary: "Only entries concerning this machine"},
 	optAll,
-	{Name: "--limit", Value: "N", Default: "search_limit", Summary: "Maximum number of results"},
+	{Name: "--limit", Value: "N", Default: "search_limit (12)", Summary: "Maximum number of results"},
 }
 
 func join(groups ...[]Option) []Option {
@@ -188,6 +190,17 @@ func optional(o Option) Option {
 	return o
 }
 
+// withDefault returns a copy of opts with the default of the option named name replaced.
+func withDefault(opts []Option, name, def string) []Option {
+	out := slices.Clone(opts)
+	for i := range out {
+		if out[i].Name == name {
+			out[i].Default = def
+		}
+	}
+	return out
+}
+
 var writeExits = []int{ExitOK, ExitFailure, ExitUsage, ExitLock, ExitNotPushed, ExitConflict}
 
 // Commands is every command, in the order of SPEC §11, then version (SPEC §10).
@@ -197,7 +210,7 @@ var Commands = []Command{
 		Summary: "Create a store, or write pointer files into a directory",
 		Usage:   "memex init PATH [--name NAME]\nmemex init --pointers DIR [--force]",
 		Options: []Option{
-			{Name: "--name", Value: "NAME", Summary: "Store name; defaults to the directory basename"},
+			{Name: "--name", Value: "NAME", Default: "the directory basename", Summary: "Store name"},
 			{Name: "--pointers", Value: "DIR", Summary: "Write CLAUDE.md, AGENTS.md and GEMINI.md pointer files into DIR"},
 			{Name: "--force", Summary: "Replace differing pointer files, printing their old content"},
 		},
@@ -224,7 +237,7 @@ var Commands = []Command{
 		Options: join(
 			[]Option{optional(optTitle), optional(optSummary), optional(optBody),
 				{Name: "--from", Value: "PATH", Summary: "Import a file found by the leak scan"}},
-			newOptions),
+			withDefault(withDefault(newOptions, "--status", "raw"), "--verified", "")),
 		ExitCodes: writeExits,
 	},
 	{
@@ -258,7 +271,7 @@ var Commands = []Command{
 			{Name: "--repo", Value: "R", Repeatable: true, Summary: "Only entries concerning this repository"},
 			{Name: "--host", Value: "H", Repeatable: true, Summary: "Only entries concerning this machine"},
 			{Name: "--all", Summary: "List every entry, whatever its status"},
-			{Name: "--limit", Value: "N", Default: "list_limit", Summary: "Maximum number of entries; 0 means no limit"},
+			{Name: "--limit", Value: "N", Default: "list_limit (50)", Summary: "Maximum number of entries; 0 means no limit"},
 			{Name: "--fields", Value: "F,…", Summary: "Columns to print, in order"},
 			optJSON,
 		},
@@ -312,7 +325,7 @@ var Commands = []Command{
 		Usage:    "memex save [-m MSG] [PATHS…] [--allow-delete] [--fmt]",
 		Mutating: true,
 		Options: []Option{
-			{Name: "-m", Value: "MSG", Summary: "Commit message"},
+			{Name: "-m", Value: "MSG", Default: "memex: save <n> files", Summary: "Commit message"},
 			{Name: "--allow-delete", Summary: "Allow committing deleted entries"},
 			{Name: "--fmt", Summary: "Rewrite the selected entries into canonical form first"},
 		},

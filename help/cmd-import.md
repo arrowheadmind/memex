@@ -22,7 +22,7 @@ mapping and the report.
 
 | option | value | default | meaning |
 |---|---|---|---|
-| `--out` | DIR | | New store directory; must not exist |
+| `--out` | DIR | | New store directory; must not exist (required) |
 | `--leak` | PATH | | Tool-memory file to import as a raw journal entry; repeatable |
 
 ## Output

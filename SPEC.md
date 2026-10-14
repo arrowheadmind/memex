@@ -1768,7 +1768,10 @@ omitted.
 2. **Usage:** the synopsis exactly as in §11.
 3. **Description:** what it does and when to use it, at most 15 lines.
 4. **Options:** a table with columns option, value, default, meaning, covering every option the
-   command accepts and no others.
+   command accepts and no others. The value and default cells are those of `help --json`
+   (empty for none; backticks are formatting), and the meaning says `repeatable` exactly when
+   the option is repeatable and `(required)` or `(required <condition>)` exactly when it is
+   required.
 5. **Output:** the exact shape of standard output, including the outcome line (§9.4) for
    mutating commands.
 6. **Exit codes:** only the codes this command can return.
@@ -1859,7 +1862,8 @@ Run: memex help
 - Every command and topic has a page. `memex help topics` lists exactly them.
 - Every option and positional accepted by a command appears in its page's Options table and in
   `help --json`. Conversely, every documented option is accepted.
-  - The runner checks this by comparing `help --json` with the Options tables.
+  - The runner checks this by comparing `help --json` with the Options tables: names, values,
+    defaults, repeatable and required (§16.5).
   - It also tries each documented option. An undocumented `--x` must fail as unknown.
 - Every ` ```example ` block is executed as §16.5 says, in a store seeded from
   `conformance/help-fixture/`, and its output must match exactly. The fixture is a small

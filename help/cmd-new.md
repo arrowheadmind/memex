@@ -25,10 +25,10 @@ repository of the current directory.
 
 | option | value | default | meaning |
 |---|---|---|---|
-| `--title` | T | | Title; write `--title=-x` for a value starting with `-` |
-| `--summary` | S | | One sentence that tells a reader whether to open the entry |
-| `--body` | FILE | | Body file, or `-` for standard input |
-| `--status` | S | the type's first status | Initial status |
+| `--title` | T | | Title (required); write `--title=-x` for a value starting with `-` |
+| `--summary` | S | | One sentence that tells a reader whether to open the entry (required) |
+| `--body` | FILE | | Body file, or `-` for standard input (required) |
+| `--status` | S | first status of the type | Initial status |
 | `--tag` | X | | Tag for filtering; repeatable |
 | `--keyword` | K | | Word a reader would search with; repeatable |
 | `--repo` | R | the current repository | Repository the entry concerns; repeatable |

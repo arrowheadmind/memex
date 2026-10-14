@@ -20,11 +20,11 @@ changed. The source may be given as an id, a path or an alias.
 
 | option | value | default | meaning |
 |---|---|---|---|
-| `--to` | TYPE | | Type of the new entry |
-| `--title` | T | | Title of the new entry |
-| `--summary` | S | | One sentence that tells a reader whether to open the entry |
-| `--body` | FILE | | Body file, or `-` for standard input |
-| `--status` | S | the type's first status | Initial status |
+| `--to` | TYPE | | Type of the new entry (required) |
+| `--title` | T | | Title of the new entry (required) |
+| `--summary` | S | | One sentence that tells a reader whether to open the entry (required) |
+| `--body` | FILE | | Body file, or `-` for standard input (required) |
+| `--status` | S | first status of the type | Initial status |
 | `--tag` | X | | Tag for filtering; repeatable |
 | `--keyword` | K | | Word a reader would search with; repeatable |
 | `--repo` | R | the current repository | Repository the entry concerns; repeatable |
