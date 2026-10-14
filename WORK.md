@@ -61,8 +61,5 @@ Open items for later blocks:
 - B6: §10's help bullet (`memex COMMAND --help` prints the page and exits 0) holds only once
   the §16 pages exist; until then `--help` on a command without a page is the §16.2 usage
   error. §10 was marked Implemented in B5 on the strength of every other bullet.
-- B6: B5 chose output lines the specification leaves open, and the help pages must show them:
-  `init` prints `created <item>` (directories with a trailing `/`), `updated .gitignore` and
-  `set core.hooksPath .githooks`, then `initialized <path>`; `init --pointers` prints
-  `created`, `unchanged` or `replaced <path>`; `set`, `fmt` and `save` print only the outcome
-  line, `promote` prints `created <path>` first. See the B5 report for the open questions.
+- B6: the output lines of init, init --pointers, set, promote, fmt and save are now in
+  §11.1 and §11.7–11.10 (decided after B5's questions); the help pages show them from there.
