@@ -43,9 +43,9 @@ func TestLoad(t *testing.T) {
 	if err != nil || !c.SyncOnPreflight || c.SearchLimit != 12 || c.ListLimit != 50 || c.NetworkTimeout != 20 {
 		t.Fatalf("missing file: %+v, %v", c, err)
 	}
-	c, err = Load(write("store = \"/s\"\nhost = \"h\"\nworkspace = \"/w\"\nsync_on_preflight = false\n" +
+	c, err = Load(write("store = \"/s\"\nworkspace = \"/w\"\nsync_on_preflight = false\n" +
 		"search_limit = 3\nlist_limit = 4\nnetwork_timeout = 5\n"))
-	if err != nil || c.Store != "/s" || c.Host != "h" || c.Workspace != "/w" || c.SyncOnPreflight ||
+	if err != nil || c.Store != "/s" || c.Workspace != "/w" || c.SyncOnPreflight ||
 		c.SearchLimit != 3 || c.ListLimit != 4 || c.NetworkTimeout != 5 {
 		t.Fatalf("full file: %+v, %v", c, err)
 	}
@@ -145,18 +145,5 @@ func TestToday(t *testing.T) {
 		if _, err := Today(envOf(map[string]string{"MEMEX_TODAY": bad}), now); err == nil {
 			t.Errorf("MEMEX_TODAY=%q accepted", bad)
 		}
-	}
-}
-
-func TestHost(t *testing.T) {
-	hn := func() (string, error) { return "Box.example.org", nil }
-	if h := Host(envOf(map[string]string{"MEMEX_HOST": "m"}), &Config{Host: "c"}, hn); h != "m" {
-		t.Errorf("MEMEX_HOST: %q", h)
-	}
-	if h := Host(envOf(nil), &Config{Host: "c"}, hn); h != "c" {
-		t.Errorf("config: %q", h)
-	}
-	if h := Host(envOf(nil), &Config{}, hn); h != "box" {
-		t.Errorf("hostname: %q", h)
 	}
 }

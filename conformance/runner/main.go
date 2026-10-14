@@ -195,7 +195,6 @@ func newSandbox(memex, git string, unreachable bool) (*sandbox, error) {
 		"MEMEX_STORE=" + s.store,
 		"MEMEX_CONFIG=" + s.config,
 		"MEMEX_TODAY=2026-01-15",
-		"MEMEX_HOST=testhost",
 		"TZ=UTC",
 		"LC_ALL=C",
 	}

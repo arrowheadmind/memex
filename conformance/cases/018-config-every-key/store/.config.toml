@@ -1,5 +1,4 @@
 store = "/elsewhere"
-host = "h"
 workspace = "/w"
 sync_on_preflight = false
 search_limit = 5

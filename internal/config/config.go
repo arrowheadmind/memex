@@ -32,7 +32,6 @@ type Env func(string) string
 type Config struct {
 	Path            string // the config file path, whether or not it exists
 	Store           string // "" when not set
-	Host            string // "" when not set; see Host
 	Workspace       string // "" when not set
 	SyncOnPreflight bool
 	SearchLimit     int
@@ -43,7 +42,6 @@ type Config struct {
 // keys is the SPEC §3.2 table: key and TOML kind.
 var keys = []struct{ name, kind string }{
 	{"store", "String"},
-	{"host", "String"},
 	{"workspace", "String"},
 	{"sync_on_preflight", "Bool"},
 	{"search_limit", "Integer"},
@@ -115,8 +113,6 @@ func Load(env Env) (*Config, error) {
 			switch k {
 			case "store":
 				c.Store = v
-			case "host":
-				c.Host = v
 			case "workspace":
 				c.Workspace = v
 			}
@@ -258,21 +254,4 @@ func Today(env Env, now time.Time) (time.Time, error) {
 	}
 	y, m, d := now.Local().Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
-}
-
-// Host returns the host name for new entries (SPEC §3.2, §3.3): MEMEX_HOST, else the host
-// setting, else the short hostname, lowercased.
-func Host(env Env, c *Config, hostname func() (string, error)) string {
-	if h := env("MEMEX_HOST"); h != "" {
-		return h
-	}
-	if c.Host != "" {
-		return c.Host
-	}
-	h, err := hostname()
-	if err != nil {
-		return ""
-	}
-	short, _, _ := strings.Cut(h, ".")
-	return strings.ToLower(short)
 }
