@@ -45,7 +45,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 13 Importing a brain v3 store | Implemented |
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
-| 17 Agent-first requirements | Implemented (the §12 rows wait for §12) |
+| 17 Agent-first requirements | Implemented (the §17.4 leak-scan row waits for §12) |
 
 ---
 
