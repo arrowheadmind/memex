@@ -18,7 +18,7 @@ func invoke(args ...string) (string, string, int) {
 
 func TestRun(t *testing.T) {
 	const ver = "memex 0.0.0-dev (store format 1)\n"
-	const overviewHead = "# memex 0.0.0-dev (store format 1)\n\nmemex is "
+	const overviewHead = "# memex 0.0.0-dev (store format 1)\n\nIf you are an AI agent"
 	cases := []struct {
 		name   string
 		args   []string
@@ -53,10 +53,11 @@ func TestRun(t *testing.T) {
 			"memex: unknown command \"doctor\". Run: memex help topics\n", 2},
 		{"multi-line usage", []string{"init"}, "", false,
 			"memex: missing PATH\nmemex init PATH [--name NAME]\nmemex init --pointers DIR [--force]\nRun: memex help init\n", 2},
-		{"help for a command without a page", []string{"help", "search"}, "", false,
-			"memex: no help for \"search\". Run: memex help topics\n", 2},
-		{"--help on a command without a page", []string{"capture", "--help"}, "", false,
-			"memex: no help for \"capture\". Run: memex help topics\n", 2},
+		{"help for a command", []string{"help", "search"}, "# memex search\n\nRanked full-text search", true, "", 0},
+		{"--help on a command", []string{"capture", "--help"}, "# memex capture\n", true, "", 0},
+		{"help for a topic", []string{"help", "agents"}, "# memex help agents\n", true, "", 0},
+		{"help for an unknown name", []string{"help", "xyzzyplugh"}, "", false,
+			"memex: no help for \"xyzzyplugh\". Run: memex help topics\n", 2},
 		{"help --all and --json", []string{"help", "--all", "--json"}, "", false,
 			"memex: --all and --json cannot be combined\nmemex help [COMMAND|TOPIC] [--all] [--json]\nRun: memex help help\n", 2},
 		{"help --json with a name", []string{"help", "--json", "search"}, "", false,
