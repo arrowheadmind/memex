@@ -141,6 +141,14 @@ Open items for later blocks:
   --show-toplevel)"` hook form: that would make the session's repository the store, which
   Principle 6 forbids; the hook is `memex preflight --max-chars 4000` with the store from the
   config file or `MEMEX_STORE`.
+- B8 cutover progress (2026-10-14, manager): store-side steps 1, 2, 6 done (delta import from
+  brain@b627487: 21 new, 9 updated; Always rules and AGENT.md reworded; 18 leaks captured or
+  already present, files deleted by the operator); on thinkcentre-02 steps 0, 3 (session
+  form), 5, 7, 8, 9a done; the fleet change (hook, config file, package, brainctl removal,
+  auto memory off) is deployments branch `memex-cutover` at 7f7f66e, evaluated for
+  thinkcentre-02 and thinkpad, not merged or deployed. Open for the B8 close: step 10 (GitHub
+  mirror) and the deploy; `capture --from` should store the alias in the `~/` form when the
+  file is under HOME (the importer did; today `show` resolves only the form stored).
 - B8 findings for the manager: (1) a 3.7 MB conformance-runner binary was committed at the repo
   root in fea9ec4; removed from the tree in B8, still in history. (2) The repository is to be
   mirrored to GitHub, but WORK.md, `scripts/replay/` (queries, grades and results built from
