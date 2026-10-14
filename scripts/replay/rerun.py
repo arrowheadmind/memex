@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """memex-only replay against the current store (MEMEX_STORE, memex on PATH); compares with the B4
-results.json using the B4 grades. Usage: rerun.py OUT.json > report.md. Items the B4 judges never
+results.json using the B4 grades. Usage: rerun.py [--data DIR] OUT.json > report.md. Items the B4 judges never
 saw count as grade 0, so a lower score after curation is a prompt to re-grade, not a regression."""
-import json, math, os, subprocess, sys, statistics as st
-R=os.path.dirname(os.path.abspath(__file__))
+import argparse, json, math, os, subprocess, sys, statistics as st
+ap=argparse.ArgumentParser(description='memex-only rerun of the replay queries, compared with DATA/results.json.')
+ap.add_argument('--data', default=os.environ.get('REPLAY_DATA'), help='replay data directory (default $REPLAY_DATA)')
+ap.add_argument('out', help='new results file to write')
+args=ap.parse_args()
+if not args.data: ap.error('--data (or REPLAY_DATA) is required')
+R=args.data
 queries=json.load(open(R+'/queries.json')); old=json.load(open(R+'/results.json'))['results']
 grades=json.load(open(R+'/grades.json')); gs2=json.load(open(R+'/grades-sonnet.json')) if os.path.exists(R+'/grades-sonnet.json') else {}
 env={**os.environ}
@@ -13,7 +18,7 @@ for i,q in enumerate(queries):
     try: mj=json.loads(r.stdout)
     except Exception: mj={'results':[]}
     new.append({'i':i,'query':q['query'],'expected_ids':q.get('expected_ids',[]),'ids':[x['id'] for x in mj['results']],'exit':r.returncode,'chars':len(r.stdout)})
-json.dump(new,open(sys.argv[1],'w'),indent=1)
+json.dump(new,open(args.out,'w'),indent=1)
 def rank(ids,exp):
     for i,x in enumerate(ids):
         if x in exp: return i+1

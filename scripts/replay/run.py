@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Replay harness: run memex search and brainctl preflight for each query; map both to memex ids."""
-import json, os, re, subprocess, sys, time, unicodedata, glob
+import argparse, json, os, re, subprocess, sys, time, unicodedata, glob
+ap=argparse.ArgumentParser(description='Run each query of DATA/queries.json through memex search and brainctl preflight.')
+ap.add_argument('--data', default=os.environ.get('REPLAY_DATA'), help='replay data directory (default $REPLAY_DATA)')
+ap.add_argument('--brain', default=os.environ.get('REPLAY_BRAIN'), help='brainctl v3 brain to run brainctl preflight in (default $REPLAY_BRAIN)')
+ap.add_argument('out', help='results file to write')
+args=ap.parse_args()
+if not args.data or not args.brain: ap.error('--data and --brain (or REPLAY_DATA and REPLAY_BRAIN) are required')
 S=os.environ.get('REPLAY_SCRATCH')
-STORE=os.environ['MEMEX_STORE']; MEMEX=os.environ['MEMEX_BIN']; BRAIN=os.path.expanduser('~/Programming/brain')
-queries=json.load(open(sys.argv[1])); outp=sys.argv[2]
+STORE=os.environ['MEMEX_STORE']; MEMEX=os.environ['MEMEX_BIN']; BRAIN=os.path.abspath(os.path.expanduser(args.brain))
+queries=json.load(open(os.path.join(args.data,'queries.json'))); outp=args.out
 RAW=os.path.join(S,'raw'); os.makedirs(RAW,exist_ok=True)
 
 def slug(t):

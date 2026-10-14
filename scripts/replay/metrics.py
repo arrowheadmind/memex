@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Compute replay metrics from results.json (+ grades.json if present)."""
-import json, math, sys, statistics as st
-res=json.load(open(sys.argv[1]))['results']
-grades=json.load(open(sys.argv[2])) if len(sys.argv)>2 else {}
+import argparse, json, math, os, sys, statistics as st
+ap=argparse.ArgumentParser(description='Replay metrics for a results file, graded with DATA/grades.json.')
+ap.add_argument('--data', default=os.environ.get('REPLAY_DATA'), help='replay data directory (default $REPLAY_DATA)')
+ap.add_argument('results', nargs='?', help='results file (default DATA/results.json)')
+args=ap.parse_args()
+if not args.data: ap.error('--data (or REPLAY_DATA) is required')
+res=json.load(open(args.results or os.path.join(args.data,'results.json')))['results']
+gp=os.path.join(args.data,'grades.json')
+grades=json.load(open(gp)) if os.path.exists(gp) else {}
 def rank(ids,exp):
     for i,x in enumerate(ids):
         if x in exp: return i+1

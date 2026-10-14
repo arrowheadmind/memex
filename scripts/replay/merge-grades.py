@@ -1,5 +1,10 @@
-import json, glob, os, sys
-S = os.path.dirname(os.path.abspath(__file__)) + "/replay"
+import argparse, json, glob, os, sys
+ap = argparse.ArgumentParser(description="Merge Sonnet's raw grades from $REPLAY_SCRATCH into DATA/grades-sonnet.json.")
+ap.add_argument("--data", default=os.environ.get("REPLAY_DATA"), help="replay data directory (default $REPLAY_DATA)")
+args = ap.parse_args()
+if not args.data: ap.error("--data (or REPLAY_DATA) is required")
+D = args.data
+S = os.environ["REPLAY_SCRATCH"]  # packets-key.json and sonnet-raw-*.json, from packets.py and the judges
 key = json.load(open(S + "/packets-key.json"))
 merged = {}
 for f in sorted(glob.glob(S + "/sonnet-raw-*.json")):
@@ -11,8 +16,8 @@ for f in sorted(glob.glob(S + "/sonnet-raw-*.json")):
             if eid is None:
                 print("unknown item", qi, n, file=sys.stderr); continue
             merged[qi][eid] = int(g)
-json.dump(merged, open(S + "/grades-sonnet.json", "w"), indent=1)
-fork = json.load(open(S + "/grades.json"))
+json.dump(merged, open(D + "/grades-sonnet.json", "w"), indent=1)
+fork = json.load(open(D + "/grades.json"))
 # agreement on the union of graded items (unlisted = 0)
 agree = total = exact2 = 0; conf = {}
 for qi in key:
