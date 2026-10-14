@@ -1907,7 +1907,8 @@ cases.
 ### 17.3 Unambiguous and stable output
 
 - **Stable shapes.** Text output has fixed line shapes (§8.5, §9.4, §11), and every command
-  that prints data accepts `--json`. Changing a text shape counts as an interface change, and
+  that prints data accepts `--json`, except `preflight`, whose output is for reading in
+  context; use `search --json` for the same results. Changing a text shape counts as an interface change, and
   goes in `CHANGELOG.md` under "Changed output".
 - **The outcome is always last.** For mutating commands, the last line is exactly one outcome
   line (§9.4).
