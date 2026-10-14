@@ -16,8 +16,8 @@ const AgentMD = "# Agent instructions\n" +
 	"This store is the shared memory for this operator's work. It is managed with `memex`.\n" +
 	"\n" +
 	"- If you are new to memex: `memex help agents` (short), or `memex help --all` (everything).\n" +
-	"- Before any non-trivial task: `memex preflight \"<task in your own words>\"`. Read the\n" +
-	"  `matched k/n` label before trusting a result.\n" +
+	"- Before any non-trivial task: `memex preflight \"<the task, in content words>\"` (skip a, the, for).\n" +
+	"  Read the `matched k/n` label and any `weak results` line before trusting a result.\n" +
 	"- After any non-trivial task:\n" +
 	"  `memex capture --title=\"<task>\" --summary=\"<one sentence>\" --body - <<'EOF' … EOF`.\n" +
 	"- Never write knowledge into a coding tool's own memory or rules files.\n" +
