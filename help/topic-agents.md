@@ -10,7 +10,8 @@ Rules of engagement for a language-model agent, as imperatives.
   your four words matched, not that the entry is about your task. Short common words (`the`,
   `on`) count too, so query with content words. `weak results: …` after the results means even
   the top hit matched under half your words: assume nothing relevant exists, or retry with others.
-- Open an entry with `memex show <path>`; paths printed by memex can be pasted back as given.
+- Open an entry with `memex show <path>`. Paths are relative to the store root; to edit one
+  with other tools use `$MEMEX_STORE/<path>` (the root is also the `Store root:` line).
 - In a session-start hook with no task text, run `memex preflight --max-chars 4000`.
 
 ## Searching

@@ -12,10 +12,12 @@ Rounds:
 | round | task | model | result |
 |---|---|---|---|
 | 1 | rotate the backup key on alpha | Sonnet, 2026-10-14 | completed the loop; one harness stumble (git identity), three page fixes (`round-1.md`) |
+| 3 | restore test on alpha slowed down (correct or supersede?) | Sonnet, 2026-10-14 | completed the loop; edited the runbook, left the journal, linked both; one line added about `$MEMEX_STORE/<path>` (`round-3.md`) |
 | 2 | add a disk-usage alert for beta | Sonnet, 2026-10-14 | completed the loop with three `[[id]]` links; led to the `weak results` line and the AGENT.md wording (`round-2.md`) |
 
-Status: two rounds run; both completed preflight, reading, task and a pushed capture.
-A third round is run only after a substantial page change. To run a round:
+Status: three rounds run; all completed preflight, reading, task and a pushed capture, the
+third with a correct edit-versus-supersede judgment. Run another round after any substantial
+page change. To run a round:
 
 ```
 scripts/cold-agent/setup.sh /tmp/cold-N && sed -i 's/__TASK__/<task>/' /tmp/cold-N/prompt.md
