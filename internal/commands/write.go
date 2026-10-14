@@ -43,16 +43,19 @@ func (e *Env) beginWriteFor(freshen, needCommitted bool) (*writing, int, bool) {
 	}
 	s, err := write.Begin(root, cfg.NetworkTimeout, write.LockWait)
 	if err != nil {
-		var le *write.LockError
-		if errors.As(err, &le) {
-			return nil, e.fail(spec.ExitLock, "%s", le.Error()), false
-		}
-		panic(err)
+		return nil, e.beginFailed(err), false
+	}
+	w := &writing{e, cfg, today, root, s}
+	if err := s.CheckInProgress(); err != nil {
+		return nil, w.refuse(spec.ExitFailure, "%s", err.Error()), false
 	}
 	if freshen {
 		s.Freshen()
 	}
-	return &writing{e, cfg, today, root, s}, 0, true
+	if s.Interrupted() {
+		return nil, w.refuse(spec.ExitFailure, "%s", write.ErrInterrupted.Error()), false
+	}
+	return w, 0, true
 }
 
 // checkManifest refuses a store whose format this memex cannot read (exit 2, SPEC §4).
@@ -65,6 +68,20 @@ func (e *Env) checkManifest(root string) (int, bool) {
 		panic(err)
 	}
 	return 0, true
+}
+
+// beginFailed reports a session that could not start: a lock held by another memex
+// (exit 4), an interruption while waiting, or a lock file that cannot be written (exit 1).
+func (e *Env) beginFailed(err error) int {
+	var le *write.LockError
+	var we *write.WriteError
+	switch {
+	case errors.As(err, &le):
+		return e.fail(spec.ExitLock, "%s", le.Error())
+	case errors.Is(err, write.ErrInterrupted), errors.As(err, &we):
+		return e.fail(spec.ExitFailure, "%s", err.Error())
+	}
+	panic(err)
 }
 
 // checkCommitted refuses a write to a store whose memex.toml is not in HEAD, such as one
@@ -97,6 +114,15 @@ func (w *writing) end(o *write.Outcome) {
 	}
 }
 
+// refuseUncommitted refuses to rewrite an entry that differs from HEAD (SPEC §11.7, §11.8):
+// the rewrite would commit someone's unsaved edit with it.
+func (w *writing) refuseUncommitted(path string) (int, bool) {
+	if w.s.Uncommitted(path) {
+		return w.refuse(spec.ExitFailure, "%s has uncommitted changes; run memex save first", path), true
+	}
+	return 0, false
+}
+
 // refuse ends a write that changed nothing with an error message.
 func (w *writing) refuse(code int, format string, args ...any) int {
 	w.end(nil)
@@ -116,6 +142,8 @@ func (w *writing) failed(err error) int {
 		return w.e.fail(spec.ExitLock, "%s; nothing was changed", ie.Error())
 	case errors.As(err, &ge):
 		return w.e.fail(spec.ExitFailure, "%s", ge.Error())
+	case errors.Is(err, write.ErrInterrupted), errors.As(err, new(*write.WriteError)), errors.As(err, new(*write.ChangedError)):
+		return w.e.fail(spec.ExitFailure, "%s", err.Error())
 	}
 	panic(err)
 }

@@ -58,17 +58,20 @@ func Promote(e *Env, o PromoteOptions) (int, *UsageError) {
 		}
 		return w.refuseExisting(f, en), nil
 	}
-	files := []write.File{{Path: p.path, Data: p.data()}}
+	files := []write.File{{Path: p.path, Data: p.data(), Check: true}}
 	if src.Type.Name == "journal" && slices.Contains([]string{"raw", "kept"}, src.Status()) {
 		if why := rewritable(src); why != "" {
 			return w.refuse(spec.ExitFailure, "%s has fields that promote cannot keep (%s); edit the file, then memex save", src.Path, why), nil
+		}
+		if code, refused := w.refuseUncommitted(src.Path); refused {
+			return code, nil
 		}
 		f := entry.Fields{}
 		for k, v := range src.Fields {
 			f[k] = v
 		}
 		f["status"] = "promoted"
-		files = append(files, write.File{Path: src.Path, Data: []byte(entry.Render(f, src.Body))})
+		files = append(files, write.File{Path: src.Path, Data: []byte(entry.Render(f, src.Body)), Check: true, Expect: src.Data})
 	}
 	if err := write.Validate(w.root, w.today, files); err != nil {
 		w.end(nil)

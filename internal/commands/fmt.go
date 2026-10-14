@@ -45,6 +45,13 @@ func storePath(root, p string) (string, bool) {
 // are reported on standard error, because fmt cannot rewrite them without changing a value.
 // An unknown path is reported and makes ok false.
 func (e *Env) canonicalFiles(root string, today time.Time, paths []string) (files []write.File, ok bool) {
+	files, _, ok = e.nonCanonical(root, today, paths)
+	return files, ok
+}
+
+// nonCanonical is canonicalFiles that also returns every selected path that is not in
+// canonical form, the entries with errors and the unreadable ones included (`fmt --check`).
+func (e *Env) nonCanonical(root string, today time.Time, paths []string) (files []write.File, all []string, ok bool) {
 	tree := store.WorkTree{Root: root}
 	entries, skipped, err := store.LoadEntries(tree)
 	if err != nil {
@@ -90,8 +97,10 @@ func (e *Env) canonicalFiles(root string, today time.Time, paths []string) (file
 			selected = append(selected, rel)
 		}
 	}
+	slices.Sort(selected)
 	for _, p := range selected {
 		if why, bad := unreadable[p]; bad {
+			all = append(all, p)
 			fmt.Fprintf(e.Stderr, "memex: skipped %s: %s; run memex check\n", p, why)
 			continue
 		}
@@ -100,13 +109,14 @@ func (e *Env) canonicalFiles(root string, today time.Time, paths []string) (file
 		if data == string(en.Data) {
 			continue
 		}
+		all = append(all, p)
 		if hasErr[p] {
 			fmt.Fprintf(e.Stderr, "memex: skipped %s: it has errors; run memex check\n", p)
 			continue
 		}
-		files = append(files, write.File{Path: p, Data: []byte(data)})
+		files = append(files, write.File{Path: p, Data: []byte(data), Check: true, Expect: en.Data})
 	}
-	return files, ok
+	return files, all, ok
 }
 
 // Fmt runs `memex fmt` (SPEC §11.9).
@@ -119,11 +129,11 @@ func Fmt(e *Env, o FmtOptions) int {
 		if code, ok := e.checkManifest(root); !ok {
 			return code
 		}
-		files, ok := e.canonicalFiles(root, today, o.Paths)
-		for _, f := range files {
-			fmt.Fprintln(e.Stdout, f.Path)
+		_, all, ok := e.nonCanonical(root, today, o.Paths)
+		for _, p := range all {
+			fmt.Fprintln(e.Stdout, p)
 		}
-		if !ok || len(files) > 0 {
+		if !ok || len(all) > 0 {
 			return spec.ExitFailure
 		}
 		return spec.ExitOK

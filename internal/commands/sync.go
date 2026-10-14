@@ -1,11 +1,9 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/write"
 )
 
@@ -35,12 +33,8 @@ func Sync(e *Env) int {
 		return code
 	}
 	at, state, code, err := syncState(e, root, cfg.NetworkTimeout, write.LockWait)
-	var le *write.LockError
-	if errors.As(err, &le) {
-		return e.fail(spec.ExitLock, "%s", le.Error())
-	}
 	if err != nil {
-		panic(err)
+		return e.beginFailed(err)
 	}
 	fmt.Fprintf(e.Stdout, "fetched %s\n%s\n", at, state)
 	return code

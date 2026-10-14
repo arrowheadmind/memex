@@ -356,7 +356,7 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 		}
 		return w.refuseExisting(f, en), nil
 	}
-	files := []write.File{{Path: p.path, Data: p.data()}}
+	files := []write.File{{Path: p.path, Data: p.data(), Check: true}}
 	if err := write.Validate(w.root, w.today, files); err != nil {
 		w.end(nil)
 		return w.e.failedValidation(err), nil

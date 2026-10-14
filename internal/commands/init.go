@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/gitx"
@@ -60,6 +61,22 @@ func (e *Env) pointerStore(cfg *config.Config, root string) string {
 	return root
 }
 
+// pointerPattern is the pointer line of SPEC §12 rule 2, with the store path as its group.
+var pointerPattern = regexp.MustCompile(`^Read (.+)/AGENT\.md before starting work, and follow it\.\n$`)
+
+// samePointer reports whether content is the pointer line naming root, comparing the paths
+// after the §3.1 expansion of both, as check --workspace does (SPEC §11.1, §12).
+func (e *Env) samePointer(content, root string) bool {
+	m := pointerPattern.FindStringSubmatch(content)
+	if m == nil {
+		return false
+	}
+	home := e.Getenv("HOME")
+	got, err1 := config.Expand(m[1], home)
+	want, err2 := config.Expand(root, home)
+	return err1 == nil && err2 == nil && got == want
+}
+
 func (e *Env) initPointers(o InitOptions) int {
 	cfg, _, root, err := e.openStore()
 	if err != nil {
@@ -74,7 +91,7 @@ func (e *Env) initPointers(o InitOptions) int {
 		p := filepath.Join(o.Pointers, name)
 		old, err := os.ReadFile(p)
 		switch {
-		case err == nil && bytes.Equal(old, text):
+		case err == nil && (bytes.Equal(old, text) || e.samePointer(string(old), root)):
 			fmt.Fprintf(e.Stdout, "unchanged %s\n", p)
 			continue
 		case err == nil && !o.Force:

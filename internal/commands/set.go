@@ -97,6 +97,9 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 	if why := rewritable(en); why != "" {
 		return w.refuse(spec.ExitFailure, "%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why), nil
 	}
+	if code, refused := w.refuseUncommitted(en.Path); refused {
+		return code, nil
+	}
 	f := entry.Fields{}
 	for k, v := range en.Fields {
 		f[k] = v
@@ -179,9 +182,7 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 				}
 				items[i] = id
 			}
-			if len(items) == 1 {
-				value = items[0]
-			}
+			value = strings.Join(items, ",")
 			cur := slices.Clone(f.Strings(a.Field))
 			switch a.Op {
 			case "=":
@@ -214,7 +215,7 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 	if string(data) == string(en.Data) {
 		return w.nothing(), nil
 	}
-	files := []write.File{{Path: en.Path, Data: data}}
+	files := []write.File{{Path: en.Path, Data: data, Check: true, Expect: en.Data}}
 	if err := write.Validate(w.root, w.today, files); err != nil {
 		w.end(nil)
 		return e.failedValidation(err), nil

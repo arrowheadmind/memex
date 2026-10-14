@@ -76,9 +76,15 @@ func Preflight(e *Env, o PreflightOptions) (int, *UsageError) {
 		// A failed sync never stops preflight and never changes its exit code.
 		_, state, _, err := syncState(e, root, cfg.NetworkTimeout, write.PreflightLockWait)
 		var le *write.LockError
-		if errors.As(err, &le) {
+		var we *write.WriteError
+		switch {
+		case errors.As(err, &le):
 			state = fmt.Sprintf("NOT SYNCED: locked by another memex for %ds", int(le.Wait/time.Second))
-		} else if err != nil {
+		case errors.Is(err, write.ErrInterrupted):
+			state = "NOT SYNCED: interrupted"
+		case errors.As(err, &we):
+			state = "NOT SYNCED: " + strings.TrimSuffix(we.Error(), "; nothing was changed")
+		case err != nil:
 			panic(err)
 		}
 		fmt.Fprintf(&head, "store: %s\n\n## Always\n", state)
