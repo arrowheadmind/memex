@@ -32,9 +32,6 @@ Rules of the ledger:
 
 Open items for later blocks:
 
-- B5: the slug algorithm and length cap (§5.4) and body normalization (§5.1) have unit tests
-  only; their conformance cases arrive with `new`, the first command that exposes them.
-
 - B6: capture's `--title`, `--summary` and `--body` are marked optional in `internal/spec`,
   because `capture --from PATH` makes them so. Decide how `help --json` expresses
   "required unless --from".
@@ -46,12 +43,6 @@ Open items for later blocks:
 - B2 pin (2026-10-13): primary brain ~/Programming/brain@1e3e921629461a714f415b0c1eb5db8466a21f65;
   secondaries ~/Programming/apps/mesorobots-page@8ccd0c59b94c4179b1e2b61497e99e4af8800f03 and
   ~/Programming/apps/arrowheadmind-page@0859f9057d58905ed1dab493b8fe6bc5f34de62b. Every importer run in B2 uses these.
-- B5: `preflight` without `--no-sync` and with `sync_on_preflight = true` is a usage error
-  ("sync is not implemented yet") until §9.5 exists; replace it with the sync line. The
-  skipped-sync line's `last fetch` time is the modification time of the store's FETCH_HEAD
-  (`git rev-parse --git-path FETCH_HEAD`), which `sync`'s fetch must keep meaningful.
-- B5: `init` reuses `store.CreateLayout` (written in B2 for `import`); keep the two in one
-  place. The store manifest's `name` defaults to the directory basename, as §11.1 says.
 - B2 facts for the real run: the pinned brain has 463 investigations and 480 INDEX rows (the
   plan's 457 and 474 were a week older), and no `.brain/dispatch-logs/` directory at all, so
   the dispatch-log attachment rule has no real input yet. Most path references in bodies are
@@ -63,3 +54,15 @@ Open items for later blocks:
   `run.py`, then `metrics.py` with `grades.json`. New entries in the top-10 start ungraded;
   `packets.py` builds blind packets for them. Spec candidates recorded there, to try with the
   harness before adopting: coverage bonus on k/n, b = 0.5, reverse prefix matching.
+- B8: `doctor` (§11.13) and all of §12 (`check --workspace`, the leak scan, the tool-memory
+  check) moved here from B5, because they need the fleet configuration to test against. §11
+  is marked Implemented except 11.13; `doctor` still answers "not implemented yet". §12 stays
+  Planned until then.
+- B6: §10's help bullet (`memex COMMAND --help` prints the page and exits 0) holds only once
+  the §16 pages exist; until then `--help` on a command without a page is the §16.2 usage
+  error. §10 was marked Implemented in B5 on the strength of every other bullet.
+- B6: B5 chose output lines the specification leaves open, and the help pages must show them:
+  `init` prints `created <item>` (directories with a trailing `/`), `updated .gitignore` and
+  `set core.hooksPath .githooks`, then `initialized <path>`; `init --pointers` prints
+  `created`, `unchanged` or `replaced <path>`; `set`, `fmt` and `save` print only the outcome
+  line, `promote` prints `created <path>` first. See the B5 report for the open questions.
