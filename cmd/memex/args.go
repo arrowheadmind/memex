@@ -131,7 +131,21 @@ func parseArgs(cmd *spec.Command, argv []string) (*args, string) {
 			strs[o.Name] = fs.StringP(long, short, "", "")
 		}
 	}
-	if err := fs.Parse(argv); err != nil {
+	// pflag reads "-m=" as the value "=", so a short option's value written with "=" is
+	// passed as a separate argument.
+	split := make([]string, 0, len(argv))
+	for i, a := range argv {
+		if a == "--" {
+			split = append(split, argv[i:]...)
+			break
+		}
+		if name, value, ok := strings.Cut(a, "="); ok && len(name) == 2 && name[0] == '-' && name != "--" {
+			split = append(split, name, value)
+			continue
+		}
+		split = append(split, a)
+	}
+	if err := fs.Parse(split); err != nil {
 		// The pre-scan admits only what pflag accepts; a difference is a bug.
 		panic(fmt.Sprintf("pflag refused what the pre-scan admitted: %v", err))
 	}

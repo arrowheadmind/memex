@@ -148,3 +148,27 @@ func TestStoreAnywhere(t *testing.T) {
 		}
 	}
 }
+
+// TestShortOptionValue checks that -m=VALUE and -m VALUE agree, the empty value included;
+// pflag alone takes "-m=" as the value "=".
+func TestShortOptionValue(t *testing.T) {
+	cmd, _ := spec.LookupCommand("save")
+	for _, c := range []struct {
+		argv []string
+		want string
+	}{
+		{[]string{"-m="}, ""},
+		{[]string{"-m", ""}, ""},
+		{[]string{"-m=a=b"}, "a=b"},
+		{[]string{"-m", "msg"}, "msg"},
+	} {
+		a, problem := parseArgs(cmd, c.argv)
+		if problem != "" {
+			t.Errorf("%q: %s", c.argv, problem)
+			continue
+		}
+		if v, ok := a.value("-m"); !ok || v != c.want {
+			t.Errorf("%q: -m is %q (%v), want %q", c.argv, v, ok, c.want)
+		}
+	}
+}
