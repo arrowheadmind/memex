@@ -18,7 +18,7 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | B4 | Replay harness and gate G1: 40 real queries plus known misses, scored against brainctl preflight | fable | operator | Report captured in the brain; operator decides whether retrieval is good enough to continue | done | e9b4bca, gate G1: operator chose A (2026-10-14) |
 | B5 | Write path: §9, new/capture, set, save, sync, promote, fmt, init, hooks, preflight with sync | opus | fable | §9 and the rest of §11 Implemented; dirty-tree, timeout and hook-environment cases green | done | 70999f2, reviewed opus+fable |
 | B6 | Help: §16 pages, help agents, help --json, executed examples; cold-agent test | fable | opus | A fresh session of a different model captures correctly with only `memex help agents` | done | f5be017, reviewed opus+fable; 3 cold rounds |
-| B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | doing |  |
+| B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 377a2b5 |
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | todo | |
 
 Rules of the ledger:
