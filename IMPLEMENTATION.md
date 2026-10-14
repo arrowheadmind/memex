@@ -103,6 +103,12 @@ conformance/cases/    §15 cases (data, language-neutral)
   from `preflight`). It is POSIX only, matching §14.
 - **Atomic write (§9.1 step 4):** use `os.CreateTemp` in the same directory, then `Write`,
   `Sync`, `Close`, `os.Rename`, and `Sync` on the directory.
+- **Validate before writing (§9.1 step 3):** `write.Pending` lays the computed files over the
+  working tree as a `store.Tree`, and the same `check.Run` that `check --staged` uses selects
+  the errors about those paths and their link targets. Step 5 runs it again on the disk.
+- **A failed commit (§9.1 step 6):** the git index file is copied before `git add` and put
+  back, with the written files, when `git add` or `git commit` fails (an index lock that
+  outlasts the retries, or a pre-commit hook that refuses), so nothing is left staged.
 - **Current-directory attribution (§5.5):** the only place that calls `os.Getwd`, and it runs
   `git rev-parse --git-common-dir` there, not `--show-toplevel`. Any other use of `os.Getwd` is
   a review finding.
