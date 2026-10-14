@@ -61,14 +61,7 @@ func printInterface(stdout io.Writer) (int, *usageError) {
 	for _, c := range spec.Commands {
 		opts := make(jsonx.Array, 0, len(c.Options))
 		for _, o := range c.Options {
-			opts = append(opts, jsonx.Object{
-				{Key: "name", Value: jsonx.String(o.Name)},
-				{Key: "value", Value: stringOrNull(o.Value)},
-				{Key: "repeatable", Value: jsonx.Bool(o.Repeatable)},
-				{Key: "required", Value: requiredValue(c, o)},
-				{Key: "default", Value: stringOrNull(o.Default)},
-				{Key: "summary", Value: jsonx.String(o.Summary)},
-			})
+			opts = append(opts, optionJSON(o, requiredValue(c, o)))
 		}
 		pos := make(jsonx.Array, 0, len(c.Positionals))
 		for _, p := range c.Positionals {
@@ -124,9 +117,17 @@ func printInterface(stdout io.Writer) (int, *usageError) {
 			{Key: "summary", Value: jsonx.String(t.Summary)},
 		})
 	}
+	// Global options accepted before and after every command: --store (SPEC §10, §16.7).
+	globals := jsonx.Array{}
+	for _, o := range spec.GlobalOptions {
+		if o.Name == "--store" {
+			globals = append(globals, optionJSON(o, jsonx.Bool(o.Required)))
+		}
+	}
 	stdout.Write(jsonx.Encode(jsonx.Object{
 		{Key: "version", Value: jsonx.String(version)},
 		{Key: "format", Value: jsonx.Int(spec.StoreFormat)},
+		{Key: "global_options", Value: globals},
 		{Key: "commands", Value: cmds},
 		{Key: "types", Value: types},
 		{Key: "fields", Value: fields},
@@ -141,6 +142,18 @@ func stringOrNull(s string) jsonx.Value {
 		return jsonx.Null
 	}
 	return jsonx.String(s)
+}
+
+// optionJSON is one option of the interface (SPEC §16.7).
+func optionJSON(o spec.Option, required jsonx.Value) jsonx.Object {
+	return jsonx.Object{
+		{Key: "name", Value: jsonx.String(o.Name)},
+		{Key: "value", Value: stringOrNull(o.Value)},
+		{Key: "repeatable", Value: jsonx.Bool(o.Repeatable)},
+		{Key: "required", Value: required},
+		{Key: "default", Value: stringOrNull(o.Default)},
+		{Key: "summary", Value: jsonx.String(o.Summary)},
+	}
 }
 
 // requiredValue is true, false, or a condition string (SPEC §16.7): capture's --title,

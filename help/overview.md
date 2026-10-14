@@ -10,8 +10,8 @@ they share.
 
 ## The model
 
-- **Store:** one git repository, named by `--store`, `MEMEX_STORE` or the config file; never
-  inferred from the current directory.
+- **Store:** one git repository, named by `--store PATH` (before or after the command),
+  `MEMEX_STORE` or the config file; never inferred from the current directory.
 - **Entry:** one Markdown file with TOML frontmatter, directly inside a type directory.
 - **Type:** the directory: `rules/`, `decisions/`, `runbooks/`, `reference/`, `tasks/`,
   `plans/`, `journal/`.

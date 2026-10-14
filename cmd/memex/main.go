@@ -120,6 +120,14 @@ func dispatch(args []string, stdout, stderr io.Writer) (int, *usageError) {
 		return printHelpPage(cmd.Name, stdout)
 	}
 	switch cmd.Name {
+	case "version", "help":
+		// --store is accepted after every command (SPEC §10); these two need no store.
+		var problem string
+		if rest, problem = dropStore(rest); problem != "" {
+			return 0, cmdErr(problem)
+		}
+	}
+	switch cmd.Name {
 	case "version":
 		if len(rest) > 0 {
 			return 0, cmdErr(unexpected(rest[0], nil))
@@ -300,6 +308,42 @@ func unexpected(arg string, options []string) string {
 		return unknownOption(name, options)
 	}
 	return fmt.Sprintf("unexpected argument %q", arg)
+}
+
+// dropStore removes --store and its value from the arguments of a command that needs no
+// store, applying the same value rules as everywhere else.
+func dropStore(args []string) ([]string, string) {
+	var out []string
+	seen := false
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			return append(out, args[i:]...), ""
+		}
+		name, value, hasValue := strings.Cut(a, "=")
+		if name != "--store" {
+			out = append(out, a)
+			continue
+		}
+		if seen {
+			return nil, "option --store given more than once"
+		}
+		seen = true
+		if !hasValue {
+			if i+1 >= len(args) {
+				return nil, "missing value for --store"
+			}
+			i++
+			value = args[i]
+			if strings.HasPrefix(value, "-") {
+				return nil, fmt.Sprintf("value for --store starts with \"-\"; write --store=%s", value)
+			}
+		}
+		if value == "" {
+			return nil, "empty value for --store"
+		}
+	}
+	return out, ""
 }
 
 func globalOptionNames() []string {

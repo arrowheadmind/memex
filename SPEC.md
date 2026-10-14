@@ -855,6 +855,7 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
 ## 10. Command-line conventions
 
 - **Form:** `memex [GLOBAL OPTIONS] COMMAND [OPTIONS] [ARGS]`. Global options: `--store PATH`.
+  Global options may also follow the command (`memex list --store ~/notes`).
 - **Options:**
   - They may appear before or after positional arguments.
   - `--` ends options.
@@ -1820,6 +1821,7 @@ conformance suite measures this, so that reading all of memex stays one affordab
 
 ```json
 {"version":"…","format":1,
+ "global_options":[{"name":"--store","value":"PATH","repeatable":false,"required":false,"default":null,"summary":"…"}],
  "commands":[{"name":"…","summary":"…","usage":"…","mutating":true,
    "options":[{"name":"--title","value":"T","repeatable":false,"required":true,"default":null,"summary":"…"}],
    "positionals":[{"name":"QUERY","repeatable":true,"required":true}],
@@ -1837,6 +1839,9 @@ conformance suite measures this, so that reading all of memex stays one affordab
   `capture`'s `--title`, `--summary` and `--body` are `"unless --from"`.
 - A positional that is a literal keyword is listed under its literal (`brain-v3` for
   `import`).
+- `global_options` lists the options accepted before or after any command (§10), with the
+  same keys as a command's options. They are not repeated in each command's `options`, and a
+  page's Options table need not list them.
 
 ### 16.8 Usage errors
 

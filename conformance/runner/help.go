@@ -35,8 +35,9 @@ type ifaceCommand struct {
 }
 
 type iface struct {
-	Commands []ifaceCommand `json:"commands"`
-	Topics   []struct {
+	GlobalOptions []ifaceOption  `json:"global_options"`
+	Commands      []ifaceCommand `json:"commands"`
+	Topics        []struct {
 		Name    string `json:"name"`
 		Summary string `json:"summary"`
 	} `json:"topics"`
@@ -197,6 +198,9 @@ func runHelpChecks(memex, git, version, pagesDir, fixtureDir string) ([]string, 
 				fail("help/cmd-%s.md: option %s: %s", c.Name, o.Name, p)
 			}
 		}
+		for _, g := range in.GlobalOptions {
+			accepted[g.Name] = true // global options are documented for every command (§16.7)
+		}
 		for name := range documented {
 			if !accepted[name] {
 				fail("help/cmd-%s.md: option %s is in the Options table but not accepted", c.Name, name)
@@ -216,7 +220,9 @@ func runHelpChecks(memex, git, version, pagesDir, fixtureDir string) ([]string, 
 	// command runs in a store seeded from the fixture, so that a mutating command may do
 	// whatever it does; only the "unknown option" refusal is observed.
 	for _, c := range in.Commands {
-		ps, err := tryOptions(memex, git, fixtureDir, c)
+		withGlobals := c
+		withGlobals.Options = append(append([]ifaceOption{}, c.Options...), in.GlobalOptions...)
+		ps, err := tryOptions(memex, git, fixtureDir, withGlobals)
 		if err != nil {
 			return problems, err
 		}
