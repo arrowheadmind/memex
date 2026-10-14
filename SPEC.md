@@ -144,7 +144,6 @@ Keys:
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `store` | string | none | Store path (§3.1) |
-| `host` | string | short hostname (text before the first `.`, lowercased) | Default `hosts` value on new entries |
 | `workspace` | string | none | Root for pointer checks and the leak scan (§12) |
 | `sync_on_preflight` | boolean | `true` | `preflight` syncs the store first |
 | `search_limit` | integer ≥ 1 | `12` | Default `--limit` for `search` and `preflight` |
@@ -160,7 +159,6 @@ The config file holds settings only, never knowledge.
 | `MEMEX_STORE` | Store path (§3.1) |
 | `MEMEX_CONFIG` | Config file path (§3.2) |
 | `MEMEX_TODAY` | Overrides today's date (`YYYY-MM-DD`). Exists for tests and imports. If it is malformed: exit 2. |
-| `MEMEX_HOST` | Overrides the `host` setting |
 
 memex reads no other variables of its own.
 
@@ -376,8 +374,8 @@ On creation, unless options override it:
   the parent of `git rev-parse --git-common-dir` (made absolute), so that a linked worktree such
   as `<repo>/.worktrees/<task>` is attributed to `<repo>`, not to `<task>`. It is empty when the
   current directory is not inside a repository, or when that repository is the store.
-- `hosts` is empty. The predecessor never filtered by host, and a default on every entry is
-  noise.
+- `hosts` is empty, and only `--host` sets it; there is no host setting. The predecessor never
+  filtered by host, and a default on every entry is noise.
 
 `--repo NAME` and `--host NAME` (repeatable) set the fields. `--no-repo` empties the default.
 This is the only use memex makes of the current directory.
@@ -720,11 +718,16 @@ unit:
 3. **Validate inputs** and compute the full new contents of every file to write. Nothing has
    been written yet; any error here exits 1 (or 2 for a usage error) with the reason on
    standard error and no outcome line, because no state changed.
+   Every mutating command except `save` (and `init`, which is not one) first refuses, exit 1,
+   with `memex: store has no commits yet; run memex save` when `memex.toml` is not in `HEAD`:
+   the store's pre-commit hook could not validate the commit.
 4. **Write** each file via a temporary file in the same directory, then rename it into place.
 5. **Read back.** Re-read every written file, check its bytes equal what was intended, and run
    §7 validation on the written entries and their link targets. On failure, restore the
    previous contents (or delete new files) and exit 1. For `save`, which wrote nothing, this
-   step is validation only: on failure the working tree is left exactly as found.
+   step is validation only: on failure the working tree is left exactly as found. Any error
+   counts, also one the entry or a link target already had: the pre-commit hook would refuse
+   the commit for the same finding.
 6. **Commit.** `git add -- <paths>`, then `git commit -m <message> -- <paths>`. Only these paths
    are committed. Other changes in the working tree or index are left as they are.
 7. **Integrate.** If there is no upstream, stop here (outcome `committed, no upstream`).
@@ -737,12 +740,14 @@ unit:
    - If the rebase conflicts, run `git rebase --abort`; the local commit is kept and the outcome
      is `conflict` (exit 6).
    - If the fetch, pull or push fails or times out, the outcome is `NOT pushed` (exit 5) with
-     git's first stderr line, or `timed out after <N>s`, as the reason.
+     git's first stderr line, or `timed out after <N>s`, as the reason. A fetch that already
+     failed or timed out in step 2 is not repeated; the outcome reports that reason.
 8. **Unlock and report** (§9.4). `<sha7>` in the outcome line is the commit's hash *after* any
    rebase, which is the hash that exists on the remote.
 
 If git reports the index is locked by another process, retry with delays of 0.2, 0.4, 0.8, 1.6
-and 3.2 s, then fail with exit 4.
+and 3.2 s, then fail with exit 4. After the commit (in step 7) the commit stays, and the
+outcome is `NOT pushed` (exit 5) with that reason.
 
 memex adds no trailers to commit messages. Author and committer come from the user's git
 configuration.
@@ -802,13 +807,16 @@ nothing and prints no outcome line; its exit code and standard error carry the r
    only ahead, push.
 
 It prints exactly two lines:
-- `fetched <time>`, where time is now in RFC 3339 UTC;
+- `fetched <time>`, where time is now in RFC 3339 UTC. It is always the first line, also when
+  there is no upstream or the fetch failed; it records the attempt;
 - the **state line**, one of `up to date`, `fast-forwarded N commits`, `pushed N commits`,
   `rebased and pushed N commits`, `no upstream`, or `NOT SYNCED: <reason>`.
 
 Exit 0 for the first five. `NOT SYNCED` exits 5, with `<reason>` one of
 `uncommitted changes (run memex save)`, `rebase in progress`, `timed out after <N>s`,
-`rebase conflict in <paths>` (after `git rebase --abort`), or git's first stderr line. A
+`rebase conflict in <paths>` (after `git rebase --abort`), `locked by another memex for 10s`
+(only within `preflight`, whose lock wait is 10 s; `sync` itself exits 4), or git's first
+stderr line. A
 dirty tree is never rebased; behind-only with a dirty tree is `NOT SYNCED: uncommitted
 changes (run memex save)` as well, because a fast-forward could overwrite an edit in progress.
 
@@ -883,14 +891,24 @@ It also sets `git config core.hooksPath .githooks`.
 
 - Existing nonempty files are never overwritten. Missing lines are appended to `.gitignore`.
 - Running it again is a no-op.
-- It prints one line per created item, then `initialized <path>`.
+- It prints one line per created or changed item, in this order: `created .git/` when it ran
+  `git init`; `created <file>` for `memex.toml`, `AGENT.md`, `.gitignore` and
+  `.githooks/pre-commit`, and `created <dir>/` for each type directory and `files/`, in the
+  order of the list above; `updated .gitignore` when it appended the line to an existing file;
+  `set core.hooksPath .githooks` when that was not already its value. The last line is
+  `initialized <path>; run: memex save -m "init store"`, with the absolute path, because a
+  store with nothing committed refuses every other write (§9.1 step 3).
 - It does not commit.
 
 **Pointer form.** `memex init --pointers DIR` writes `CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
 into `DIR` with the pointer text of §12. It requires a resolved store (§3.1).
-- A file that already exists with any other content is left alone and reported, and the
-  command exits 1.
+- It prints one line per file, `created <DIR>/<file>`, `unchanged <DIR>/<file>` when the file
+  already holds the pointer text, or `replaced <DIR>/<file>`, with `<DIR>` as given.
+- A file that already exists with any other content is left alone and reported on standard
+  error as `memex: <DIR>/<file> exists with other content; left alone (use --force to replace
+  it)`, and the command exits 1.
 - `--force` replaces such a file and prints its previous content to standard output first.
+- A `DIR` that is not a directory exits 1.
 - The pointer form does not commit.
 
 ### 11.2 `new` and `capture`
@@ -907,7 +925,8 @@ memex capture --from PATH [--title=T] [--summary=S] [same options]
 the title defaults to the file's first ATX heading text, else its filename; the summary
 defaults to `Imported from <PATH>`; the body is the line `Imported from \`<PATH>\` (<today>).`,
 a blank line, then the file content, normalized; `aliases` gets `<PATH>` as written. It never
-deletes PATH, and on success prints `remove <PATH> after review` before the outcome line.
+deletes PATH, and on success prints `remove <PATH> after review` before the outcome line,
+also after `exists <path>` in the repeat of step 3.
 
 Behavior:
 
@@ -916,6 +935,9 @@ Behavior:
    agent decide whether to open an entry without reading it. `--keyword` SHOULD be given
    whenever the body's vocabulary differs from how someone would ask about it.
    `verified` defaults to today for references.
+   An unknown type or status, an option not allowed on the type, and a malformed `--verified`
+   or `--review-days` are usage errors (exit 2); a value that fails §5.3 or §7 (a bad tag, a
+   `parent` that is not a plan, an unresolved link) exits 1 with the findings.
 2. Normalize the body (§5.1) and check its content measure (§5.6).
 3. Compute the id (§5.4).
    - If the id already exists with the same type and an identical body: print
@@ -954,7 +976,9 @@ no task text. It prints:
 
 1. **Sync line.** Unless `--no-sync` is given or `sync_on_preflight = false`, it runs `sync`
    (§9.5) and prints its state line, prefixed `store: `, for example `store: up to date` or
-   `store: NOT SYNCED: timed out after 20s`. A failed sync never stops preflight. With sync
+   `store: NOT SYNCED: timed out after 20s`. A failed sync never stops preflight; a write lock
+   held by another memex for the whole 10 s wait is the line
+   `store: NOT SYNCED: locked by another memex for 10s`, so preflight never exits 4. With sync
    skipped, it prints `store: not synced (last fetch <time or "never">)`, where the time is the
    modification time of the store's `FETCH_HEAD` (`git rev-parse --git-path FETCH_HEAD`) in
    RFC 3339 UTC to the second. It is `never` when that file does not exist, or when the store
@@ -1080,7 +1104,12 @@ memex set ID ASSIGNMENT…
 - The result must validate. In particular `status=superseded` needs `superseded_by=` in the
   same command, and leaving `superseded` removes `superseded_by` automatically.
 - The body bytes are preserved exactly.
-- Commits through §9.1.
+- An entry with an unknown field or a field whose value is not valid is refused (exit 1),
+  because rewriting it would drop that field; fix it by hand, then `memex save`.
+- The values of `superseded_by`, `parent` and `sources` are resolved like every id argument
+  (§10): an id, a store-relative path or an alias.
+- Commits through §9.1. Standard output is only the outcome line; an assignment that changes
+  nothing gives `nothing to commit`.
 
 ### 11.8 `promote`
 
@@ -1093,7 +1122,8 @@ memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new optio
    status to `promoted`. A `superseded` source and sources of other types are unchanged.
 
 Both files go in one commit. Read-back (§9.1, step 5) covers both. Promoting a source whose
-status is already `promoted` is allowed.
+status is already `promoted` is allowed. Standard output is `created <path>`, then the outcome
+line; the id rules of §11.2 step 3 apply to the new entry.
 
 ### 11.9 `fmt`
 
@@ -1103,12 +1133,17 @@ memex fmt [PATHS…] [--check]
 
 Rewrites entries into canonical form (§5.1) without changing any field value or the body.
 - With no paths it processes all entries.
-- `--check` writes nothing, lists the non-canonical paths, and exits 1 if any.
-- Otherwise commits through §9.1.
+- Only entries without errors are rewritten (those `check` reports as `W-CANONICAL`). Another
+  selected entry that is not canonical, or cannot be read, is reported on standard error as
+  `memex: skipped <path>: it has errors; run memex check` (or the reading problem) and left
+  alone. A path that is not an entry is `memex: no entry at <path>`, exit 1.
+- `--check` writes nothing and takes no lock, lists the non-canonical paths one per line in
+  path order, and exits 1 if any.
+- Otherwise commits through §9.1. Standard output is only the outcome line.
 
 ### 11.10 `save`
 
-§9.3.
+§9.3. Standard output is only the outcome line.
 
 ### 11.11 `sync`
 
@@ -1585,7 +1620,7 @@ implementation runs it through a runner that takes the path of the `memex` execu
 - `GIT_CONFIG_GLOBAL` names that `.gitconfig`, so the identity holds even when a case's `env`
   overrides `HOME`, and `GIT_CONFIG_NOSYSTEM=1`.
 - `MEMEX_STORE` is the temporary store, `MEMEX_CONFIG` an empty file,
-  `MEMEX_TODAY=2026-01-15`, `MEMEX_HOST=testhost`, `TZ=UTC` and `LC_ALL=C`.
+  `MEMEX_TODAY=2026-01-15`, `TZ=UTC` and `LC_ALL=C`.
 
 No other variable is inherited from the runner's environment. The working directory is the
 temporary `HOME`, which is not inside a git repository, so §5.5 attribution is empty unless a
