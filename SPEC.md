@@ -43,9 +43,9 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11 Commands | Implemented |
 | 12 Tool neutrality | Planned |
 | 13 Importing a brain v3 store | Implemented |
-| 15 Conformance suite | Planned |
-| 16 Help | Planned |
-| 17 Agent-first requirements | Planned |
+| 15 Conformance suite | Implemented |
+| 16 Help | Implemented |
+| 17 Agent-first requirements | Implemented (the §12 rows wait for §12) |
 
 ---
 
@@ -1729,7 +1729,8 @@ from the behavior it describes.
   exception is the first line of the overview, which carries the version (§16.4). This keeps
   help identical across implementations in different languages.
 - **Only implemented behavior is documented.** A command or option enters help in the commit
-  that implements it (§0).
+  that implements it (§0), and leaves `internal/spec`'s table until then, so that `help --json`,
+  `help topics` and the pages always agree (`doctor` and `check --workspace` arrive with §12).
 
 ### 16.4 Overview
 
@@ -1761,8 +1762,14 @@ omitted.
 5. **Output:** the exact shape of standard output, including the outcome line (§9.4) for
    mutating commands.
 6. **Exit codes:** only the codes this command can return.
-7. **Examples:** two to five. Each is a fenced block marked ` ```example `, holding the command
-   line prefixed `$ ` followed by its exact output.
+7. **Examples:** two to five. Each is a fenced block marked ` ```example `, holding one command
+   line prefixed `$ ` (split like a POSIX shell: single quotes literal, double quotes with
+   `\"`, no expansions) followed by its exact output: standard output, then standard error,
+   then a line `exit N` when the exit code is not 0. The examples of one page run in order
+   against one store seeded from `conformance/help-fixture/store/`, with
+   `conformance/help-fixture/home/` copied into the temporary home and the working directory
+   set to it, so a mutating example changes what later examples see. The §15 placeholders
+   apply.
 8. **Mistakes to avoid:** the misuse the command refuses, and why. Example for `capture`:
    titles starting with `-`, empty bodies, and writing to a tool's memory instead.
 9. **See also:** related commands and topics.
@@ -1810,7 +1817,10 @@ conformance suite measures this, so that reading all of memex stays one affordab
 - The JSON is generated from the same definitions the parser and validator use, never written
   by hand.
 - `required` on fields is `"yes"`, `"no"`, or a condition string such as
-  `"when status is superseded"`.
+  `"when status is superseded"`. On options it is `true`, `false`, or a condition string:
+  `capture`'s `--title`, `--summary` and `--body` are `"unless --from"`.
+- A positional that is a literal keyword is listed under its literal (`brain-v3` for
+  `import`).
 
 ### 16.8 Usage errors
 
@@ -1838,8 +1848,12 @@ Run: memex help
   `help --json`. Conversely, every documented option is accepted.
   - The runner checks this by comparing `help --json` with the Options tables.
   - It also tries each documented option. An undocumented `--x` must fail as unknown.
-- Every ` ```example ` block is executed in a fresh store seeded from
-  `conformance/help-fixture/`, and its output must match exactly.
+- Every ` ```example ` block is executed as §16.5 says, in a store seeded from
+  `conformance/help-fixture/`, and its output must match exactly. The fixture is a small
+  realistic store (a dozen entries across every type, one `always` rule, a hidden entry, an
+  alias) and a `home/` with a body file and an empty repository directory for the examples.
+- The runner performs these checks as one more case, named `help`, so that
+  `scripts/check.sh` fails when a page drifts from the implementation.
 - Size limits (§16.4–16.6) hold.
 - `help --all` is byte-identical to the concatenation rule of §16.2.
 

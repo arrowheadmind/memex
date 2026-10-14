@@ -63,3 +63,14 @@ Open items for later blocks:
   error. §10 was marked Implemented in B5 on the strength of every other bullet.
 - B6: the output lines of init, init --pointers, set, promote, fmt and save are now in
   §11.1 and §11.7–11.10 (decided after B5's questions); the help pages show them from there.
+
+- B6 (2026-10-14): help pages, `help topics/--all/--json`, the §16.9 runner checks and the help
+  fixture are in; §15, §16 and §17 are Implemented. The cold-agent rounds (§17.1) are prepared
+  in `scripts/cold-agent/` but not run: the implementing fork could not spawn fresh agents. The
+  manager runs two rounds and records them before B6 closes.
+- B8: `doctor` and `check --workspace` re-enter `internal/spec`, get pages, and the `neutrality`
+  topic grows the leak scan and the tool-memory check; the §17.4 rows that depend on §12 get
+  their cases then.
+- Future, not scheduled: a language-neutral `help/interface.json` generated from
+  `internal/spec` for a second implementation; today `help --json` is that artifact at run time.
+
