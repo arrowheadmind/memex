@@ -341,3 +341,31 @@ func TestChangedWhileWorking(t *testing.T) {
 		t.Errorf("the edit was overwritten: %q", got)
 	}
 }
+
+// TestStagedDiffers changes a file between memex's read-back and git add, with a git whose
+// add appends a line first: the commit is refused and the store restored (SPEC §9.1 step 6).
+func TestStagedDiffers(t *testing.T) {
+	st, _ := repo(t)
+	real, _ := exec.LookPath("git")
+	dir := t.TempDir()
+	script := "#!/bin/sh\nif [ \"$1\" = add ]; then for a; do [ -f \"$a\" ] && echo tampered >> \"$a\"; done; fi\nexec " + real + " \"$@\"\n"
+	os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	s, err := Begin(st, 20, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.End()
+	files := []File{{Path: "rules/2026-01-15-a-rule.md", Data: []byte(entry)}}
+	if err := s.Write(today, files); err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Commit(Paths(files), "msg")
+	var ce *ChangedError
+	if !errors.As(err, &ce) || ce.Error() != "rules/2026-01-15-a-rule.md changed while memex was working; retry" {
+		t.Fatalf("Commit after a changed add: %v", err)
+	}
+	if out := gitIn(t, st, "status", "--porcelain"); out != "" {
+		t.Errorf("store not restored: %q", out)
+	}
+}

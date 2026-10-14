@@ -177,3 +177,19 @@ func (g *Git) RunInput(stdin []byte, args ...string) (string, error) {
 	}
 	return out.String(), e
 }
+
+// Reason is the line of git's standard error that memex reports as a reason (SPEC §9.4): the
+// first line starting with "fatal:" or "error:", or else the first non-empty line, trimmed.
+func Reason(stderr string) string {
+	first := ""
+	for _, l := range strings.Split(stderr, "\n") {
+		l = strings.TrimSpace(l)
+		if strings.HasPrefix(l, "fatal:") || strings.HasPrefix(l, "error:") {
+			return l
+		}
+		if first == "" {
+			first = l
+		}
+	}
+	return first
+}

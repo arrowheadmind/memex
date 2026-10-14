@@ -136,6 +136,10 @@ func (s *Session) Write(today time.Time, files []File) error {
 			return fail(&WriteError{f.Path, err})
 		}
 		s.saved = append(s.saved, sv)
+		if s.written == nil {
+			s.written = map[string][]byte{}
+		}
+		s.written[f.Path] = f.Data
 		if err := atomicWrite(p, f.Data, sv.mode); err != nil {
 			return fail(&WriteError{f.Path, err})
 		}
@@ -206,7 +210,7 @@ func (s *Session) restore() {
 	for i := len(s.created) - 1; i >= 0; i-- {
 		os.Remove(s.created[i]) // only when empty
 	}
-	s.saved, s.created = nil, nil
+	s.saved, s.created, s.written = nil, nil, nil
 }
 
 // atomicWrite writes data to p through a temporary file in the same directory, renamed into

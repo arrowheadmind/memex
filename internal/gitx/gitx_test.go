@@ -64,3 +64,16 @@ func pathOf(t *testing.T) string {
 }
 
 func dir(p string) string { return p[:strings.LastIndex(p, "/")] }
+
+func TestReason(t *testing.T) {
+	for in, want := range map[string]string{
+		"From x\nfatal: no repo\nmore\n":   "fatal: no repo",
+		"hint: a\nerror: failed to push\n": "error: failed to push",
+		"\n  plain line  \nnext\n":         "plain line",
+		"":                                 "",
+	} {
+		if got := Reason(in); got != want {
+			t.Errorf("Reason(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

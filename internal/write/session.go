@@ -75,8 +75,9 @@ type Session struct {
 	lockF   *os.File
 	up      *upstream
 	saved   []saved
-	created []string // directories Write created, outermost first
-	index   []byte   // the git index before Commit staged anything; nil when there was none
+	written map[string][]byte // store-relative path → the bytes Write put there
+	created []string          // directories Write created, outermost first
+	index   []byte            // the git index before Commit staged anything; nil when there was none
 	sleep   func(time.Duration)
 
 	interrupted atomic.Bool
@@ -238,14 +239,7 @@ func timedOut(err error) bool {
 	return errors.As(err, &ge) && (ge.TimedOut || ge.Interrupted)
 }
 
-func firstLine(text string) string {
-	for _, l := range strings.Split(text, "\n") {
-		if l = strings.TrimSpace(l); l != "" {
-			return l
-		}
-	}
-	return ""
-}
+func firstLine(text string) string { return gitx.Reason(text) }
 
 // run runs a local git command that may need the index lock, retrying while another
 // process holds it (SPEC §9.1). An index that stays locked is an *IndexLockError.
@@ -391,6 +385,17 @@ func (s *Session) Commit(paths []string, msg string) (Outcome, error) {
 			return fail(err)
 		}
 	}
+	// What was staged must be what memex wrote: a writer outside the lock could have changed
+	// a file between the read-back and git add.
+	for _, p := range paths {
+		want, ok := s.written[p]
+		if !ok {
+			continue
+		}
+		if !s.stagedEquals(p, want) {
+			return fail(&ChangedError{p})
+		}
+	}
 	if before != "" {
 		// Contents equal to HEAD, such as a file formatted back to what was committed, leave
 		// nothing to commit.
@@ -404,6 +409,20 @@ func (s *Session) Commit(paths []string, msg string) (Outcome, error) {
 	}
 	s.saved, s.created = nil, nil
 	return s.integrate(), nil
+}
+
+// stagedEquals reports whether the index holds data at p.
+func (s *Session) stagedEquals(p string, data []byte) bool {
+	staged, err := s.plain.Run("ls-files", "-s", "-z", "--", p)
+	if err != nil {
+		return false
+	}
+	fields := strings.Fields(strings.TrimSuffix(staged, "\x00"))
+	if len(fields) < 2 {
+		return false
+	}
+	want, err := s.plain.RunInput(data, "hash-object", "--stdin", "--path="+p)
+	return err == nil && strings.TrimSpace(want) == fields[1]
 }
 
 func (s *Session) interruptedOutcome() Outcome {
