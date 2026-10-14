@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/spec"
 )
@@ -40,12 +41,21 @@ const PreCommit = "#!/bin/sh\n" +
 // GitignoreLine is the line .gitignore must contain (SPEC §4).
 const GitignoreLine = ".memex/"
 
-// CreateLayout creates a store directory as `memex init PATH` does (SPEC §11.1): the
-// manifest, AGENT.md, the type directories, files/, .gitignore and the pre-commit hook, with
-// `git init` and core.hooksPath. Existing nonempty files are left alone. It does not commit.
-func CreateLayout(dir, name string, g *gitx.Git) error {
+// CreateLayout creates a store directory as `memex init PATH` does (SPEC §11.1): `git init`
+// when it is not a repository, the manifest, AGENT.md, the type directories, files/,
+// .gitignore and the pre-commit hook, and core.hooksPath. Existing nonempty files are left
+// alone and missing lines are appended to .gitignore. It does not commit. It returns one line
+// per item it created or changed, in that order.
+func CreateLayout(dir, name string, g *gitx.Git) ([]string, error) {
+	var done []string
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return nil, err
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
+		if _, err := g.Run("init", "-q"); err != nil {
+			return nil, err
+		}
+		done = append(done, "created .git/")
 	}
 	writeIfAbsent := func(rel, content string, mode os.FileMode) error {
 		p := filepath.Join(dir, rel)
@@ -55,43 +65,70 @@ func CreateLayout(dir, name string, g *gitx.Git) error {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			return err
 		}
-		return os.WriteFile(p, []byte(content), mode)
-	}
-	if err := writeIfAbsent(ManifestFile, fmt.Sprintf("format = %d\nname = %q\n", spec.StoreFormat, name), 0o644); err != nil {
-		return err
-	}
-	if err := writeIfAbsent("AGENT.md", AgentMD, 0o644); err != nil {
-		return err
-	}
-	for _, t := range spec.Types {
-		if err := os.MkdirAll(filepath.Join(dir, t.Directory), 0o755); err != nil {
+		if err := os.WriteFile(p, []byte(content), mode); err != nil {
 			return err
 		}
+		if err := os.Chmod(p, mode); err != nil {
+			return err
+		}
+		done = append(done, "created "+filepath.ToSlash(rel))
+		return nil
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "files"), 0o755); err != nil {
-		return err
+	mkdir := func(rel string) error {
+		p := filepath.Join(dir, rel)
+		if st, err := os.Stat(p); err == nil && st.IsDir() {
+			return nil
+		}
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			return err
+		}
+		done = append(done, "created "+rel+"/")
+		return nil
+	}
+	manifest := fmt.Sprintf("format = %d\nname = %s\n", spec.StoreFormat, entry.Quote(name))
+	if err := writeIfAbsent(ManifestFile, manifest, 0o644); err != nil {
+		return nil, err
+	}
+	if err := writeIfAbsent("AGENT.md", AgentMD, 0o644); err != nil {
+		return nil, err
+	}
+	for _, t := range spec.Types {
+		if err := mkdir(t.Directory); err != nil {
+			return nil, err
+		}
+	}
+	if err := mkdir("files"); err != nil {
+		return nil, err
 	}
 	gi := filepath.Join(dir, ".gitignore")
-	data, _ := os.ReadFile(gi)
+	data, err := os.ReadFile(gi)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
 	if !containsLine(string(data), GitignoreLine) {
 		s := string(data)
 		if s != "" && s[len(s)-1] != '\n' {
 			s += "\n"
 		}
 		if err := os.WriteFile(gi, []byte(s+GitignoreLine+"\n"), 0o644); err != nil {
-			return err
+			return nil, err
+		}
+		if len(data) == 0 {
+			done = append(done, "created .gitignore")
+		} else {
+			done = append(done, "updated .gitignore")
 		}
 	}
 	if err := writeIfAbsent(filepath.Join(".githooks", "pre-commit"), PreCommit, 0o755); err != nil {
-		return err
+		return nil, err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		if _, err := g.Run("init", "-q"); err != nil {
-			return err
+	if out, _ := g.Run("config", "core.hooksPath"); out != ".githooks\n" {
+		if _, err := g.Run("config", "core.hooksPath", ".githooks"); err != nil {
+			return nil, err
 		}
+		done = append(done, "set core.hooksPath .githooks")
 	}
-	_, err := g.Run("config", "core.hooksPath", ".githooks")
-	return err
+	return done, nil
 }
 
 func containsLine(text, line string) bool {

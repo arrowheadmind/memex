@@ -467,7 +467,7 @@ func typeDir(typ string) string {
 // write creates DIR as init does and writes every entry, attachment and AGENT.md.
 func (im *Importer) write() error {
 	g := gitx.New(im.opts.Out, im.opts.Timeout)
-	if err := store.CreateLayout(im.opts.Out, im.primary.Basename, g); err != nil {
+	if _, err := store.CreateLayout(im.opts.Out, im.primary.Basename, g); err != nil {
 		return err
 	}
 	// attachments entries' bodies list the files they own
