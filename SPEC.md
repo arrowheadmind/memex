@@ -714,7 +714,10 @@ unit:
    bounded by `network_timeout`. If the branch is strictly behind and the working tree has no
    uncommitted changes to tracked files, `git merge --ff-only`. If the fetch fails or times out,
    continue and record the reason for the final report. A dirty tree is never merged or
-   rebased by this step.
+   rebased by this step. Before the fetch, a rebase, merge or cherry-pick in progress in the
+   store refuses the command, exit 1, with `memex: rebase in progress; finish or abort it,
+   then retry` (`merge in progress`, `cherry-pick in progress`): HEAD is then not the branch,
+   and a commit would land on the operation's detached HEAD.
 3. **Validate inputs** and compute the full new contents of every file to write. Nothing has
    been written yet; any error here exits 1 (or 2 for a usage error) with the reason on
    standard error and no outcome line, because no state changed.
@@ -722,6 +725,11 @@ unit:
    with `memex: store has no commits yet; run memex save` when `memex.toml` is not in `HEAD`:
    the store's pre-commit hook could not validate the commit.
 4. **Write** each file via a temporary file in the same directory, then rename it into place.
+   A file that cannot be written (permission denied, disk full) restores what was written and
+   exits 1 with `memex: cannot write <path>: <reason>; nothing was changed`, where `<path>` is
+   store-relative and `<reason>` the operating system's error text without any path. A file
+   that changed since the command read it (an edit made while memex worked) is not
+   overwritten: `memex: <path> changed while memex was working; retry`, exit 1.
 5. **Read back.** Re-read every written file, check its bytes equal what was intended, and run
    §7 validation on the written entries and their link targets. On failure, restore the
    previous contents (or delete new files) and exit 1. For `save`, which wrote nothing, this
@@ -738,7 +746,9 @@ unit:
    - `git pull --rebase`, then `git push`, each bounded by `network_timeout`.
    - If the push is rejected as non-fast-forward, repeat this step, at most 5 attempts in total.
    - If the rebase conflicts, run `git rebase --abort`; the local commit is kept and the outcome
-     is `conflict` (exit 6).
+     is `conflict` (exit 6). `<paths>` is `<unknown>` when git cannot list them. If the abort
+     itself fails, the outcome is `NOT pushed: rebase abort failed: <git's first stderr line>`
+     (exit 5). A pull that times out is `NOT pushed: timed out after <N>s`, never a conflict.
    - If the fetch, pull or push fails or times out, the outcome is `NOT pushed` (exit 5) with
      git's first stderr line, or `timed out after <N>s`, as the reason. A fetch that already
      failed or timed out in step 2 is not repeated; the outcome reports that reason.
@@ -748,6 +758,12 @@ unit:
 If git reports the index is locked by another process, retry with delays of 0.2, 0.4, 0.8, 1.6
 and 3.2 s, then fail with exit 4. After the commit (in step 7) the commit stays, and the
 outcome is `NOT pushed` (exit 5) with that reason.
+
+SIGINT and SIGTERM do not kill memex between steps 1 and 8. The running git process group is
+sent SIGTERM and waited for, and the lock is held until the store is consistent. Before the
+commit exists, the written files and the index are restored and the command exits 1 with
+`memex: interrupted; nothing was changed`; once it exists, the outcome is
+`committed <sha7>, NOT pushed: interrupted` (exit 5).
 
 memex adds no trailers to commit messages. Author and committer come from the user's git
 configuration.
@@ -794,7 +810,8 @@ The last line of every mutating command's standard output is exactly one of thes
 | `committed <sha7>, NOT integrated: rebase conflict in <paths>` | 6 |
 
 `<reason>` is one of `uncommitted changes (run memex save)`, `timed out after <N>s`,
-`rebase in progress`, or git's first line of standard error.
+`interrupted`, `rebase abort failed: <git's first stderr line>`, or git's first line of
+standard error. A rebase in progress is refused before anything is written (§9.1 step 2).
 
 A commit is never undone automatically. A command that fails before step 6 of §9.1 changed
 nothing and prints no outcome line; its exit code and standard error carry the reason.
@@ -813,10 +830,11 @@ It prints exactly two lines:
   `rebased and pushed N commits`, `no upstream`, or `NOT SYNCED: <reason>`.
 
 Exit 0 for the first five. `NOT SYNCED` exits 5, with `<reason>` one of
-`uncommitted changes (run memex save)`, `rebase in progress`, `timed out after <N>s`,
-`rebase conflict in <paths>` (after `git rebase --abort`), `locked by another memex for 10s`
-(only within `preflight`, whose lock wait is 10 s; `sync` itself exits 4), or git's first
-stderr line. A
+`uncommitted changes (run memex save)`; `rebase in progress`, `merge in progress` or
+`cherry-pick in progress` (checked first, before the upstream); `timed out after <N>s`;
+`interrupted`; `rebase conflict in <paths>` (after `git rebase --abort`); `rebase abort
+failed: <git's first stderr line>`; `locked by another memex for 10s` (only within
+`preflight`, whose lock wait is 10 s; `sync` itself exits 4); or git's first stderr line. A
 dirty tree is never rebased; behind-only with a dirty tree is `NOT SYNCED: uncommitted
 changes (run memex save)` as well, because a fast-forward could overwrite an edit in progress.
 
@@ -904,6 +922,9 @@ It also sets `git config core.hooksPath .githooks`.
 into `DIR` with the pointer text of §12. It requires a resolved store (§3.1).
 - It prints one line per file, `created <DIR>/<file>`, `unchanged <DIR>/<file>` when the file
   already holds the pointer text, or `replaced <DIR>/<file>`, with `<DIR>` as given.
+- An existing file whose content is the pointer line naming the same store, compared after
+  the §3.1 expansion of both paths (as `check --workspace` compares them, §12), is
+  `unchanged`.
 - A file that already exists with any other content is left alone and reported on standard
   error as `memex: <DIR>/<file> exists with other content; left alone (use --force to replace
   it)`, and the command exits 1.
@@ -1104,12 +1125,16 @@ memex set ID ASSIGNMENT…
 - The result must validate. In particular `status=superseded` needs `superseded_by=` in the
   same command, and leaving `superseded` removes `superseded_by` automatically.
 - The body bytes are preserved exactly.
+- An entry with uncommitted changes (it differs from `HEAD`, or is untracked) is refused,
+  exit 1, with `memex: <path> has uncommitted changes; run memex save first`, so that its
+  commit never carries someone's unsaved edit.
 - An entry with an unknown field or a field whose value is not valid is refused (exit 1),
   because rewriting it would drop that field; fix it by hand, then `memex save`.
 - The values of `superseded_by`, `parent` and `sources` are resolved like every id argument
   (§10): an id, a store-relative path or an alias.
 - Commits through §9.1. Standard output is only the outcome line; an assignment that changes
-  nothing gives `nothing to commit`.
+  nothing gives `nothing to commit`. The commit message shows each value as resolved: ids,
+  not the paths or aliases given.
 
 ### 11.8 `promote`
 
@@ -1122,7 +1147,8 @@ memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new optio
    status to `promoted`. A `superseded` source and sources of other types are unchanged.
 
 Both files go in one commit. Read-back (§9.1, step 5) covers both. Promoting a source whose
-status is already `promoted` is allowed. Standard output is `created <path>`, then the outcome
+status is already `promoted` is allowed. A source that is rewritten is refused, as in `set`,
+when it has uncommitted changes or fields that cannot be kept. Standard output is `created <path>`, then the outcome
 line; the id rules of §11.2 step 3 apply to the new entry.
 
 ### 11.9 `fmt`
@@ -1137,8 +1163,8 @@ Rewrites entries into canonical form (§5.1) without changing any field value or
   selected entry that is not canonical, or cannot be read, is reported on standard error as
   `memex: skipped <path>: it has errors; run memex check` (or the reading problem) and left
   alone. A path that is not an entry is `memex: no entry at <path>`, exit 1.
-- `--check` writes nothing and takes no lock, lists the non-canonical paths one per line in
-  path order, and exits 1 if any.
+- `--check` writes nothing and takes no lock, lists every non-canonical selected entry one
+  per line in path order, those with errors and unreadable ones included, and exits 1 if any.
 - Otherwise commits through §9.1. Standard output is only the outcome line.
 
 ### 11.10 `save`
@@ -1876,6 +1902,8 @@ Language models predictably make certain mistakes. memex catches each one and sa
   store.
 - Writes are atomic and verified (§9.1). A write that fails part-way leaves the store as it was,
   or reports exactly what was left.
+- An interrupted write (SIGINT, SIGTERM) leaves the store as it was, or a commit that is
+  reported as not pushed (§9.1); it never leaves files half-written or a lock behind.
 - Concurrent agents on one host are serialized by the write lock. Agents on different hosts are
   reconciled by rebase, and a true conflict is reported with exit 6, never resolved by guessing.
 - **Every network operation is bounded** by `network_timeout` (§3.2), so an offline host or a
