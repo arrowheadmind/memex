@@ -337,6 +337,9 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 	if len(o.Repos) == 0 && !o.NoRepo {
 		repos = attribution(w.root)
 	}
+	if o.From != "" && !slices.Contains(o.Alias, o.From) {
+		o.Alias = append(o.Alias, o.From) // the imported file's path resolves to the entry
+	}
 	entries := w.entries()
 	p := o.build(w, newResolver(entries), title, summary, body, repos)
 	if p == nil {

@@ -1,0 +1,10 @@
+new
+task
+--parent
+rules/2026-01-10-existing-rule.md
+--title
+A task
+--summary
+S.
+--body
+-

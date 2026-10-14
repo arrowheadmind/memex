@@ -1,0 +1,14 @@
+new
+task
+--title
+Write the importer
+--summary
+The importer for the migration.
+--parent
+plans/2026-01-15-migrate-the-store.md
+--status
+in-progress
+--alias
+old-task-name
+--body
+-

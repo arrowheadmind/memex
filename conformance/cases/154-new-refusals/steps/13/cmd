@@ -1,0 +1,10 @@
+new
+rule
+--kind
+report
+--title
+A task
+--summary
+S.
+--body
+-

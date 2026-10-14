@@ -1,0 +1,1 @@
+The plan moves every entry of the old store into the new layout, one type at a time, and verifies each batch.

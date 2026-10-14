@@ -1,0 +1,14 @@
+new
+reference
+--title
+Cache host
+--summary
+Where the cache lives.
+--review-days
+30
+--source
+old-task-name
+--source
+2026-01-10-existing-rule
+--body
+-

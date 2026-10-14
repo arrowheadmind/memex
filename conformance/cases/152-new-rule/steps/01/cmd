@@ -1,0 +1,17 @@
+new
+rule
+--title=Warm the cache first
+--summary
+Warm the binary cache before switching hosts.
+--tag
+nix
+--tag
+cache
+--keyword
+cold build
+--keyword
+cache
+--host
+builder
+--body
+-

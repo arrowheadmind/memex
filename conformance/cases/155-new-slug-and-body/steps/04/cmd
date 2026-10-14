@@ -1,0 +1,9 @@
+new
+rule
+--title=Why the deploy of the fleet configuration to every builder host stalls when the binary cache is cold and the closure is large
+--summary
+Slug case.
+--keyword
+slug
+--body
+-

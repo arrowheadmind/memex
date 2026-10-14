@@ -1,0 +1,5 @@
+capture
+--from
+notes/plain.txt
+--summary
+A plain note.

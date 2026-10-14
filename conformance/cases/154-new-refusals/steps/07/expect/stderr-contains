@@ -1,0 +1,2 @@
+memex: tasks/2026-01-15-a-task.md: E-REF parent "2026-01-10-existing-rule" is a rule, not a plan
+memex: refused: the result would not validate; nothing was changed

@@ -1,0 +1,2 @@
+See [[2026-01-01-missing-entry]] for the background.
+When the cache is cold the first build downloads everything again, so warm it before switching hosts.

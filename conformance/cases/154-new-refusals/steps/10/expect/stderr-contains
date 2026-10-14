@@ -1,0 +1,1 @@
+memex: rules/2026-01-15-a-task.md: E-SUPERSEDED status is superseded but superseded_by is missing; add it: memex set 2026-01-15-a-task superseded_by=<new>

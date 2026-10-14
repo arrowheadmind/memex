@@ -1,0 +1,12 @@
+new
+rules
+--title
+Never force-push the store
+--summary=Force-pushing loses other hosts' commits.
+--always
+--repo
+infra
+--repo
+app
+--body
+notes/body.md

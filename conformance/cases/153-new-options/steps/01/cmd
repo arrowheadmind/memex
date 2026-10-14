@@ -1,0 +1,10 @@
+new
+plan
+--title
+Migrate the store
+--summary
+Moves the old store over.
+--kind
+prompt
+--body
+-
