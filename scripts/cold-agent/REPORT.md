@@ -11,15 +11,13 @@ Rounds:
 
 | round | task | model | result |
 |---|---|---|---|
-| 1 | rotate the backup key on alpha | (not yet run) | |
-| 2 | (a different task) | (not yet run) | |
+| 1 | rotate the backup key on alpha | Sonnet, 2026-10-14 | completed the loop; one harness stumble (git identity), three page fixes (`round-1.md`) |
+| 2 | add a disk-usage alert for beta | Sonnet, 2026-10-14 | completed the loop with three `[[id]]` links; led to the `weak results` line and the AGENT.md wording (`round-2.md`) |
 
-Status: the harness is ready; the rounds were not run in block B6 because the block was
-implemented by a fork that cannot spawn fresh agents. The manager runs them:
+Status: two rounds run; both completed preflight, reading, task and a pushed capture.
+A third round is run only after a substantial page change. To run a round:
 
 ```
-scripts/cold-agent/setup.sh /tmp/cold-1 && sed -i 's/__TASK__/rotate the backup key on alpha/' /tmp/cold-1/prompt.md
-# spawn a fresh Sonnet agent with the content of /tmp/cold-1/prompt.md as its whole prompt
+scripts/cold-agent/setup.sh /tmp/cold-N && sed -i 's/__TASK__/<task>/' /tmp/cold-N/prompt.md
+# spawn a fresh Sonnet agent with the content of /tmp/cold-N/prompt.md as its whole prompt
 ```
-
-Then write `round-1.md`, fix the pages, repeat with a second task.
