@@ -1,0 +1,10 @@
+new
+rule
+--title
+After the first save
+--summary
+S.
+--tag
+base
+--body
+-

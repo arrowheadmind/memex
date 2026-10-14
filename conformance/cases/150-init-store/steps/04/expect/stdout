@@ -12,4 +12,4 @@ created files/
 created .gitignore
 created .githooks/pre-commit
 set core.hooksPath .githooks
-initialized <HOME>/other
+initialized <HOME>/other; run: memex save -m "init store"

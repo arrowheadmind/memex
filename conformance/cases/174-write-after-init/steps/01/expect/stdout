@@ -1,0 +1,15 @@
+created .git/
+created memex.toml
+created AGENT.md
+created rules/
+created decisions/
+created runbooks/
+created reference/
+created tasks/
+created plans/
+created journal/
+created files/
+created .gitignore
+created .githooks/pre-commit
+set core.hooksPath .githooks
+initialized <STORE>; run: memex save -m "init store"

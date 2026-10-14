@@ -31,6 +31,9 @@ func Sync(e *Env) int {
 	if code, ok := e.checkManifest(root); !ok {
 		return code
 	}
+	if code, ok := e.checkCommitted(root); !ok {
+		return code
+	}
 	at, state, code, err := syncState(e, root, cfg.NetworkTimeout, write.LockWait)
 	var le *write.LockError
 	if errors.As(err, &le) {

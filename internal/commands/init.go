@@ -44,7 +44,7 @@ func Init(e *Env, o InitOptions) int {
 	for _, l := range lines {
 		fmt.Fprintln(e.Stdout, l)
 	}
-	fmt.Fprintf(e.Stdout, "initialized %s\n", dir)
+	fmt.Fprintf(e.Stdout, "initialized %s; run: memex save -m \"init store\"\n", dir)
 	return spec.ExitOK
 }
 

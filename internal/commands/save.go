@@ -66,7 +66,7 @@ func Save(e *Env, o SaveOptions) (int, *UsageError) {
 	if o.MessageSet && strings.TrimSpace(o.Message) == "" {
 		return 0, &UsageError{"empty value for -m; give a commit message, or leave -m out"}
 	}
-	w, code, ok := e.beginWrite(true)
+	w, code, ok := e.beginWriteFor(true, false)
 	if !ok {
 		return code, nil
 	}

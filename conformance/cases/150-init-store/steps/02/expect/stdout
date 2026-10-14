@@ -1,1 +1,1 @@
-initialized <STORE>
+initialized <STORE>; run: memex save -m "init store"

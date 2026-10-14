@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/arrowheadmind/memex/internal/config"
+	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
 	"github.com/arrowheadmind/memex/internal/write"
@@ -22,14 +23,23 @@ type writing struct {
 }
 
 // beginWrite opens the store and takes the lock; with freshen, it also runs step 2. On
-// failure it returns the exit code.
+// failure it returns the exit code. Every caller but save needs memex.toml committed.
 func (e *Env) beginWrite(freshen bool) (*writing, int, bool) {
+	return e.beginWriteFor(freshen, true)
+}
+
+func (e *Env) beginWriteFor(freshen, needCommitted bool) (*writing, int, bool) {
 	cfg, today, root, err := e.openStore()
 	if err != nil {
 		return nil, e.failErr(err), false
 	}
 	if code, ok := e.checkManifest(root); !ok {
 		return nil, code, false
+	}
+	if needCommitted {
+		if code, ok := e.checkCommitted(root); !ok {
+			return nil, code, false
+		}
 	}
 	s, err := write.Begin(root, cfg.NetworkTimeout, write.LockWait)
 	if err != nil {
@@ -53,6 +63,15 @@ func (e *Env) checkManifest(root string) (int, bool) {
 			return e.fail(spec.ExitUsage, "%s", fe.Msg), false
 		}
 		panic(err)
+	}
+	return 0, true
+}
+
+// checkCommitted refuses a write to a store whose memex.toml is not in HEAD, such as one
+// that init has just created: its pre-commit hook would refuse the commit (SPEC §9.1 step 3).
+func (e *Env) checkCommitted(root string) (int, bool) {
+	if _, err := gitx.New(root, 0).Run("cat-file", "-e", "HEAD:"+store.ManifestFile); err != nil {
+		return e.fail(spec.ExitFailure, "store has no commits yet; run memex save"), false
 	}
 	return 0, true
 }

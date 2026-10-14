@@ -8,4 +8,4 @@ created journal/
 created files/
 created .githooks/pre-commit
 set core.hooksPath .githooks
-initialized <STORE>
+initialized <STORE>; run: memex save -m "init store"
