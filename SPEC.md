@@ -737,7 +737,10 @@ unit:
    counts, also one the entry or a link target already had: the pre-commit hook would refuse
    the commit for the same finding.
 6. **Commit.** `git add -- <paths>`, then `git commit -m <message> -- <paths>`. Only these paths
-   are committed. Other changes in the working tree or index are left as they are.
+   are committed. Other changes in the working tree or index are left as they are. After the
+   add, each file memex wrote must be staged with exactly the bytes it wrote; otherwise the
+   files and the index are restored and the command exits 1 with
+   `memex: <path> changed while memex was working; retry`.
 7. **Integrate.** If there is no upstream, stop here (outcome `committed, no upstream`).
    If tracked files other than `<paths>` are modified, stop here too: the outcome is
    `committed <sha7>, NOT pushed: uncommitted changes (run memex save)`. memex never rebases or
@@ -811,7 +814,9 @@ The last line of every mutating command's standard output is exactly one of thes
 
 `<reason>` is one of `uncommitted changes (run memex save)`, `timed out after <N>s`,
 `interrupted`, `rebase abort failed: <git's first stderr line>`, or git's first line of
-standard error. A rebase in progress is refused before anything is written (§9.1 step 2).
+standard error. Wherever a reason is git's first line of standard error, it is the first
+line that starts with `fatal:` or `error:`, or the first non-empty line when none does, with
+surrounding whitespace removed. A rebase in progress is refused before anything is written (§9.1 step 2).
 
 A commit is never undone automatically. A command that fails before step 6 of §9.1 changed
 nothing and prints no outcome line; its exit code and standard error carry the reason.
