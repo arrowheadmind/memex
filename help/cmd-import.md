@@ -44,15 +44,15 @@ report list, and last `report: <DIR>/import-report.json`. Problems go to standar
 
 ```example
 $ memex import brain-v3 --out newstore
-memex: missing SRC
-memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…
-Run: memex help import
+! memex: missing SRC
+! memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…
+! Run: memex help import
 exit 2
 ```
 
 ```example
 $ memex import brain-v3 repo --out newstore
-memex: import: repo is not a git repository
+! memex: import: repo is not a git repository
 exit 1
 ```
 

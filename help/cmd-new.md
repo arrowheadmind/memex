@@ -69,7 +69,7 @@ pushed <SHA7>
 
 ```example
 $ memex new task --title="Short" --summary="A body that is only a heading is refused." --body -
-memex: body content measure 0 is below 80: a body needs at least 80 non-whitespace characters outside headings, the knowledge itself and not only its outline; see memex help entries
+! memex: body content measure 0 is below 80: a body needs at least 80 non-whitespace characters outside headings, the knowledge itself and not only its outline; see memex help entries
 exit 1
 ```
 

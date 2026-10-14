@@ -71,7 +71,7 @@ importing  The brain v3 importer and its report
 
 ```example
 $ memex help serch
-memex: no help for "serch"; did you mean "search"? Run: memex help topics
+! memex: no help for "serch"; did you mean "search"? Run: memex help topics
 exit 2
 ```
 

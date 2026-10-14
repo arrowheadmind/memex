@@ -41,9 +41,9 @@ up to date
 
 ```example
 $ memex sync --json
-memex: unknown option --json
-memex sync
-Run: memex help sync
+! memex: unknown option --json
+! memex sync
+! Run: memex help sync
 exit 2
 ```
 

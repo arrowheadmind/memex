@@ -3,7 +3,9 @@ package main
 // The SPEC §16.9 guarantees: every command and topic has a page, `help topics` lists exactly
 // them, each page's Options table matches `help --json`, every documented option is accepted
 // and an undocumented one refused, every ```example block runs against the help fixture and
-// matches, the size limits hold, and `help --all` is the concatenation of §16.2.
+// matches stream by stream, command pages and the overview have the §16.4 and §16.5 structure,
+// exit-code tables match, `COMMAND --help` prints the page, the size limits hold, and
+// `help --all` is the concatenation of §16.2.
 
 import (
 	"encoding/json"
@@ -32,6 +34,7 @@ type ifaceCommand struct {
 	Positionals []struct {
 		Name string `json:"name"`
 	} `json:"positionals"`
+	ExitCodes []int `json:"exit_codes"`
 }
 
 type iface struct {
@@ -110,8 +113,10 @@ func runHelpChecks(memex, git, version, pagesDir, fixtureDir string) ([]string, 
 			fail("help/%s.md is not a page of any command or topic", name)
 		}
 	}
-	if _, ok := pages["overview"]; !ok {
+	if ov, ok := pages["overview"]; !ok {
 		fail("help/overview.md is missing")
+	} else {
+		problems = append(problems, checkOverview(ov, in)...)
 	}
 
 	// `help topics` lists exactly them (§16.2, §16.9).
@@ -181,6 +186,14 @@ func runHelpChecks(memex, git, version, pagesDir, fixtureDir string) ([]string, 
 		}
 		if !strings.HasPrefix(page, "# memex "+c.Name+"\n") {
 			fail("help/cmd-%s.md: first line must be `# memex %s`", c.Name, c.Name)
+		}
+		problems = append(problems, checkCommandStructure("cmd-"+c.Name, page)...)
+		if got := exitTable(section(page, "Exit codes")); fmt.Sprint(got) != fmt.Sprint(c.ExitCodes) {
+			fail("help/cmd-%s.md: Exit codes table lists %v, help --json says %v", c.Name, got, c.ExitCodes)
+		}
+		// `memex COMMAND --help` prints the page (§16.2).
+		if r := s.run([]string{c.Name, "--help"}, nil); r.stdout != page || r.exit != 0 {
+			fail("help/cmd-%s.md: `memex %s --help` does not print the page (exit %d)", c.Name, c.Name, r.exit)
 		}
 		if usage := fencedBlock(section(page, "Usage")); usage != c.Usage+"\n" {
 			fail("help/cmd-%s.md: Usage block differs from the synopsis\n got: %q\nwant: %q", c.Name, usage, c.Usage+"\n")
@@ -352,7 +365,8 @@ func exampleBlocks(page string) []example {
 
 // runExamples runs a page's examples in order in one store seeded from the help fixture,
 // with the fixture's home/ copied into HOME, and compares each output with placeholders.
-// Expected output is standard output, then standard error, then `exit N` when N is not 0.
+// Expected output is standard output, then standard error with each line prefixed "! ", then
+// `exit N` when N is not 0; the streams are compared separately.
 func runExamples(memex, git, version, fixtureDir, page string, examples []example) ([]string, error) {
 	var problems []string
 	s, err := newSandbox(memex, git, false)
@@ -391,7 +405,16 @@ func runExamples(memex, git, version, fixtureDir, page string, examples []exampl
 		if r.err != nil {
 			return nil, r.err
 		}
-		got := r.stdout + r.stderr
+		var stderr strings.Builder
+		for _, line := range strings.SplitAfter(r.stderr, "\n") {
+			if line != "" {
+				stderr.WriteString("! " + line)
+			}
+		}
+		got := r.stdout + stderr.String()
+		if got != "" && !strings.HasSuffix(got, "\n") {
+			got += "\n"
+		}
 		if r.exit != 0 {
 			got += "exit " + strconv.Itoa(r.exit) + "\n"
 		}
@@ -399,11 +422,38 @@ func runExamples(memex, git, version, fixtureDir, page string, examples []exampl
 		if want != "" && !strings.HasSuffix(want, "\n") {
 			want += "\n"
 		}
-		if !pattern(want, subst, true).MatchString(got) {
+		wantOut, wantErr, wantExit := splitExample(want)
+		gotOut, gotErr, gotExit := splitExample(got)
+		if !pattern(wantOut, subst, true).MatchString(gotOut) || !pattern(wantErr, subst, true).MatchString(gotErr) || wantExit != gotExit {
 			problems = append(problems, fmt.Sprintf("help/%s.md: example `%s`\n--- got ---\n%s--- want ---\n%s", page, ex.command, got, want))
 		}
 	}
 	return problems, nil
+}
+
+// splitExample splits an example's expected output (§16.5) into its standard output lines,
+// its standard error lines (each written with a "! " prefix, returned without it) and its
+// final `exit N` line, so that each stream is compared on its own.
+func splitExample(text string) (stdout, stderr, exit string) {
+	lines := strings.SplitAfter(text, "\n")
+	if n := len(lines); n > 0 && lines[n-1] == "" {
+		lines = lines[:n-1]
+	}
+	if n := len(lines); n > 0 && strings.HasPrefix(lines[n-1], "exit ") {
+		exit = lines[n-1]
+		lines = lines[:n-1]
+	}
+	var out, errs strings.Builder
+	for _, l := range lines {
+		if rest, ok := strings.CutPrefix(l, "! "); ok {
+			errs.WriteString(rest)
+		} else if errs.Len() == 0 {
+			out.WriteString(l)
+		} else {
+			errs.WriteString("\x00" + l) // a stdout line after stderr never matches
+		}
+	}
+	return out.String(), errs.String(), exit
 }
 
 // splitShell splits a command line like a POSIX shell without expansions: single quotes are
@@ -457,19 +507,130 @@ func splitShell(line string) ([]string, error) {
 	return words, nil
 }
 
-// section returns the text of the `## <title>` section of a page, up to the next `## `.
+// section returns the text of the `## <title>` section of a page, up to the next `## `
+// heading. Lines inside fenced code blocks are never headings.
 func section(page, title string) string {
-	marker := "\n## " + title + "\n"
-	start := strings.Index(page, marker)
-	if start < 0 {
-		return ""
+	var b strings.Builder
+	in := false
+	for _, h := range splitSections(page) {
+		if h.title == title && !in {
+			b.WriteString(h.body)
+			in = true
+		}
 	}
-	start += len(marker)
-	rest := page[start:]
-	if end := strings.Index(rest, "\n## "); end >= 0 {
-		rest = rest[:end+1]
+	return b.String()
+}
+
+type pageSection struct{ title, body string }
+
+// splitSections splits a page at its `## ` headings outside fenced code. The text before the
+// first heading has the title "".
+func splitSections(page string) []pageSection {
+	out := []pageSection{{}}
+	inFence := false
+	lines := strings.SplitAfter(page, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "```") {
+			inFence = !inFence
+		}
+		if !inFence && strings.HasPrefix(line, "## ") {
+			out = append(out, pageSection{title: strings.TrimSpace(strings.TrimPrefix(line, "## "))})
+			continue
+		}
+		out[len(out)-1].body += line
 	}
-	return rest
+	return out
+}
+
+// commandSections is the §16.5 section order; the first four marked required must be present.
+var commandSections = []struct {
+	title    string
+	required bool
+}{
+	{"Usage", true}, {"Description", true}, {"Options", false}, {"Output", true},
+	{"Exit codes", true}, {"Examples", true}, {"Mistakes to avoid", false}, {"See also", false},
+}
+
+// checkCommandStructure checks §16.5: section order, Description at most 15 lines, two to
+// five examples.
+func checkCommandStructure(name, page string) []string {
+	var out []string
+	secs := splitSections(page)
+	next := 0
+	seen := map[string]bool{}
+	for _, s := range secs[1:] {
+		i := next
+		for i < len(commandSections) && commandSections[i].title != s.title {
+			i++
+		}
+		if i == len(commandSections) {
+			out = append(out, fmt.Sprintf("help/%s.md: section %q is not a §16.5 section or is out of order", name, s.title))
+			continue
+		}
+		seen[s.title] = true
+		next = i + 1
+	}
+	for _, c := range commandSections {
+		if c.required && !seen[c.title] {
+			out = append(out, fmt.Sprintf("help/%s.md: missing section %q", name, c.title))
+		}
+	}
+	if n := lineCount(strings.Trim(section(page, "Description"), "\n") + "\n"); n > 15 {
+		out = append(out, fmt.Sprintf("help/%s.md: Description is %d lines; the limit is 15", name, n))
+	}
+	if n := len(exampleBlocks(page)); n < 2 || n > 5 {
+		out = append(out, fmt.Sprintf("help/%s.md: %d examples; a command page has two to five", name, n))
+	}
+	return out
+}
+
+var exitRow = regexp.MustCompile(`^\| *([0-9]+) *\|`)
+
+// exitTable returns the codes of an Exit codes table, in order.
+func exitTable(text string) []int {
+	var out []int
+	for _, line := range strings.Split(text, "\n") {
+		if m := exitRow.FindStringSubmatch(line); m != nil {
+			n, _ := strconv.Atoi(m[1])
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// checkOverview checks §16.4's order: the version line, the agent line, the model, the
+// everyday loop, the command table (every command and its summary, in order), the topic
+// table, and `memex help topics` as where to go next.
+func checkOverview(page string, in iface) []string {
+	var out []string
+	lines := strings.Split(page, "\n")
+	if len(lines) < 3 || !strings.HasPrefix(lines[0], "# memex ") || !strings.HasPrefix(lines[2], "If you are an AI agent: run `memex help agents` now") {
+		out = append(out, "help/overview.md: must start with the version line, a blank line and the agent line (§16.4)")
+	}
+	var titles []string
+	secs := splitSections(page)
+	for _, s := range secs[1:] {
+		titles = append(titles, s.title)
+	}
+	if want := []string{"The model", "The everyday loop", "Commands", "Topics"}; strings.Join(titles, "|") != strings.Join(want, "|") {
+		out = append(out, fmt.Sprintf("help/overview.md: sections %q, want %q (§16.4)", titles, want))
+	}
+	var rows, want []string
+	for _, line := range strings.Split(section(page, "Commands"), "\n") {
+		if m := optionCell.FindStringSubmatch(line); m == nil && strings.HasPrefix(line, "| `") {
+			rows = append(rows, line)
+		}
+	}
+	for _, c := range in.Commands {
+		want = append(want, "| `"+c.Name+"` | "+c.Summary+" |")
+	}
+	if strings.Join(rows, "\n") != strings.Join(want, "\n") {
+		out = append(out, "help/overview.md: the command table must list every command with its summary, in order (§16.4)")
+	}
+	if last := secs[len(secs)-1].body; !strings.Contains(last, "`memex help topics`") {
+		out = append(out, "help/overview.md: must end by pointing to `memex help topics` (§16.4)")
+	}
+	return out
 }
 
 // fencedBlock returns the content of the first fenced code block in text.

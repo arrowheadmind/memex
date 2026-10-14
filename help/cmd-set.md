@@ -42,8 +42,8 @@ pushed <SHA7>
 
 ```example
 $ memex set 2025-12-20-backups-run-at-midnight status=superseded
-memex: rules/2025-12-20-backups-run-at-midnight.md: E-SUPERSEDED status is superseded but superseded_by is missing; add it: memex set 2025-12-20-backups-run-at-midnight superseded_by=<new>
-memex: refused: the result would not validate; nothing was changed
+! memex: rules/2025-12-20-backups-run-at-midnight.md: E-SUPERSEDED status is superseded but superseded_by is missing; add it: memex set 2025-12-20-backups-run-at-midnight superseded_by=<new>
+! memex: refused: the result would not validate; nothing was changed
 exit 1
 ```
 

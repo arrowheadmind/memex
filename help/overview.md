@@ -72,4 +72,5 @@ memex save                                              # after editing an entry
 | `importing` | The brain v3 importer and its report |
 
 Next: `memex help topics` lists these; `memex help <name>` prints one; `memex <command> --help`
-prints a command's page.
+prints a command's page. In its examples, `! ` starts a standard error line and `exit N` ends
+an example that exits non-zero.

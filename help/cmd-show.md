@@ -63,10 +63,10 @@ linked from: plans/2026-01-08-backup-overhaul.md
 
 ```example
 $ memex show 2026-01-07-document-the-restore-tset
-memex: no entry "2026-01-07-document-the-restore-tset"
-  candidate: tasks/2026-01-07-document-the-restore-test.md
-  candidate: plans/2026-01-08-backup-overhaul.md
-  candidate: decisions/2026-01-03-use-restic-for-backups.md
+! memex: no entry "2026-01-07-document-the-restore-tset"
+!   candidate: tasks/2026-01-07-document-the-restore-test.md
+!   candidate: plans/2026-01-08-backup-overhaul.md
+!   candidate: decisions/2026-01-03-use-restic-for-backups.md
 exit 1
 ```
 

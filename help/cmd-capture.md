@@ -11,23 +11,21 @@ memex capture --from PATH [--title=T] [--summary=S] [same options]
 
 ## Description
 
-`capture` is `memex new journal`: the end-of-task record of what was attempted, what worked,
-what failed and what is reusable. Journal bodies are immutable once written. The usual form
-takes the body on standard input, so one shell call suffices:
+`capture` is `memex new journal`: the end-of-task record of what was attempted, worked, failed
+and is reusable; its body is immutable. One shell call suffices, body on standard input:
 
 ```
-memex capture --title="Rotated the backup key on alpha" \
-  --summary="The runbook works; restic wants the short key id." --tag backup \
-  --keyword restic --keyword rotation --body - <<'EOF'
+memex capture --title="Rotated the backup key on alpha" --summary="restic wants the short key id." \
+  --tag backup --keyword restic --keyword rotation --body - <<'EOF'
 ## What was attempted
 ...
 EOF
 ```
 
-`--from PATH` imports a file that leaked into a coding tool's memory: the title comes from its
-first heading (or its YAML `name:`), the summary defaults to `Imported from PATH`, the body is
-the file after a first line `Imported from PATH (date)`, and the path becomes an alias. The
-original is never deleted; `remove PATH after review` reminds you to.
+`--from PATH` imports a file that leaked into a coding tool's memory: the title is its first
+heading (else its YAML `name:`, else the filename), the summary its YAML `description:` or
+`Imported from PATH`; the body is the file after a line `Imported from PATH (date)`, and the
+path becomes an alias. PATH is never deleted; `remove PATH after review` reminds you to.
 
 ## Options
 

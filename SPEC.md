@@ -1778,8 +1778,9 @@ omitted.
 6. **Exit codes:** only the codes this command can return.
 7. **Examples:** two to five. Each is a fenced block marked ` ```example `, holding one command
    line prefixed `$ ` (split like a POSIX shell: single quotes literal, double quotes with
-   `\"`, no expansions) followed by its exact output: standard output, then standard error,
-   then a line `exit N` when the exit code is not 0. The examples of one page run in order
+   `\"`, no expansions) followed by its exact output: the standard output lines, then the
+   standard error lines, each prefixed `! `, then a line `exit N` when the exit code is not 0.
+   The runner compares the two streams and the exit code separately. The examples of one page run in order
    against one store seeded from `conformance/help-fixture/store/`, with
    `conformance/help-fixture/home/` copied into the temporary home and the working directory
    set to it, so a mutating example changes what later examples see. When
@@ -1876,6 +1877,14 @@ Run: memex help
   alias) and a `home/` with a body file and an empty repository directory for the examples.
 - The runner performs these checks as one more case, named `help`, so that
   `scripts/check.sh` fails when a page drifts from the implementation.
+- Each command page has the §16.5 sections in order (Usage, Description, Output, Exit codes
+  and Examples present), a Description of at most 15 lines, two to five examples, and an
+  Exit codes table listing exactly the command's `exit_codes` in `help --json`, in order.
+  `memex COMMAND --help` prints the page.
+- The overview has the §16.4 parts in order: the version and agent lines, then the sections
+  `The model`, `The everyday loop`, `Commands` (every command with its summary, in §11
+  order) and `Topics`, ending with a pointer to `memex help topics`.
+- Headings inside fenced code blocks are not section headings for any of these checks.
 - Size limits (§16.4–16.6) hold.
 - `help --all` is byte-identical to the concatenation rule of §16.2.
 
