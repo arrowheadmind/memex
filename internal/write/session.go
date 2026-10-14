@@ -278,6 +278,14 @@ func (s *Session) Commit(paths []string, msg string) (Outcome, error) {
 			return fail(err)
 		}
 	}
+	if s.hasHead() {
+		// Contents equal to HEAD, such as a file formatted back to what was committed, leave
+		// nothing to commit.
+		if _, err := s.git.Run(append([]string{"diff", "--cached", "--quiet", "HEAD", "--"}, paths...)...); err == nil {
+			s.saved = nil
+			return NothingToCommit, nil
+		}
+	}
 	if _, err := s.run(s.git, append([]string{"commit", "-q", "-m", msg, "--"}, paths...)...); err != nil {
 		return fail(err)
 	}
