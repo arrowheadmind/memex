@@ -47,13 +47,16 @@ Open items for later blocks:
   plan's 457 and 474 were a week older), and no `.brain/dispatch-logs/` directory at all, so
   the dispatch-log attachment rule has no real input yet. Most path references in bodies are
   wrapped in single backticks; §13.5 now unwraps them when it rewrites.
-- B4 replay (2026-10-13): `scripts/replay/` holds the harness, the 62-query set, the normalized
-  results and the blind grades; `REPORT.md` there is the gate G1 evidence. Re-run it after B7
-  (curation adds keywords and summaries) and after any change to §8: build memex, set
-  `REPLAY_SCRATCH`, `MEMEX_STORE` (an import of the pinned sources) and `MEMEX_BIN`, run
-  `run.py`, then `metrics.py` with `grades.json`. New entries in the top-10 start ungraded;
-  `packets.py` builds blind packets for them. Spec candidates recorded there, to try with the
-  harness before adopting: coverage bonus on k/n, b = 0.5, reverse prefix matching.
+- B4 replay (2026-10-13): `scripts/replay/` holds the harness; since B8 its data (the 62-query
+  set, normalized results, blind grades, `REPORT.md`, the gate G1 evidence, and the B7 reruns)
+  lives in the store as the attachments of the reference entry
+  `2026-10-14-memex-retrieval-replay-queries-blind-grades-and-results-gate-g1-evidence`, and
+  every script takes that directory as `--data DIR` (default `$REPLAY_DATA`);
+  `scripts/replay/README.md` says how. Re-run it after any change to §8: build memex, set
+  `MEMEX_STORE` and `REPLAY_DATA`, run `rerun.py` (memex only; `run.py` also needs brainctl and
+  `--brain`). New entries in the top-10 start ungraded; `packets.py` builds blind packets for
+  them. Spec candidates recorded in the data's `REPORT.md`, to try with the harness before
+  adopting: coverage bonus on k/n, b = 0.5, reverse prefix matching.
 - B7 (2026-10-14): the original "under 200 active rules" target was dropped with the operator's
   agreement. Four batches reviewed 144 marker-tagged rules and closed 27, about one in five:
   a closure word in a body is usually the lesson's subject, and the real closures carry a date
@@ -63,7 +66,7 @@ Open items for later blocks:
   way. Each batch is recorded as a journal entry in the store.
 - B7 close (2026-10-14): six batches, 284 rules reviewed, 46 closed (37 retired, 9 superseded),
   5 rules extracted, 8 Always summaries written. Store at the close: 649 active rules, 8 Always,
-  preflight 2,485 characters, 0 check errors. `scripts/replay/rerun-2026-10-14-final.md`: the
+  preflight 2,485 characters, 0 check errors. `rerun-2026-10-14-final.md` (replay data, now in the store): the
   only grade-2 result lost is the retired brainctl INDEX.md defect for two old-brain queries.
   Left for later: 121 kept rules still carry `marker-*` tags (strip in bulk when a batch form of
   `set` exists or history noise is acceptable); 636 active rules have no summary; the Always
@@ -139,3 +142,16 @@ Open items for later blocks:
   covers the tool, spec, help and cases, and the mirror would publish the rest. The runbook's
   step 10 says to audit and rewrite history before the mirror exists. (3) The real
   `doctor` run finds 18 leak files; 14 were imported by the first import's `--leak`.
+- B8 fix round (2026-10-14), after the review: doctor sets `GIT_OPTIONAL_LOCKS=0` and writes
+  nothing (checked: the index mtime is unchanged where a plain `git status` refreshes it);
+  `git version` runs in `/`; a store root that is not the top of its own repository is one
+  `upstream` WARN, `<root> is not a git repository; run memex init <root>`, with fetch-age,
+  clean and hooks omitted (decided: a store nested in another repository's tree counts too,
+  since its git checks would describe the other repository); an unreadable `memex.toml` is
+  `store <root>: <reason>`. The workspace must be listable and not inside the store. The store
+  path is cleaned lexically in §3.1 (so `~/../store` now equals the store: case 151 steps 03–04
+  became `unchanged`, case 013 names the cleaned path), pointers compare cleaned paths and the
+  pointer text drops a trailing `/`. `--into ""`/`--out ""` are usage errors. `capture --from`
+  of a path that is already an alias (as given, absolute, or `~/…`) is the no-op `exists` +
+  `nothing to commit`. Cases 211–214 added. The replay data moved to the store (manager); the
+  scripts take `--data`.
