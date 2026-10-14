@@ -339,13 +339,7 @@ var Commands = []Command{
 		},
 		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},
 	},
-	{
-		Name:      "doctor",
-		Summary:   "Check the installation, configuration and store",
-		Usage:     "memex doctor [--json]",
-		Options:   []Option{optJSON},
-		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},
-	},
+	// doctor (§11.13) joins this table with §12 in the block that implements it.
 	{
 		Name:    "import",
 		Summary: "Convert brain v3 stores into a new store",

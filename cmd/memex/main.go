@@ -222,38 +222,6 @@ func wantsHelp(args []string) bool {
 	return false
 }
 
-func runHelp(args []string, stdout io.Writer, cmdErr func(string) *usageError) (int, *usageError) {
-	cmd, _ := spec.LookupCommand("help")
-	var options []string
-	for _, o := range cmd.Options {
-		options = append(options, o.Name)
-	}
-	var names []string
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		if a == "--" {
-			names = append(names, args[i+1:]...)
-			break
-		}
-		if strings.HasPrefix(a, "-") && a != "-" {
-			name, _, _ := strings.Cut(a, "=")
-			if slices.Contains(options, name) {
-				return 0, cmdErr(fmt.Sprintf("option %s is not implemented yet", name))
-			}
-			return 0, cmdErr(unexpected(a, options))
-		}
-		names = append(names, a)
-	}
-	switch len(names) {
-	case 0:
-		return printOverview(stdout)
-	case 1:
-		return printHelpPage(names[0], stdout)
-	default:
-		return 0, cmdErr(unexpected(names[1], nil))
-	}
-}
-
 // printHelpPage prints the command or topic page for name (SPEC §16.2). No page exists yet.
 func printHelpPage(name string, stdout io.Writer) (int, *usageError) {
 	pages := pageNames()

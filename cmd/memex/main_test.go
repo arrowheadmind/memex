@@ -49,16 +49,18 @@ func TestRun(t *testing.T) {
 			"memex: unexpected argument \"x\"\nmemex version\nRun: memex help version\n", 2},
 		{"version with an option", []string{"version", "--json"}, "", false,
 			"memex: unknown option --json\nmemex version\nRun: memex help version\n", 2},
-		{"not implemented", []string{"doctor"}, "", false,
-			"memex: command \"doctor\" is not implemented yet\nmemex doctor [--json]\nRun: memex help doctor\n", 2},
+		{"doctor is not a command yet", []string{"doctor"}, "", false,
+			"memex: unknown command \"doctor\". Run: memex help topics\n", 2},
 		{"multi-line usage", []string{"init"}, "", false,
 			"memex: missing PATH\nmemex init PATH [--name NAME]\nmemex init --pointers DIR [--force]\nRun: memex help init\n", 2},
 		{"help for a command without a page", []string{"help", "search"}, "", false,
 			"memex: no help for \"search\". Run: memex help topics\n", 2},
 		{"--help on a command without a page", []string{"capture", "--help"}, "", false,
 			"memex: no help for \"capture\". Run: memex help topics\n", 2},
-		{"help --all", []string{"help", "--all"}, "", false,
-			"memex: option --all is not implemented yet\nmemex help [COMMAND|TOPIC] [--all] [--json]\nRun: memex help help\n", 2},
+		{"help --all and --json", []string{"help", "--all", "--json"}, "", false,
+			"memex: --all and --json cannot be combined\nmemex help [COMMAND|TOPIC] [--all] [--json]\nRun: memex help help\n", 2},
+		{"help --json with a name", []string{"help", "--json", "search"}, "", false,
+			"memex: unexpected argument \"search\"\nmemex help [COMMAND|TOPIC] [--all] [--json]\nRun: memex help help\n", 2},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
