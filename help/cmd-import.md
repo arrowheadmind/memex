@@ -52,7 +52,7 @@ exit 2
 
 ```example
 $ memex import brain-v3 repo --out newstore
-! memex: import: repo is not a git repository
+! memex: repo is not a git repository
 exit 1
 ```
 

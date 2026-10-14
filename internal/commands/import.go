@@ -47,7 +47,7 @@ func Import(e *Env, o ImportOptions) int {
 		return e.fail(spec.ExitFailure, "import has %d problems; see %s", len(failure.Problems), filepath.Join(out, "import-report.json"))
 	}
 	if err != nil {
-		return e.fail(spec.ExitFailure, "import: %v", err)
+		return e.fail(spec.ExitFailure, "%v", err)
 	}
 	printSummary(e, report, out)
 	return spec.ExitOK

@@ -864,7 +864,11 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   - An option that is not repeatable, given more than once, is a usage error.
 - **Streams:**
   - Standard output carries results only.
-  - Diagnostics go to standard error, prefixed `memex: `.
+  - Diagnostics go to standard error, prefixed `memex: `. A diagnostic of several lines has
+    the prefix on its first line only, and its continuation lines are indented two spaces
+    (`  candidate: <path>`, `  title: <title>`). A usage error's usage and `Run:` lines
+    (§16.8) and the closing instructions of the §11.2 refusal are separate lines, not
+    continuations.
   - No color, no progress bars, no paging, no prompts.
 - **`--body FILE`** reads the file. `--body -` reads standard input to EOF.
 - **Ids as arguments.** Wherever a command takes an entry id (`show`, `set`, `promote`,
@@ -922,11 +926,11 @@ It also sets `git config core.hooksPath .githooks`.
 
 - Existing nonempty files are never overwritten. Missing lines are appended to `.gitignore`.
 - Running it again is a no-op.
-- It prints one line per created or changed item, in this order: `created .git/` when it ran
-  `git init`; `created <file>` for `memex.toml`, `AGENT.md`, `.gitignore` and
-  `.githooks/pre-commit`, and `created <dir>/` for each type directory and `files/`, in the
-  order of the list above; `updated .gitignore` when it appended the line to an existing file;
-  `set core.hooksPath .githooks` when that was not already its value. The last line is
+- It prints one line per created or changed item: `created .git/` when it ran `git init`;
+  then one line per item in the order of the list above (`created <file>` for a file,
+  `created <dir>/` for a directory, `updated .gitignore` in `.gitignore`'s place when it
+  appended the line to an existing file); then `set core.hooksPath .githooks` when that was
+  not already its value. The last line is
   `initialized <path>; run: memex save -m "init store"`, with the absolute path, because a
   store with nothing committed refuses every other write (§9.1 step 3).
 - It does not commit.
