@@ -1,0 +1,5 @@
+set
+2026-01-10-existing-rule
+tags+=cache
+keywords=warm,cold
+summary=A much longer summary that runs past forty code points for sure.

@@ -1,0 +1,8 @@
+memex: set 2026-01-10-session-notes status=kept tags+=reviewed
+memex: set 2026-01-10-cache-host verified=2026-01-14 review_days=30
+memex: set 2026-01-10-existing-rule always=false
+memex: set 2026-01-10-existing-rule always=true
+memex: set 2026-01-10-existing-rule status=retired
+memex: set 2026-01-10-existing-rule status=superseded superseded_by=2026-01-10-replacement
+memex: set 2026-01-10-existing-rule tags-=base keywords=
+memex: set 2026-01-10-existing-rule tags+=cache keywords=warm,cold summary=A much longer summary that runs past fo…

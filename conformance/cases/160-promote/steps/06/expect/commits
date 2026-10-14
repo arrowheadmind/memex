@@ -1,0 +1,4 @@
+memex: promote 2026-01-10-existing-rule to task 2026-01-15-automate-the-warm-up
+memex: promote 2026-01-10-old-notes to decision 2026-01-15-keep-the-cache-warm
+memex: promote 2026-01-10-session-notes to runbook 2026-01-15-warm-the-cache-by-hand
+memex: promote 2026-01-10-session-notes to rule 2026-01-15-warm-the-cache

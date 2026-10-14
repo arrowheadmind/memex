@@ -1,0 +1,12 @@
+promote
+journal/2026-01-10-session-notes.md
+--to
+runbooks
+--title
+Warm the cache by hand
+--summary
+Steps.
+--tag
+cache
+--body
+-

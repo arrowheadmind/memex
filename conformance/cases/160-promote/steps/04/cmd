@@ -1,0 +1,12 @@
+promote
+2026-01-10-existing-rule
+--to
+task
+--title
+Automate the warm-up
+--summary
+Todo.
+--tag
+cache
+--body
+-

@@ -1,0 +1,4 @@
+set
+2026-01-10-existing-rule
+status=superseded
+superseded_by=rules/2026-01-10-replacement.md

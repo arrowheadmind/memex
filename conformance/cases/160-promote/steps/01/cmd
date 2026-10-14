@@ -1,0 +1,14 @@
+promote
+2026-01-10-session-notes
+--to
+rule
+--title
+Warm the cache
+--summary
+Warm it before deploys.
+--source
+2026-01-10-existing-rule
+--tag
+cache
+--body
+-
