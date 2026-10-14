@@ -35,10 +35,21 @@ func (r *Result) Block(i int) string {
 	return b.String()
 }
 
-// Trailer is the count lines and, when at least one block is printed, the Store root line
-// (SPEC §8.5).
+// Weak reports whether the top shown result covers fewer than half of at least two query
+// items (SPEC §8.5): 2k < n with n >= 2. It is false when nothing is shown.
+func (r *Result) Weak() bool {
+	n := len(r.Items)
+	return len(r.Shown) > 0 && n >= 2 && 2*len(r.Shown[0].Matched) < n
+}
+
+// Trailer is the weak-results line and the count lines, then, when at least one block is
+// printed, the Store root line (SPEC §8.5). The weak line needs a printed block too.
 func (r *Result) Trailer(root string, printed int) string {
 	var b strings.Builder
+	if printed > 0 && r.Weak() {
+		fmt.Fprintf(&b, "weak results: the best match covers %d of %d query items; try other words\n",
+			len(r.Shown[0].Matched), len(r.Items))
+	}
 	if r.More > 0 {
 		fmt.Fprintf(&b, "%d more visible matches not shown (raise --limit)\n", r.More)
 	}
@@ -108,5 +119,6 @@ func (r *Result) JSON() []byte {
 		{Key: "more", Value: jsonx.Int(r.More)},
 		{Key: "hidden", Value: jsonx.Int(r.Hidden)},
 		{Key: "excluded", Value: jsonx.Int(r.Excluded)},
+		{Key: "weak", Value: jsonx.Bool(r.Weak())},
 	})
 }

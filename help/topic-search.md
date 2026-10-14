@@ -40,12 +40,15 @@ identically.
 After the results, zero or more of these lines, then the store root:
 
 ```
+weak results: the best match covers k of n query items; try other words
 N more visible matches not shown (raise --limit)
 N matches hidden by status (use --all)
 N matches excluded by filters (drop --type/--tag/--repo/--host)
 Store root: /path/to/store
 ```
 
+`weak results` means even the top hit matched fewer than half your words: likely nothing
+relevant exists, so search again with other content words before trusting any result.
 Exit 3 when nothing is shown; the count lines say whether something matched but was hidden or
 excluded.
 
@@ -58,7 +61,7 @@ excluded.
 - `--limit N` caps the results (default `search_limit`, 12; `0` means no limit).
 - `--json` prints one object: `query`, `items`, `results` (with `rank`, `type`, `status`,
   `id`, `title`, `summary`, `score`, `path`, `matched`, `snippet`), `more`, `hidden`,
-  `excluded`. It is printed even when nothing matched.
+  `excluded`, `weak`. It is printed even when nothing matched.
 
 ## Writing entries that get found
 

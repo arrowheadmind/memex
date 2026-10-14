@@ -8,7 +8,8 @@ Rules of engagement for a language-model agent, as imperatives.
   `## Always` rules, then a ranked search. Read the `## Always` section every time.
 - Read the `matched k/n` label on each result before trusting it: `matched 1/4` means one of
   your four words matched, not that the entry is about your task. Short common words (`the`,
-  `on`) count too, so query with content words.
+  `on`) count too, so query with content words. `weak results: …` after the results means even
+  the top hit matched under half your words: assume nothing relevant exists, or retry with others.
 - Open an entry with `memex show <path>`; paths printed by memex can be pasted back as given.
 - In a session-start hook with no task text, run `memex preflight --max-chars 4000`.
 
@@ -20,8 +21,7 @@ Rules of engagement for a language-model agent, as imperatives.
   matches whole words only.
 - Quote a phrase so the shell keeps the quotes: `memex search '"dirty tree"'`.
 - `N matches hidden by status (use --all)` means retired or done entries matched; add `--all`.
-- Filter with `--type`, `--tag`, `--repo`, `--host`; `tags` are for filtering, `keywords` are
-  for finding.
+- Filter with `--type`/`--tag`/`--repo`/`--host`; `tags` are for filtering, `keywords` for finding.
 
 ## After work
 

@@ -34,9 +34,11 @@ silent.
 
 One block per result: `N. [type, status] path  matched k/n: items`, then the title and
 summary, then the first matching body line with matches in `**bold**`. After the results:
-`N more visible matches not shown (raise --limit)`, `N matches hidden by status (use --all)`,
-`N matches excluded by filters (…)` when they apply, and `Store root: <path>` so that the
-paths resolve. When nothing matched: `No entries matched any term of: <query>`.
+`weak results: the best match covers k of n query items; try other words` when the top hit
+matched fewer than half the query items (`"weak":true` in `--json`; search again with other
+words), `N more visible matches not shown (raise --limit)`, `N matches hidden by status (use
+--all)`, `N matches excluded by filters (…)` when they apply, and `Store root: <path>` so that
+the paths resolve. When nothing matched: `No entries matched any term of: <query>`.
 
 ## Exit codes
 

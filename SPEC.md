@@ -661,12 +661,17 @@ order differently across implementations; the conformance suite avoids such case
 **After the results, zero or more of these lines, in this order:**
 
 ```
+weak results: the best match covers <k> of <n> query items; try other words
 N more visible matches not shown (raise --limit)
 N matches hidden by status (use --all)
 N matches excluded by filters (drop --type/--tag/--repo/--host)
 Store root: <absolute store path>
 ```
 
+The `weak results` line is printed when at least one result is shown, the query has `n ≥ 2`
+items, and the top shown result matched `k` of them with `2k < n` (fewer than half). When no
+entry is relevant, the best results are often matched by one common word (`a`, `for`, `add`),
+and twelve such results with no signal read as an answer; this line says they are not.
 A count line is printed only when its N is at least 1. The `Store root` line is printed
 whenever there is at least one result, so that relative paths can be resolved without another
 call.
@@ -683,8 +688,10 @@ lines are printed and the command still exits 3. Otherwise it exits 0.
 **JSON output** (`--json`): a single object followed by LF, keys in this order:
 
 ```json
-{"query":"...","items":["cache","rebuild","\"nix build\""],"results":[{"rank":1,"type":"rule","status":"active","id":"...","title":"...","summary":null,"score":12.345679,"path":"rules/....md","matched":["cache","rebuild"],"snippet":"..."}],"more":0,"hidden":0,"excluded":0}
+{"query":"...","items":["cache","rebuild","\"nix build\""],"results":[{"rank":1,"type":"rule","status":"active","id":"...","title":"...","summary":null,"score":12.345679,"path":"rules/....md","matched":["cache","rebuild"],"snippet":"..."}],"more":0,"hidden":0,"excluded":0,"weak":false}
 ```
+
+- `weak` is `true` exactly when text output would print the `weak results` line.
 
 - `score` is the rounded score, printed in fixed notation with exactly 6 digits after the
   decimal point, round half to even.
@@ -1032,8 +1039,8 @@ code points.
 - When any result was dropped, a last line reads:
   `output budget reached: <k> results not shown (raise --max-chars or run memex search)`.
   When both lines are printed, the warning comes first and the budget line is last.
-- The count lines of §8.5 are kept, and the `Store root` line is printed only when at least
-  one result block remains.
+- The count lines of §8.5 are kept, and the `weak results` and `Store root` lines are printed
+  only when at least one result block remains.
 
 **Exit code.** 0 when there is no query. With a query, the search's exit code, except that a
 search that found nothing exits 0 when at least one Always rule was printed: the output is
@@ -1782,7 +1789,7 @@ In this order (the `--all` order):
 
 | Topic | Covers |
 |---|---|
-| `agents` | Rules of engagement for language-model agents, at most 60 lines: run `preflight` before work; capture after it, with the heredoc form `--body - <<'EOF'` so one shell call suffices; never write a tool's own memory; edit then `save`; respect outcome lines and exit codes; read `matched k/n` before trusting a result; quote a phrase as `'"two words"'` so the shell keeps the quotes; `tags` are for filtering and `keywords` for finding; journal bodies are immutable; how to supersede instead of editing history. Written as imperatives. |
+| `agents` | Rules of engagement for language-model agents, at most 60 lines: run `preflight` before work; capture after it, with the heredoc form `--body - <<'EOF'` so one shell call suffices; never write a tool's own memory; edit then `save`; respect outcome lines and exit codes; read `matched k/n` and any `weak results` line before trusting a result; quote a phrase as `'"two words"'` so the shell keeps the quotes; `tags` are for filtering and `keywords` for finding; journal bodies are immutable; how to supersede instead of editing history. Written as imperatives. |
 | `concepts` | The model and the reasoning behind it (§1, §2) |
 | `entries` | Types, statuses, visibility and every frontmatter field, as tables (§5.2, §5.3), then the body outline of each type (Appendix B) |
 | `ids` | The id and slug rules, with worked examples (§5.4) |

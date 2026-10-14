@@ -1,0 +1,7 @@
+1. [runbook, active] runbooks/2026-01-10-prune-old-snapshots.md  matched 4/7: prune, old, snapshots, the
+   Prune old snapshots — Keep twelve monthly snapshots and prune the rest.
+   Run **the** **prune** for every repository, then check a restore.
+2. [task, open] tasks/2026-01-10-review-the-notes.md  matched 1/7: the
+   Review the notes
+   Read **the** notes once more.
+Store root: <STORE>

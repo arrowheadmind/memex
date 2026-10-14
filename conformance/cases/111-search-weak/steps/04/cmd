@@ -1,0 +1,3 @@
+search
+prune old snapshots of the restic backup
+--json
