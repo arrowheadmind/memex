@@ -106,3 +106,36 @@ Open items for later blocks:
   message templates are in §7. Settings files of rule 5 are read through symlinks (NixOS
   installs `/etc/claude-code/managed-settings.d/*.json` as links). The tool-memory WARN has a
   unit test rather than a case, because the runner cannot hide the host's `/etc/claude-code`.
+- B8: delta import is `memex import brain-v3 SRC… --into DIR` (§13.7). Decisions: identity is
+  the alias set (an id-shift-proof key; the id alone is not, because later revisions shift
+  `-2` suffixes and re-date the attachments entry), then id+type+body; a new entry whose id the
+  store holds gets the next free `-N`; present entries are compared by body only (curation
+  owns frontmatter) and never written, `changed` ones are listed; links, `superseded_by`,
+  `parent`, `sources` and `files/<id>/` prefixes of new entries are mapped to store ids; new
+  attachment files are copied only where no file exists; the store must be clean (one diff to
+  review); the fresh import runs outside the lock, the merge under it; the report is
+  `import-report-<today>[-n].json` = the §13.6 object plus `delta`; §4 ignores those names. An
+  entry deleted from the store comes back on the next delta (nothing remembers it).
+- B8 real-data proof (2026-10-14), on a scratch clone of the store with its origin removed and
+  scratch clones of the sources (HOME pointed at the scratch tree so the `~/…` prefixes match):
+  delta at the pinned revisions adds 0 and finds 1664 unchanged, 0 changed (B7 curation
+  touched only frontmatter); delta at brain@13b4b199 (apps unchanged) adds 21 (plans 12,
+  journal 8, tasks 1), 1655 unchanged, 9 changed (left alone: 7 plans updated in the brain on
+  10-12/10-13, the operator to-do index and one backlog item), 1 moved (the attachments entry,
+  re-dated), 0 attachments, 0 aliases dropped; `check` on the result: 0 errors, 2467 warnings.
+  The cutover's step 1 reruns this on the real store.
+- B8: `flake.nix` builds memex with `go_1_27`, `vendorHash` pinned, nixpkgs pinned in
+  `flake.lock`; the built binary passes all conformance cases. A flake cannot read git tags, so
+  the version is a line in `flake.nix` (`0.0.0-dev`) that the release commit sets.
+- B8: `docs/cutover.md` is the operator's runbook (not run). It names no machine or path; the
+  operator fills shell variables. It drops the suggested `--store "$(git rev-parse
+  --show-toplevel)"` hook form: that would make the session's repository the store, which
+  Principle 6 forbids; the hook is `memex preflight --max-chars 4000` with the store from the
+  config file or `MEMEX_STORE`.
+- B8 findings for the manager: (1) a 3.7 MB conformance-runner binary was committed at the repo
+  root in bf492b7; removed from the tree in B8, still in history. (2) The repository is to be
+  mirrored to GitHub, but WORK.md, `scripts/replay/` (queries, grades and results built from
+  the real store) and `scripts/cold-agent/` carry operator names, hosts and paths; Principle 11
+  covers the tool, spec, help and cases, and the mirror would publish the rest. The runbook's
+  step 10 says to audit and rewrite history before the mirror exists. (3) The real
+  `doctor` run finds 18 leak files; 14 were imported by the first import's `--leak`.
