@@ -1,0 +1,10 @@
+new
+rule
+--title
+During a rebase
+--summary
+S.
+--tag
+base
+--body
+-

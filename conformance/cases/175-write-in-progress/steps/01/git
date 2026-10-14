@@ -1,0 +1,13 @@
+add
+README.md
+
+commit
+-q
+-m
+one
+
+rebase
+-q
+--exec
+exit 1
+HEAD~1
