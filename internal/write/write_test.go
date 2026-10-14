@@ -204,3 +204,27 @@ func TestValidationRestores(t *testing.T) {
 		t.Errorf("new entry not removed: %v", err)
 	}
 }
+
+func TestRebaseInProgress(t *testing.T) {
+	st, _ := repo(t)
+	s, err := Begin(st, 20, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.End()
+	files := []File{{"rules/2026-01-15-a-rule.md", []byte(entry)}}
+	if err := s.Write(today, files); err != nil {
+		t.Fatal(err)
+	}
+	os.Mkdir(filepath.Join(st, ".git", "rebase-merge"), 0o755)
+	o, err := s.Commit(Paths(files), "msg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(o.Line, ", NOT pushed: rebase in progress") || o.Code != 5 {
+		t.Errorf("outcome %q, exit %d", o.Line, o.Code)
+	}
+	if state, code := s.Sync(); state != "NOT SYNCED: rebase in progress" || code != 5 {
+		t.Errorf("sync: %q, exit %d", state, code)
+	}
+}

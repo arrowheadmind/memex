@@ -12,12 +12,13 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Lock waits (SPEC §9.1 step 1).
-const (
+// Lock waits (SPEC §9.1 step 1). They are variables only so that tests can shorten them.
+var (
 	LockWait          = 60 * time.Second
 	PreflightLockWait = 10 * time.Second
-	lockPoll          = 100 * time.Millisecond
 )
+
+const lockPoll = 100 * time.Millisecond
 
 // LockFile is the store-relative path of the write lock.
 const LockFile = ".memex/write.lock"

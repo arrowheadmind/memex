@@ -244,7 +244,7 @@ var Commands = []Command{
 			{Name: "--max-chars", Value: "N", Default: "12000", Summary: "Bound on the whole output, in code points (minimum 2000)"},
 		}, searchFilters),
 		Positionals: []Positional{{Name: "QUERY", Repeatable: true}},
-		ExitCodes:   []int{ExitOK, ExitUsage, ExitNoMatch, ExitLock},
+		ExitCodes:   []int{ExitOK, ExitUsage, ExitNoMatch},
 	},
 	{
 		Name:    "list",
