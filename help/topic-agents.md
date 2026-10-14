@@ -1,14 +1,14 @@
 # memex help agents
 
-Rules of engagement for a language-model agent. Written as imperatives; each one exists
-because an agent got it wrong before.
+Rules of engagement for a language-model agent, as imperatives.
 
 ## Before work
 
 - Run `memex preflight "<the task in your own words>"`. It syncs the store, prints the
   `## Always` rules, then a ranked search. Read the `## Always` section every time.
 - Read the `matched k/n` label on each result before trusting it: `matched 1/4` means one of
-  your four words matched, not that the entry is about your task.
+  your four words matched, not that the entry is about your task. Short common words (`the`,
+  `on`) count too, so query with content words.
 - Open an entry with `memex show <path>`; paths printed by memex can be pasted back as given.
 - In a session-start hook with no task text, run `memex preflight --max-chars 4000`.
 
@@ -38,13 +38,15 @@ because an agent got it wrong before.
   ```
 
 - `--summary` is required and `--body` must hold real content (80 characters of text, not just
-  headings). Put the reader's likely words in `--keyword`.
+  headings). Put the reader's likely words in `--keyword`. In the body, link the entries you
+  used as `[[<id>]]` (the id is the filename without `.md`).
+- memex commits and pushes as you: git must know `user.name` and `user.email`
+  (`git config --global`), or the capture is refused and nothing is changed.
 - The last line is the outcome: `pushed <sha>`, `committed <sha>, no upstream`,
   `nothing to commit`, or `committed <sha>, NOT pushed: <reason>`. Trust it, not the exit code
   alone: 0 is success, 5 means committed but not pushed, 6 a rebase conflict to resolve.
-- Running the same capture twice is a no-op (`exists <path>`, `nothing to commit`). A different
-  body under the same title on the same day is refused; read the existing entry or pick a more
-  specific title.
+- The same capture twice is a no-op (`exists <path>`, `nothing to commit`); a different body
+  under the same title on the same day is refused: read the existing entry or pick a new title.
 
 ## Editing and history
 

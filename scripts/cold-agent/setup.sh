@@ -15,6 +15,7 @@ mkdir -p "$round/bin" "$round/home"
 cp -r "$repo/conformance/help-fixture/store" "$round/store"
 cp -r "$repo/conformance/help-fixture/home/." "$round/home/"
 git -C "$round/store" init -q
+printf "[user]\n\tname = test\n\temail = test@example.invalid\n" > "$round/home/.gitconfig"
 git -C "$round/store" -c user.name=test -c user.email=test@example.invalid add -A
 git -C "$round/store" -c user.name=test -c user.email=test@example.invalid commit -q -m "seed"
 git clone -q --bare "$round/store" "$round/origin.git"
