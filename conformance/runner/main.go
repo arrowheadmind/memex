@@ -35,12 +35,14 @@ func main() {
 	memex := flag.String("memex", "", "path of the memex executable under test (required)")
 	casesDir := flag.String("cases", "conformance/cases", "directory holding the cases")
 	keep := flag.Bool("keep", false, "keep each case's temporary directory and print its path")
+	helpPages := flag.String("help-pages", "help", "directory holding the help pages (SPEC §16)")
+	helpFixture := flag.String("help-fixture", "conformance/help-fixture", "store and home the help examples run against (SPEC §16.9)")
 	flag.Parse()
 	if *memex == "" {
 		fmt.Fprintln(os.Stderr, "runner: --memex PATH is required")
 		os.Exit(2)
 	}
-	code, err := runAll(*memex, *casesDir, *keep, flag.Args())
+	code, err := runAll(*memex, *casesDir, *helpPages, *helpFixture, *keep, flag.Args())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "runner: %v\n", err)
 		os.Exit(2)
@@ -48,7 +50,7 @@ func main() {
 	os.Exit(code)
 }
 
-func runAll(memex, casesDir string, keep bool, filters []string) (int, error) {
+func runAll(memex, casesDir, helpPages, helpFixture string, keep bool, filters []string) (int, error) {
 	memex, err := filepath.Abs(memex)
 	if err != nil {
 		return 0, err
@@ -103,6 +105,23 @@ func runAll(memex, casesDir string, keep bool, filters []string) (int, error) {
 		fmt.Printf("FAIL %s\n", name)
 		for _, p := range problems {
 			fmt.Printf("     %s\n", strings.ReplaceAll(p, "\n", "\n     "))
+		}
+	}
+	// The §16.9 help checks run as one more case, named help, unless the filters leave it out.
+	if helpPages != "" && (len(filters) == 0 || slices.Contains(filters, "help")) {
+		problems, err := runHelpChecks(memex, git, version, helpPages, helpFixture)
+		if err != nil {
+			problems = append(problems, err.Error())
+		}
+		if len(problems) == 0 {
+			passed++
+			fmt.Println("PASS help")
+		} else {
+			failed++
+			fmt.Println("FAIL help")
+			for _, p := range problems {
+				fmt.Printf("     %s\n", strings.ReplaceAll(p, "\n", "\n     "))
+			}
 		}
 	}
 	fmt.Printf("conformance: %d passed, %d failed\n", passed, failed)

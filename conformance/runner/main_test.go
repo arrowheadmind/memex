@@ -116,7 +116,7 @@ func TestRunAllAgainstFake(t *testing.T) {
 	writeFile(t, filepath.Join(f, "expect/store/a"), "a\n", 0o755)
 
 	out := captureStdout(t, func() {
-		code, err := runAll(memex, cases, false, nil)
+		code, err := runAll(memex, cases, "", "", false, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

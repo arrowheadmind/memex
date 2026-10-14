@@ -349,7 +349,7 @@ var Commands = []Command{
 			{Name: "--leak", Value: "PATH", Repeatable: true, Summary: "Tool-memory file to import as a raw journal entry"},
 		},
 		Positionals: []Positional{
-			{Name: "FORMAT", Required: true},
+			{Name: "brain-v3", Required: true},
 			{Name: "SRC[@REV]", Repeatable: true, Required: true},
 		},
 		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},
