@@ -15,7 +15,7 @@ sections are implemented.
   two implementations produce byte-identical results. Each section is marked Planned or
   Implemented.
 - [IMPLEMENTATION.md](IMPLEMENTATION.md) records the choices for the Go implementation.
-- `conformance/` (to come) is the language-neutral test suite that any implementation must pass.
+- `conformance/` is the language-neutral test suite that any implementation must pass.
 
 Design in brief:
 
@@ -28,5 +28,23 @@ Design in brief:
 - **Tool-neutral.** Coding tools get a one-line pointer file. Knowledge never lives in a tool's
   private memory.
 - **Written in Go,** with a few widely used dependencies. `git` is the only external program.
+
+## Install
+
+With Nix (flakes), from a checkout or straight from the repository:
+
+```
+nix profile install .#memex          # in a checkout
+nix build .#memex && ./result/bin/memex version
+```
+
+A NixOS or home-manager configuration takes the flake as an input and adds
+`inputs.memex.packages.${system}.default` to its packages. With Go 1.27 or later:
+
+```
+go install github.com/arrowheadmind/memex/cmd/memex@latest
+```
+
+Then `memex help` for the overview, or `memex help agents` for an agent's rules of engagement.
 
 License: MIT.

@@ -149,9 +149,16 @@ conformance/cases/    §15 cases (data, language-neutral)
 
 ## Packaging
 
-- **Nix:** a flake in this repo exposes `packages.default` via `buildGoModule`, with `vendorHash`
-  pinned. It is the only durable installation route on the operator's machines.
+- **Nix:** a flake in this repo exposes `packages.default` (also `packages.memex`) via
+  `buildGoModule`, built with `go_1_27` and `CGO_ENABLED=0`, with `vendorHash` pinned. It is
+  the only durable installation route on the operator's machines. A dependency bump changes
+  `vendorHash`: set it to `lib.fakeHash`, run `nix build`, and copy the hash the error prints.
+  `nix build` runs the unit tests of `cmd/memex` only; the conformance suite runs in
+  `scripts/check.sh`, and can be pointed at the Nix build with
+  `go run ./conformance/runner --memex ./result/bin/memex`.
 - **Other users:** `go install github.com/arrowheadmind/memex/cmd/memex@vX.Y.Z` and release
   binaries.
 - **Version:** set at build time with `-ldflags "-X main.version=…"` from the git tag, and
   `0.0.0-dev` otherwise. The tag is the single source. Every release gets a `CHANGELOG.md` entry.
+  A flake cannot read git tags, so `flake.nix` carries `version = "0.0.0-dev"`; the release
+  commit that is tagged `vX.Y.Z` sets it to `X.Y.Z`, and the next commit sets it back.
