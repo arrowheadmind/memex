@@ -64,6 +64,7 @@ type Git struct {
 	dir     string
 	env     []string
 	timeout time.Duration
+	ctx     context.Context // cancelled to interrupt a command; Background when not given
 }
 
 // Option changes how New builds a Git.
@@ -72,7 +73,16 @@ type Option func(*options)
 type options struct {
 	staged bool
 	extra  []string
+	ctx    context.Context
 }
+
+// ErrInterrupted is the cancellation cause that marks an interruption by a signal: the
+// running git is sent SIGTERM, so that it removes its lock files, rather than SIGKILL.
+var ErrInterrupted = errors.New("interrupted")
+
+// Context makes every command stop when ctx is cancelled. A cancellation whose cause is
+// ErrInterrupted is reported as Error.Interrupted.
+func Context(ctx context.Context) Option { return func(o *options) { o.ctx = ctx } }
 
 // Staged keeps GIT_INDEX_FILE, for `check --staged` only (SPEC §3.3).
 func Staged() Option { return func(o *options) { o.staged = true } }
@@ -87,22 +97,28 @@ func New(dir string, timeout time.Duration, opts ...Option) *Git {
 	for _, f := range opts {
 		f(&o)
 	}
-	return &Git{dir: dir, env: append(environ(os.Environ(), o.staged), o.extra...), timeout: timeout}
+	if o.ctx == nil {
+		o.ctx = context.Background()
+	}
+	return &Git{dir: dir, env: append(environ(os.Environ(), o.staged), o.extra...), timeout: timeout, ctx: o.ctx}
 }
 
 // Error is a failed git command: its arguments, exit status and captured stderr.
 type Error struct {
-	Args     []string
-	ExitCode int // -1 when git did not exit normally
-	Stderr   string
-	TimedOut bool
-	Err      error
+	Args        []string
+	ExitCode    int // -1 when git did not exit normally
+	Stderr      string
+	TimedOut    bool
+	Interrupted bool
+	Err         error
 }
 
 func (e *Error) Error() string {
 	msg := strings.TrimSpace(e.Stderr)
 	if e.TimedOut {
 		msg = "timed out"
+	} else if e.Interrupted {
+		msg = "interrupted"
 	} else if msg == "" && e.Err != nil {
 		msg = e.Err.Error()
 	}
@@ -117,7 +133,7 @@ func (g *Git) Run(args ...string) (string, error) {
 
 // RunInput is Run with stdin as git's standard input.
 func (g *Git) RunInput(stdin []byte, args ...string) (string, error) {
-	ctx := context.Background()
+	ctx := g.ctx
 	if g.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, g.timeout)
@@ -128,13 +144,17 @@ func (g *Git) RunInput(stdin []byte, args ...string) (string, error) {
 	cmd.Env = g.env
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {
-		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		sig := syscall.SIGKILL
+		if errors.Is(context.Cause(g.ctx), ErrInterrupted) {
+			sig = syscall.SIGTERM // git removes its lock files on SIGTERM
+		}
+		err := syscall.Kill(-cmd.Process.Pid, sig)
 		if errors.Is(err, syscall.ESRCH) { // the group has already exited
 			return os.ErrProcessDone
 		}
 		return err
 	}
-	cmd.WaitDelay = time.Second
+	cmd.WaitDelay = 5 * time.Second
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if stdin != nil {
@@ -149,7 +169,10 @@ func (g *Git) RunInput(stdin []byte, args ...string) (string, error) {
 	if errors.As(err, &exitErr) {
 		e.ExitCode = exitErr.ExitCode()
 	}
-	if ctx.Err() == context.DeadlineExceeded {
+	switch {
+	case errors.Is(context.Cause(g.ctx), ErrInterrupted):
+		e.Interrupted = true
+	case ctx.Err() == context.DeadlineExceeded:
 		e.TimedOut = true
 	}
 	return out.String(), e

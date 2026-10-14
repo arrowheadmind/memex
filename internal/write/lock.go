@@ -35,14 +35,15 @@ func (e *LockError) Error() string {
 
 // lock takes an exclusive advisory lock on root/.memex/write.lock, creating .memex/ if
 // needed, polling until wait has passed. The lock is released when the file is closed.
-func lock(root string, wait time.Duration) (*os.File, error) {
+// stop reports an interruption, which gives up the wait with ErrInterrupted.
+func lock(root string, wait time.Duration, stop func() bool) (*os.File, error) {
 	p := filepath.Join(root, filepath.FromSlash(LockFile))
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-		return nil, err
+		return nil, &WriteError{LockFile, err}
 	}
 	f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
-		return nil, err
+		return nil, &WriteError{LockFile, err}
 	}
 	deadline := time.Now().Add(wait)
 	for {
@@ -53,6 +54,10 @@ func lock(root string, wait time.Duration) (*os.File, error) {
 		if !errors.Is(err, unix.EWOULDBLOCK) && !errors.Is(err, unix.EINTR) {
 			f.Close()
 			return nil, err
+		}
+		if stop() {
+			f.Close()
+			return nil, ErrInterrupted
 		}
 		if !time.Now().Before(deadline) {
 			f.Close()

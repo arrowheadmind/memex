@@ -2,6 +2,7 @@ package write
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -14,10 +15,47 @@ import (
 	"github.com/arrowheadmind/memex/internal/store"
 )
 
-// File is one file a command writes: its store-relative path and full new contents.
+// File is one file a command writes: its store-relative path and full new contents. With
+// Check set, the file must still hold Expect when it is written (nil Expect: must not
+// exist), or the write stops with a *ChangedError.
 type File struct {
+	Path   string
+	Data   []byte
+	Check  bool
+	Expect []byte
+}
+
+// WriteError is a file that could not be written (exit 1). Err is the operating system's
+// error; the message names only the store-relative path.
+type WriteError struct {
 	Path string
-	Data []byte
+	Err  error
+}
+
+func (e *WriteError) Error() string {
+	return fmt.Sprintf("cannot write %s: %s; nothing was changed", e.Path, osReason(e.Err))
+}
+
+// osReason is the operating system's text for err, without the absolute paths that
+// *os.PathError and *os.LinkError add.
+func osReason(err error) string {
+	var pe *os.PathError
+	var le *os.LinkError
+	switch {
+	case errors.As(err, &pe):
+		return pe.Err.Error()
+	case errors.As(err, &le):
+		return le.Err.Error()
+	}
+	return err.Error()
+}
+
+// ChangedError is a file that changed between the command reading it and writing it
+// (exit 1).
+type ChangedError struct{ Path string }
+
+func (e *ChangedError) Error() string {
+	return e.Path + " changed while memex was working; retry"
 }
 
 // Paths returns the paths of fs, in order.
@@ -76,34 +114,39 @@ func Validate(root string, today time.Time, files []File) error {
 // are restored (new files are deleted) and the error is returned; a validation failure is a
 // *ValidationError.
 func (s *Session) Write(today time.Time, files []File) error {
+	fail := func(err error) error {
+		s.restore()
+		return err
+	}
 	for _, f := range files {
 		p := filepath.Join(s.Root, filepath.FromSlash(f.Path))
 		sv := saved{path: p, mode: 0o644}
-		if info, err := os.Lstat(p); err == nil {
-			data, err := os.ReadFile(p)
-			if err != nil {
-				return err
-			}
-			sv.exists, sv.data, sv.mode = true, data, info.Mode().Perm()
+		cur, err := os.ReadFile(p)
+		info, statErr := os.Lstat(p)
+		switch {
+		case err == nil && statErr == nil:
+			sv.exists, sv.data, sv.mode = true, cur, info.Mode().Perm()
+		case !errors.Is(err, os.ErrNotExist):
+			return fail(&WriteError{f.Path, err})
+		}
+		if f.Check && (sv.exists != (f.Expect != nil) || !bytes.Equal(cur, f.Expect)) {
+			return fail(&ChangedError{f.Path})
+		}
+		if err := s.mkdirs(filepath.Dir(p)); err != nil {
+			return fail(&WriteError{f.Path, err})
 		}
 		s.saved = append(s.saved, sv)
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-			s.restore()
-			return err
-		}
 		if err := atomicWrite(p, f.Data, sv.mode); err != nil {
-			s.restore()
-			return err
+			return fail(&WriteError{f.Path, err})
 		}
 	}
 	for _, f := range files {
 		got, err := os.ReadFile(filepath.Join(s.Root, filepath.FromSlash(f.Path)))
-		if err != nil || !bytes.Equal(got, f.Data) {
-			s.restore()
-			if err == nil {
-				err = fmt.Errorf("%s: read back different bytes than were written", f.Path)
-			}
-			return err
+		if err != nil {
+			return fail(&WriteError{f.Path, err})
+		}
+		if !bytes.Equal(got, f.Data) {
+			return fail(&WriteError{f.Path, errors.New("read back different bytes than were written")})
 		}
 	}
 	errs, err := Errors(store.WorkTree{Root: s.Root}, today, Paths(files))
@@ -111,8 +154,26 @@ func (s *Session) Write(today time.Time, files []File) error {
 		err = &ValidationError{errs}
 	}
 	if err != nil {
-		s.restore()
-		return err
+		return fail(err)
+	}
+	return nil
+}
+
+// mkdirs creates dir and its missing parents, recording each one so that restore can
+// remove them again.
+func (s *Session) mkdirs(dir string) error {
+	var missing []string
+	for d := dir; ; d = filepath.Dir(d) {
+		if _, err := os.Lstat(d); err == nil || d == s.Root || d == filepath.Dir(d) {
+			break
+		}
+		missing = append(missing, d)
+	}
+	for i := len(missing) - 1; i >= 0; i-- {
+		if err := os.Mkdir(missing[i], 0o755); err != nil {
+			return err
+		}
+		s.created = append(s.created, missing[i])
 	}
 	return nil
 }
@@ -142,7 +203,10 @@ func (s *Session) restore() {
 			os.Remove(sv.path)
 		}
 	}
-	s.saved = nil
+	for i := len(s.created) - 1; i >= 0; i-- {
+		os.Remove(s.created[i]) // only when empty
+	}
+	s.saved, s.created = nil, nil
 }
 
 // atomicWrite writes data to p through a temporary file in the same directory, renamed into
