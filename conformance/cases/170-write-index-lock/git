@@ -1,0 +1,5 @@
+config
+-f
+.git/index.lock
+lock.held
+true

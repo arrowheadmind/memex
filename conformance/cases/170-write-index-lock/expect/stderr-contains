@@ -1,0 +1,1 @@
+memex: the git index is locked by another process: fatal: Unable to create '<STORE>/.git/index.lock': File exists.; nothing was changed

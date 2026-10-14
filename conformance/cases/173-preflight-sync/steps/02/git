@@ -1,0 +1,17 @@
+add
+rules/2026-01-12-always-from-elsewhere.md
+
+commit
+-q
+-m
+elsewhere
+
+push
+-q
+<STORE>/../origin.git
+HEAD:refs/heads/main
+
+reset
+-q
+--hard
+HEAD~1

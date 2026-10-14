@@ -1,0 +1,2 @@
+memex: rules/2026-01-10-existing-rule.md: E-STATUS status "bogus" is not valid for a rule; valid: active, superseded, retired
+memex: refused: the result would not validate; nothing was changed

@@ -1,0 +1,10 @@
+new
+rule
+--title
+Index is locked
+--summary
+S.
+--tag
+base
+--body
+-

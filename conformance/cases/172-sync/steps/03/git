@@ -1,0 +1,11 @@
+commit
+-q
+--allow-empty
+-m
+local-1
+
+commit
+-q
+--allow-empty
+-m
+local-2

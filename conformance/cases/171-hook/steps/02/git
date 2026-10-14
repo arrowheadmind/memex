@@ -1,0 +1,9 @@
+add
+rules/2026-01-15-bad.md
+
+commit
+-q
+-m
+bad
+--
+rules/2026-01-15-bad.md

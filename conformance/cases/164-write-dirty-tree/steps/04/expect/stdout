@@ -1,0 +1,9 @@
+store: NOT SYNCED: uncommitted changes (run memex save)
+
+## Always
+
+## Results
+1. [rule, active] rules/2026-01-15-committed-while-dirty.md  matched 1/1: cache
+   Committed while dirty — S.
+   When the **cache** is cold the first build downloads everything again, so warm it before switching hosts.
+Store root: <STORE>

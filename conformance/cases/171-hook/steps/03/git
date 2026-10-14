@@ -1,0 +1,4 @@
+rm
+-q
+--cached
+rules/2026-01-15-bad.md

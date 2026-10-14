@@ -1,0 +1,10 @@
+new
+rule
+--title
+Rebased onto origin
+--summary
+S.
+--tag
+base
+--body
+-

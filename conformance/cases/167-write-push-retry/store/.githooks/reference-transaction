@@ -1,0 +1,24 @@
+#!/bin/sh
+# Test plumbing, not part of memex: another host pushes to origin at the moments that make
+# memex's first push lose the race. The first two times a fetch moves
+# refs/remotes/origin/main (the freshening fetch, then the pull of step 7), origin gains a
+# commit; so the push after that pull is rejected as non-fast-forward, and memex must pull
+# and push again.
+[ "$1" = committed ] || exit 0
+moved=no
+while read -r old new ref; do
+  [ "$ref" = refs/remotes/origin/main ] && moved=yes
+done
+[ "$moved" = yes ] || exit 0
+dir=$(git rev-parse --git-dir) || exit 1
+if [ ! -e "$dir/moved-once" ]; then
+  : > "$dir/moved-once"; msg="pushed elsewhere during the fetch"
+elif [ ! -e "$dir/moved-twice" ]; then
+  : > "$dir/moved-twice"; msg="pushed elsewhere during the pull"
+else
+  exit 0
+fi
+origin=$(git config remote.origin.url) || exit 1
+tree=$(git --git-dir="$origin" rev-parse "main^{tree}") || exit 1
+commit=$(echo "$msg" | git --git-dir="$origin" commit-tree -p main "$tree") || exit 1
+git --git-dir="$origin" update-ref refs/heads/main "$commit"

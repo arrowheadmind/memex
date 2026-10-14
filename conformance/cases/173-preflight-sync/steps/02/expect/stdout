@@ -1,0 +1,9 @@
+store: fast-forwarded 1 commits
+
+## Always
+- rules/2026-01-12-always-from-elsewhere.md: Always rule from elsewhere — Another host added it; the sync brings it in before the Always section is read.
+
+## Results
+1. [rule, active] rules/2026-01-10-existing-rule.md  matched 1/1: existing
+   Existing rule — A rule that is already in the store.
+Store root: <STORE>

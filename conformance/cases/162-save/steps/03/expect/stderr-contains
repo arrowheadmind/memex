@@ -1,0 +1,1 @@
+memex: rules/2026-01-10-second.md is a deleted entry; ids are never reused, so retire or supersede it instead (memex set 2026-01-10-second status=…), restore it with git restore -- rules/2026-01-10-second.md, or give --allow-delete

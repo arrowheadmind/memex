@@ -1,0 +1,11 @@
+created AGENT.md
+created decisions/
+created runbooks/
+created reference/
+created tasks/
+created plans/
+created journal/
+created files/
+created .githooks/pre-commit
+set core.hooksPath .githooks
+initialized <STORE>
