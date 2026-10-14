@@ -90,6 +90,23 @@ func TestRunAllAgainstFake(t *testing.T) {
 	writeFile(t, filepath.Join(c, "steps/02/expect/stdout"), "", 0o644)
 	writeFile(t, filepath.Join(c, "steps/02/expect/exit"), "2\n", 0o644)
 
+	// A step overlay, several git commands, and a git step whose failure is expected.
+	o := filepath.Join(cases, "004-overlay")
+	writeFile(t, filepath.Join(o, "store/memex.toml"), "format = 1\n", 0o644)
+	writeFile(t, filepath.Join(o, "store/rules/old.md"), "old\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/store/rules/old.md"), "edited\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/store/rules/added.md"), "added\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/store/.remove"), "memex.toml\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/git"), "add\n-A\n\ncommit\n-q\n-m\nedit\n\nnot-a-command\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/cmd"), "version\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/stdout"), "memex <VERSION> (store format 1)\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/exit"), "0\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/git-exit"), "1\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/git-stderr-contains"), "is not a git command\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/commits"), "edit\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/store/rules/old.md"), "edited\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/store/rules/added.md"), "added\n", 0o644)
+
 	// A failing case: wrong stdout, wrong exit, wrong executable bit.
 	f := filepath.Join(cases, "003-fails")
 	writeFile(t, filepath.Join(f, "store/a"), "a\n", 0o644)
@@ -111,10 +128,11 @@ func TestRunAllAgainstFake(t *testing.T) {
 		"PASS 001-version\n",
 		"PASS 002-write\n",
 		"FAIL 003-fails\n",
+		"PASS 004-overlay\n",
 		"exit 0, want 1",
 		"stdout differs",
 		"store: a executable bit is false, want true",
-		"conformance: 2 passed, 1 failed\n",
+		"conformance: 3 passed, 1 failed\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)

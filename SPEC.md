@@ -1565,7 +1565,9 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | `env` | `KEY=VALUE` lines added to the environment, after the fixed variables below, so a case can override them. `<STORE>` and `<HOME>` in a value are replaced by the paths they name in `expect/stdout`. |
 | `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
 | `stdin` | Standard input (optional; empty if absent) |
-| `git` | Optional. git arguments, one per line, run as `git -C <store> <args>` with the runner's environment (the case's `env` included) after the previous step and before this step's `cmd`, so that a case can stage changes for `check --staged`. `<STORE>` and `<HOME>` are replaced as in `env`. A git step that fails fails the case. |
+| `git` | Optional. git arguments, one per line, run as `git -C <store> <args>` with the runner's environment (the case's `env` included) after the previous step and before this step's `cmd`, so that a case can stage changes for `check --staged`, commit by hand or move `origin`. An empty line separates commands, which run in order; a command that starts with `-C <path>` runs elsewhere, as git applies successive `-C` options in turn. `<STORE>` and `<HOME>` are replaced as in `env`. A git command that fails fails the case, except the last one when `expect/git-exit` exists. |
+| `expect/git-exit` | Optional. The expected exit code of the step's last git command, for a git step that must fail (a commit the pre-commit hook refuses). |
+| `expect/git-stderr-contains` | Optional. Lines that must each appear in that last git command's standard error. |
 | `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
 | `expect/exit` | Expected exit code |
 | `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex`. Regular files are compared by relative path, bytes and executable bit. Directories are not compared: an empty directory is ignored on both sides, because a case directory kept in git cannot hold one |
@@ -1589,15 +1591,18 @@ No other variable is inherited from the runner's environment. The working direct
 temporary `HOME`, which is not inside a git repository, so §5.5 attribution is empty unless a
 case says otherwise.
 
-A case with several steps uses `steps/01/`, `steps/02/`, …, each holding its own `cmd`, `stdin`
-and `expect/`, sharing one store.
+A case with several steps uses `steps/01/`, `steps/02/`, …, each holding its own `cmd`, `stdin`,
+`git` and `expect/`, sharing one store. A step may also hold `store/`: before its git step, the
+paths listed in its `.remove` file (one per line) are deleted from the store's working tree and
+its other files are copied over it, without committing, which is how a case makes a direct edit
+or a dirty tree. The case's own `store/` is the seed, never an overlay.
 
 The same placeholders apply to the ` ```example ` blocks of the help pages (§16.9), so that a
 help example can show `pushed <SHA7>` and `Store root: <STORE>` and still be executed.
 
 **Network cases.** A case directory may contain `origin-unreachable`, which makes the runner
 point `origin` at a local TCP listener that accepts connections and never answers, instead of
-the bare clone, so that `network_timeout` behavior (§9.1) is tested with a deterministic hang
+the bare clone (as a `git://` URL, so that no transport helper is involved), so that `network_timeout` behavior (§9.1) is tested with a deterministic hang
 and no assumption about the host's network; the runner sets `MEMEX_CONFIG` to a file with
 `network_timeout = 2` for such cases.
 

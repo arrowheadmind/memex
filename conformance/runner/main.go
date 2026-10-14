@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,9 +29,6 @@ const (
 	seedDate       = "2026-01-10T12:00:00+00:00" // author and committer date of src/ seeds
 	seedDate2      = "2026-01-11T12:00:00+00:00" // the same for src2/ second commits
 	commandTimeout = 120 * time.Second
-	// unreachableOrigin is a non-routable address reached through git's own HTTP helper, so
-	// the attempt hangs until memex's network_timeout instead of failing fast (SPEC §15).
-	unreachableOrigin = "http://10.255.255.1/store.git"
 )
 
 func main() {
@@ -120,6 +118,34 @@ type sandbox struct {
 	env                            []string
 	seed                           string            // hash of the seed commit, "" without store/
 	srcs                           map[string]string // src/<name> repositories, by name
+	listener                       net.Listener      // the origin-unreachable listener, or nil
+	caseDir                        string
+}
+
+// listenSilently opens a local TCP listener that accepts every connection and never
+// answers, so that a git fetch, pull or push to it hangs until memex's network_timeout
+// (SPEC §15, origin-unreachable). The connections stay open until the listener is closed.
+func listenSilently() (net.Listener, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		var conns []net.Conn
+		defer func() {
+			for _, c := range conns {
+				c.Close()
+			}
+		}()
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			conns = append(conns, c)
+		}
+	}()
+	return l, nil
 }
 
 func newSandbox(memex, git string, unreachable bool) (*sandbox, error) {
@@ -219,7 +245,13 @@ func (s *sandbox) seedStore(src string, unreachable bool) error {
 		}
 	}
 	if unreachable {
-		if _, err := s.git(s.store, "remote", "set-url", "origin", unreachableOrigin); err != nil {
+		l, err := listenSilently()
+		if err != nil {
+			return err
+		}
+		s.listener = l
+		url := "git://" + l.Addr().String() + "/store.git"
+		if _, err := s.git(s.store, "remote", "set-url", "origin", url); err != nil {
 			return err
 		}
 	}
@@ -277,6 +309,12 @@ func runCase(dir, memex, git, version string) (problems []string, tmp string, er
 	s, err := newSandbox(memex, git, unreachable)
 	if s != nil {
 		tmp = s.root
+		s.caseDir = dir
+		defer func() {
+			if s.listener != nil {
+				s.listener.Close()
+			}
+		}()
 	}
 	if err != nil {
 		return nil, tmp, err
@@ -438,18 +476,55 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	for i := range args {
 		args[i] = s.paths(args[i])
 	}
-	// A git step runs before the command, in the store, with the runner's environment
-	// (SPEC §15, git).
-	if gitText, err := os.ReadFile(filepath.Join(dir, "git")); err == nil {
-		gitArgs := strings.Split(string(gitText), "\n")
-		if gitArgs[len(gitArgs)-1] == "" {
-			gitArgs = gitArgs[:len(gitArgs)-1]
-		}
-		for i := range gitArgs {
-			gitArgs[i] = s.paths(gitArgs[i])
-		}
-		if _, err := s.git(s.store, gitArgs...); err != nil {
+	expect := filepath.Join(dir, "expect")
+	var problems []string
+	// A step's store/ is copied over the store's working tree, without committing, after
+	// the paths its .remove file lists are deleted (SPEC §15, steps). The case's own store/
+	// is the seed, not an overlay.
+	if dir != s.caseDir && exists(filepath.Join(dir, "store")) {
+		if err := overlay(filepath.Join(dir, "store"), s.store); err != nil {
 			return nil, err
+		}
+	}
+	// A git step runs before the command, in the store, with the runner's environment
+	// (SPEC §15, git). An empty line separates commands. Every command must succeed, except
+	// that the last one's exit code is compared with expect/git-exit when that file exists.
+	if gitText, err := os.ReadFile(filepath.Join(dir, "git")); err == nil {
+		cmds := gitCommands(string(gitText))
+		wantGitExit := 0
+		if b, err := os.ReadFile(filepath.Join(expect, "git-exit")); err == nil {
+			if wantGitExit, err = strconv.Atoi(strings.TrimSpace(string(b))); err != nil {
+				return nil, fmt.Errorf("expect/git-exit: %v", err)
+			}
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		for i, gitArgs := range cmds {
+			for j := range gitArgs {
+				gitArgs[j] = s.paths(gitArgs[j])
+			}
+			if i < len(cmds)-1 || wantGitExit == 0 {
+				if _, err := s.git(s.store, gitArgs...); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			code, stderr, err := s.gitStatus(s.store, gitArgs...)
+			if err != nil {
+				return nil, err
+			}
+			if code != wantGitExit {
+				problems = append(problems, fmt.Sprintf("git step exit %d, want %d; stderr:\n%s", code, wantGitExit, stderr))
+			}
+			if b, err := os.ReadFile(filepath.Join(expect, "git-stderr-contains")); err == nil {
+				for _, line := range strings.Split(string(b), "\n") {
+					if line != "" && !pattern(line, subst, false).MatchString(stderr) {
+						problems = append(problems, fmt.Sprintf("git step stderr lacks %q; stderr:\n%s", line, stderr))
+					}
+				}
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				return nil, err
+			}
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
@@ -458,7 +533,6 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
-	expect := filepath.Join(dir, "expect")
 	wantStdout, err := os.ReadFile(filepath.Join(expect, "stdout"))
 	if err != nil {
 		return nil, err
@@ -476,7 +550,6 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	if res.err != nil {
 		return nil, fmt.Errorf("running memex: %v", res.err)
 	}
-	var problems []string
 	if res.exit != wantExit {
 		problems = append(problems, fmt.Sprintf("exit %d, want %d; stderr:\n%s", res.exit, wantExit, res.stderr))
 	}
@@ -511,6 +584,70 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 		return nil, err
 	}
 	return problems, nil
+}
+
+// gitCommands splits a git step file into commands: one argument per line, an empty line
+// between commands.
+func gitCommands(text string) [][]string {
+	var cmds [][]string
+	var cur []string
+	for _, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
+		if line == "" {
+			if cur != nil {
+				cmds = append(cmds, cur)
+			}
+			cur = nil
+			continue
+		}
+		cur = append(cur, line)
+	}
+	if cur != nil {
+		cmds = append(cmds, cur)
+	}
+	return cmds
+}
+
+// gitStatus runs git like git, but returns its exit code and standard error instead of
+// failing, for a git step whose failure is expected.
+func (s *sandbox) gitStatus(dir string, args ...string) (int, string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Path = filepath.Join(s.bin, "git")
+	cmd.Dir = dir
+	cmd.Env = s.env
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	err := cmd.Run()
+	var exitErr *exec.ExitError
+	switch {
+	case err == nil:
+		return 0, errb.String(), nil
+	case errors.As(err, &exitErr) && exitErr.ExitCode() >= 0:
+		return exitErr.ExitCode(), errb.String(), nil
+	}
+	return 0, "", fmt.Errorf("git %s: %v", strings.Join(args, " "), err)
+}
+
+// overlay deletes the paths listed in src/.remove from dst, then copies the rest of src
+// over dst.
+func overlay(src, dst string) error {
+	if rm, err := os.ReadFile(filepath.Join(src, ".remove")); err == nil {
+		for _, p := range strings.Split(strings.TrimSpace(string(rm)), "\n") {
+			if p != "" {
+				if err := os.RemoveAll(filepath.Join(dst, p)); err != nil {
+					return err
+				}
+			}
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if err := copyTree(src, dst); err != nil {
+		return err
+	}
+	if exists(filepath.Join(src, ".remove")) {
+		return os.Remove(filepath.Join(dst, ".remove"))
+	}
+	return nil
 }
 
 // commits is `git log --format=%s` of the store without the seed commit, one subject per
@@ -673,7 +810,11 @@ func copyTree(src, dst string) error {
 		if info.Mode()&0o111 != 0 {
 			mode = 0o755
 		}
-		return os.WriteFile(target, data, mode)
+		if err := os.WriteFile(target, data, mode); err != nil {
+			return err
+		}
+		return os.Chmod(target, mode) // an overlay may replace a file of another mode
+
 	})
 }
 
