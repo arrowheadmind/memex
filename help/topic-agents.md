@@ -1,7 +1,6 @@
 # memex help agents
 
 Rules of engagement for a language-model agent, as imperatives.
-
 ## Before work
 
 - Run `memex preflight "<the task in your own words>"`. It syncs the store, prints the
