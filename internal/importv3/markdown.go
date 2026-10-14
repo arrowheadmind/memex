@@ -252,9 +252,9 @@ func markerTags(text string) []string {
 	return out
 }
 
-// yamlBlock reads the name: and description: values of a leading YAML block (a first line
+// YAMLBlock reads the name: and description: values of a leading YAML block (a first line
 // `---`, then lines up to the next `---`), for files that have no heading (SPEC §13.3).
-func yamlBlock(lines []string) (name, description string) {
+func YAMLBlock(lines []string) (name, description string) {
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
 		return "", ""
 	}

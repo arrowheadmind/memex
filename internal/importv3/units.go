@@ -156,7 +156,7 @@ func (im *Importer) extractFile(f *fileRec, kind, typ string) *Unit {
 		}
 	} else {
 		// no heading: a leading YAML block's name and description, else the filename
-		name, desc := yamlBlock(f.Lines)
+		name, desc := YAMLBlock(f.Lines)
 		if name != "" {
 			u.Title = cutTitle(stripMarkup(name))
 			u.Summary = desc

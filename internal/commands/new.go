@@ -13,6 +13,7 @@ import (
 	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/gitx"
+	"github.com/arrowheadmind/memex/internal/importv3"
 	"github.com/arrowheadmind/memex/internal/slug"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
@@ -98,7 +99,7 @@ func (e *Env) readBody(name string) (string, error) {
 
 // fromFile builds the title, summary and body of `capture --from PATH` (SPEC §11.2).
 func (o *NewOptions) fromFile(content string, today time.Time) (title, summary, body string) {
-	title = filepath.Base(o.From)
+	title, summary = "", "Imported from "+o.From
 	lines := entry.Lines(strings.ReplaceAll(content, "\r\n", "\n"))
 	fenced := entry.Fenced(lines)
 	for i, l := range lines {
@@ -110,7 +111,18 @@ func (o *NewOptions) fromFile(content string, today time.Time) (title, summary, 
 			break
 		}
 	}
-	summary = "Imported from " + o.From
+	// With no ATX heading, a leading YAML block gives the title and summary (SPEC §13.3).
+	if title == "" {
+		if name, desc := importv3.YAMLBlock(lines); name != "" {
+			title = name
+			if desc != "" {
+				summary = desc
+			}
+		}
+	}
+	if title == "" {
+		title = filepath.Base(o.From)
+	}
 	body = fmt.Sprintf("Imported from `%s` (%s).\n\n%s", o.From, today.Format(time.DateOnly), content)
 	return title, summary, body
 }

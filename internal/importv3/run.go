@@ -316,7 +316,7 @@ func (im *Importer) leaks() error {
 		}
 		summary := "Imported from " + shown
 		if title == "" {
-			name, desc := yamlBlock(splitLines(text))
+			name, desc := YAMLBlock(splitLines(text))
 			title = name
 			if desc != "" {
 				summary = desc

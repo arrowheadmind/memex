@@ -955,7 +955,9 @@ memex capture --from PATH [--title=T] [--summary=S] [same options]
 ```
 
 `capture` is `new journal`. `capture --from PATH` imports a file found by the leak scan (§12):
-the title defaults to the file's first ATX heading text, else its filename; the summary
+the title defaults to the file's first ATX heading text; a file with no ATX heading that
+begins with a YAML block takes its `name:` as the title and its `description:`, when present,
+as the summary, as §13.3 does; else the title is the filename. The summary otherwise
 defaults to `Imported from <PATH>`; the body is the line `Imported from \`<PATH>\` (<today>).`,
 a blank line, then the file content, normalized; `aliases` gets `<PATH>` as written. It never
 deletes PATH, and on success prints `remove <PATH> after review` before the outcome line,
