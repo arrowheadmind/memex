@@ -29,7 +29,7 @@ Rules of engagement for a language-model agent, as imperatives.
 
   ```
   memex capture --title="<what you did>" --summary="<one sentence: should the reader open this?>" \
-    --tag <topic> --keyword <word the next reader will type> --body - <<'EOF'
+    --tag <topic> --keyword restic --keyword rotation --body - <<'EOF'
   ## What was attempted
   ...
   ## Reusable insights
@@ -38,8 +38,8 @@ Rules of engagement for a language-model agent, as imperatives.
   ```
 
 - `--summary` is required and `--body` must hold real content (80 characters of text, not just
-  headings). Put the reader's likely words in `--keyword`. In the body, link the entries you
-  used as `[[<id>]]` (the id is the filename without `.md`).
+  headings). Put the reader's likely words in `--keyword`, one per option. In the body, link
+  the entries you used as `[[<id>]]` (the id is the filename without `.md`).
 - memex commits and pushes as you: git must know `user.name` and `user.email`
   (`git config --global`), or the capture is refused and nothing is changed.
 - The last line is the outcome: `pushed <sha>`, `committed <sha>, no upstream`,

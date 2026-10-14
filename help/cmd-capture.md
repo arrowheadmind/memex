@@ -17,7 +17,8 @@ takes the body on standard input, so one shell call suffices:
 
 ```
 memex capture --title="Rotated the backup key on alpha" \
-  --summary="The runbook works; restic wants the short key id." --tag backup --body - <<'EOF'
+  --summary="The runbook works; restic wants the short key id." --tag backup \
+  --keyword restic --keyword rotation --body - <<'EOF'
 ## What was attempted
 ...
 EOF
@@ -69,13 +70,13 @@ prints `exists <path>` and `nothing to commit`.
 ## Examples
 
 ```example
-$ memex capture --title="Deployed the restic timer to beta" --summary="The timer runs; the dirty-tree check caught an uncommitted edit first." --tag backup --host beta --body notes/body.md
+$ memex capture --title="Deployed the restic timer to beta" --summary="The timer runs; the dirty-tree check caught an uncommitted edit first." --tag backup --keyword restic --keyword timer --host beta --body notes/body.md
 created journal/2026-01-15-deployed-the-restic-timer-to-beta.md
 pushed <SHA7>
 ```
 
 ```example
-$ memex capture --title="Deployed the restic timer to beta" --summary="The timer runs; the dirty-tree check caught an uncommitted edit first." --tag backup --host beta --body notes/body.md
+$ memex capture --title="Deployed the restic timer to beta" --summary="The timer runs; the dirty-tree check caught an uncommitted edit first." --tag backup --keyword restic --keyword timer --host beta --body notes/body.md
 exists journal/2026-01-15-deployed-the-restic-timer-to-beta.md
 nothing to commit
 ```
