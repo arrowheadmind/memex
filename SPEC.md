@@ -38,9 +38,9 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 6 Links | Implemented |
 | 7 Validation | Implemented |
 | 8 Search | Implemented |
-| 9 Writing to the store | Planned |
-| 10 Command-line conventions | Planned |
-| 11 Commands | Planned |
+| 9 Writing to the store | Implemented |
+| 10 Command-line conventions | Implemented |
+| 11 Commands | Implemented |
 | 12 Tool neutrality | Planned |
 | 13 Importing a brain v3 store | Implemented |
 | 15 Conformance suite | Planned |
