@@ -18,7 +18,7 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | B4 | Replay harness and gate G1: 40 real queries plus known misses, scored against brainctl preflight | fable | operator | Report captured in the brain; operator decides whether retrieval is good enough to continue | done | e9b4bca, gate G1: operator chose A (2026-10-14) |
 | B5 | Write path: §9, new/capture, set, save, sync, promote, fmt, init, hooks, preflight with sync | opus | fable | §9 and the rest of §11 Implemented; dirty-tree, timeout and hook-environment cases green | done | 70999f2, reviewed opus+fable |
 | B6 | Help: §16 pages, help agents, help --json, executed examples; cold-agent test | fable | opus | A fresh session of a different model captures correctly with only `memex help agents` | done | f5be017, reviewed opus+fable; 3 cold rounds |
-| B7 | Curation of the imported store in batches of 30 from `list --tag marker-stale`; Always tier last | sonnet | operator | Under 200 active rules, at most 10 Always rules, preflight under 4,000 characters | doing |  |
+| B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | doing |  |
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | todo | |
 
 Rules of the ledger:
@@ -54,6 +54,13 @@ Open items for later blocks:
   `run.py`, then `metrics.py` with `grades.json`. New entries in the top-10 start ungraded;
   `packets.py` builds blind packets for them. Spec candidates recorded there, to try with the
   harness before adopting: coverage bonus on k/n, b = 0.5, reverse prefix matching.
+- B7 (2026-10-14): the original "under 200 active rules" target was dropped with the operator's
+  agreement. Four batches reviewed 144 marker-tagged rules and closed 27, about one in five:
+  a closure word in a body is usually the lesson's subject, and the real closures carry a date
+  or name a tool that no longer exists. `scripts/replay/rerun.py` (memex-only, B4 grades)
+  showed no retrieval loss after batches 1–3; every top-10 item lost was a closed entry graded
+  "related". Summaries and keywords for governing rules continue through B8, measured the same
+  way. Each batch is recorded as a journal entry in the store.
 - B8: `doctor` (§11.13) and all of §12 (`check --workspace`, the leak scan, the tool-memory
   check) moved here from B5, because they need the fleet configuration to test against. §11
   is marked Implemented except 11.13; `doctor` still answers "not implemented yet". §12 stays
