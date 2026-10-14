@@ -34,7 +34,7 @@ func Check(e *Env, o CheckOptions) int {
 	}
 	var scan *neutral.Scan
 	if o.Workspace {
-		ws, err := config.ResolveWorkspace(e.Getenv, cfg)
+		ws, err := config.ResolveWorkspace(e.Getenv, cfg, root)
 		if err != nil {
 			return e.failErr(err)
 		}

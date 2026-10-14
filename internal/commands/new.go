@@ -353,6 +353,13 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 		o.Alias = append(o.Alias, o.From) // the imported file's path resolves to the entry
 	}
 	entries := w.entries()
+	if o.From != "" {
+		// A file the importer already brought in (SPEC §13.6, --leak) is an alias of its entry,
+		// written with ~/ for the home directory; capturing it again is the §11.2 no-op.
+		if en := fromAlias(entries, o.From, e.Getenv("HOME")); en != nil {
+			return w.nothing("exists "+en.Path, "remove "+o.From+" after review"), nil
+		}
+	}
 	p := o.build(w, newResolver(entries), title, summary, body, repos)
 	if p == nil {
 		w.end(nil)
@@ -383,4 +390,24 @@ func (e *Env) failedValidation(err error) int {
 		return e.validationFailed(ve)
 	}
 	panic(err)
+}
+
+// fromAlias returns the entry that holds the --from path as an alias: as given, as an
+// absolute path, or as the absolute path with the home directory written ~/ (SPEC §11.2).
+func fromAlias(entries []*store.Entry, from, home string) *store.Entry {
+	forms := []string{from}
+	if abs, err := filepath.Abs(from); err == nil {
+		forms = append(forms, abs)
+		if home != "" && strings.HasPrefix(abs, strings.TrimSuffix(home, "/")+"/") {
+			forms = append(forms, "~/"+strings.TrimPrefix(abs, strings.TrimSuffix(home, "/")+"/"))
+		}
+	}
+	for _, en := range entries {
+		for _, a := range en.Fields.Strings("aliases") {
+			if slices.Contains(forms, a) {
+				return en
+			}
+		}
+	}
+	return nil
 }

@@ -22,10 +22,10 @@ memex capture --title="Rotated the backup key on alpha" --summary="restic wants 
 EOF
 ```
 
-`--from PATH` imports a file that leaked into a coding tool's memory: the title is its first
-heading (else its YAML `name:`, else the filename), the summary its YAML `description:` or
-`Imported from PATH`; the body is the file after a line `Imported from PATH (date)`, and the
-path becomes an alias. PATH is never deleted; `remove PATH after review` reminds you to.
+`--from PATH` imports a file that leaked into a coding tool's memory: title from its first
+heading (else YAML `name:`, else the filename), summary from YAML `description:` or `Imported
+from PATH`, body after a line `Imported from PATH (date)`, PATH as an alias. PATH is never
+deleted (`remove PATH after review`); one that is already an alias, also as `~/…`, is a no-op.
 
 ## Options
 

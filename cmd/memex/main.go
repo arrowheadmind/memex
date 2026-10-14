@@ -218,6 +218,10 @@ func runImport(env *commands.Env, a *args, cmdErr func(string) *usageError) (int
 	out, hasOut := a.value("--out")
 	into, hasInto := a.value("--into")
 	switch {
+	case hasInto && into == "":
+		return 0, cmdErr("empty value for --into")
+	case hasOut && out == "":
+		return 0, cmdErr("empty value for --out")
 	case hasOut && hasInto:
 		return 0, cmdErr("--out and --into cannot be combined; --out makes a new store, --into adds to an existing one")
 	case !hasOut && !hasInto:

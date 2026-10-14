@@ -49,7 +49,7 @@ func Doctor(e *Env, asJSON bool) int {
 
 	// git
 	gitOK := false
-	if out, err := gitx.New(home, 10*time.Second).Run("version"); err != nil {
+	if out, err := gitx.New("/", 10*time.Second, noLocks).Run("version"); err != nil {
 		add("git", fail, "git is not runnable: %s", firstLine(err.Error()))
 	} else if v, ok := gitVersion(out); !ok {
 		add("git", fail, "cannot read the git version from %q", strings.TrimSpace(out))
@@ -93,7 +93,7 @@ func Doctor(e *Env, asJSON bool) int {
 			add("store", pass, "%s", storeLine(root, m))
 			add("format", fail, "%s", fe.Msg)
 		case ferr != nil:
-			add("store", fail, "%s: %v", root, ferr)
+			add("store", fail, "store %s: %v", root, unwrap(ferr))
 			root = ""
 		case len(findings) > 0:
 			add("store", fail, "%s: %s %s", findings[0].Path, findings[0].Code, findings[0].Message)
@@ -135,7 +135,7 @@ func Doctor(e *Env, asJSON bool) int {
 	scan := neutral.Scan{Home: home, Store: root}
 	wsNote := ""
 	if cfgErr == nil && cfg.Workspace != "" {
-		ws, err := config.ResolveWorkspace(e.Getenv, cfg)
+		ws, err := config.ResolveWorkspace(e.Getenv, cfg, root)
 		if err != nil {
 			wsNote = "; the workspace was not scanned: " + err.Error()
 		} else {
@@ -226,12 +226,24 @@ func plural(n int, one, many string) string {
 	return many
 }
 
+// noLocks keeps every git command of doctor from taking optional locks, such as the index
+// refresh of git status, so that doctor writes nothing (SPEC §11.13).
+var noLocks = gitx.Extra("GIT_OPTIONAL_LOCKS=0")
+
 // doctorGit runs the upstream, fetch-age, clean and hooks checks (SPEC §11.13).
 func (e *Env) doctorGit(root string, add func(id, result, format string, args ...any) *doctorCheck) {
-	g := gitx.New(root, 10*time.Second)
+	g := gitx.New(root, 10*time.Second, noLocks)
 	run := func(args ...string) (string, bool) {
 		out, err := g.Run(args...)
 		return strings.TrimSpace(out), err == nil
+	}
+	// A store that is not the top of its own repository has no upstream, fetch or hooks of
+	// its own: one WARN, and the other git checks are left out.
+	top, ok := run("rev-parse", "--show-toplevel")
+	real, err := filepath.EvalSymlinks(root)
+	if !ok || err != nil || filepath.Clean(top) != filepath.Clean(real) {
+		add("upstream", warn, "%s is not a git repository; run memex init %s", root, root)
+		return
 	}
 	gitPath := func(name string) string {
 		p, ok := run("rev-parse", "--git-path", name)

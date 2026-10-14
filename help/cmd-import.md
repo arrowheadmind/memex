@@ -38,7 +38,8 @@ entries …`, the new entries per type, `already in the store: <u> unchanged, <c
 different body (left alone), <m> under another id`, the attachment and alias counts, and
 `report: <DIR>/import-report-<today>.json`. Problems go to standard error as
 `memex: <problem>` after the summary, then a final `memex: import has <N> problems; see
-<DIR>/import-report.json`, and the exit code is 1.
+<report>`, where `<report>` is the report the summary names (`<DIR>/import-report.json`, or
+the dated one with `--into`), and the exit code is 1.
 
 ## Exit codes
 
@@ -68,7 +69,7 @@ exit 1
 
 ```example
 $ memex import brain-v3 repo --into notes
-! memex: notes is not a memex store; --into must name an existing store
+! memex: <HOME>/notes is not a memex store; --into must name an existing store
 exit 1
 ```
 

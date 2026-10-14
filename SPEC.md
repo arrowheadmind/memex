@@ -118,6 +118,9 @@ Rules:
   `memex: cannot expand ~: HOME is not set` (naming `$HOME` or `${HOME}` for those forms).
 - A variable of §3.3 set to the empty string counts as unset.
 - A relative path is an error.
+- The path is then cleaned lexically (repeated `/`, `.` segments, `..` after a name and a
+  trailing `/` are removed), so `~/memex-store/` and `~/memex-store` are the same store and
+  every path memex prints from it has the clean form.
 - The path MUST be a directory containing `memex.toml`, otherwise the command fails with
   exit 2.
 - If nothing is set, every command except `init PATH`, `import`, `doctor`, `version` and `help`
@@ -947,8 +950,10 @@ It also sets `git config core.hooksPath .githooks`.
 into `DIR` with the pointer text of §12. It requires a resolved store (§3.1).
 - It prints one line per file, `created <DIR>/<file>`, `unchanged <DIR>/<file>` when the file
   already holds the pointer text, or `replaced <DIR>/<file>`, with `<DIR>` as given.
+- The pointer text names the config file's `store` string without trailing `/` (a store
+  configured as `~/memex-store/` gives `Read ~/memex-store/AGENT.md …`).
 - An existing file whose content is the pointer line naming the same store, compared after
-  the §3.1 expansion of both paths (as `check --workspace` compares them, §12), is
+  the §3.1 expansion and cleaning of both paths (as `check --workspace` compares them, §12), is
   `unchanged`.
 - A file that already exists with any other content is left alone and reported on standard
   error as `memex: <DIR>/<file> exists with other content; left alone (use --force to replace
@@ -974,7 +979,11 @@ as the summary, as §13.3 does; else the title is the filename. The summary othe
 defaults to `Imported from <PATH>`; the body is the line `Imported from \`<PATH>\` (<today>).`,
 a blank line, then the file content, normalized; `aliases` gets `<PATH>` as written. It never
 deletes PATH, and on success prints `remove <PATH> after review` before the outcome line,
-also after `exists <path>` in the repeat of step 3.
+also after `exists <path>` in the repeat of step 3. When PATH is already an alias of an entry,
+in any of three forms (as given, as an absolute path, or as the absolute path with the home
+directory written `~/`, the form in which §13.6 records `--leak` files), the file is already
+in the store: `capture --from` prints `exists <path>` of that entry, `remove <PATH> after
+review` and `nothing to commit`, and exits 0, before any id is computed.
 
 Behavior:
 
@@ -1228,20 +1237,23 @@ where `details` holds the `LEAK <path>` lines of the `leaks` check and is otherw
 |---|---|---|
 | `git` | `git` is runnable; version ≥ 2.30 | PASS `version 2.30 or later`; FAIL `git is not runnable: <reason>`, `git <x>.<y> is older than 2.30`, or `cannot read the git version from "<output>"` |
 | `config` | The config file parses (or is absent), and `MEMEX_TODAY`, when set, is a date | PASS `config file parses` or `no config file`; FAIL with the §3 error message. With the config file failed, the store is resolved from `--store` and `MEMEX_STORE` only; with `MEMEX_TODAY` failed, `check` uses the local date |
-| `store` | The store resolves (§3.1) and `memex.toml` is valid | PASS `<root>`, followed by `, name "<name>"` when the manifest has a name; FAIL with the §3.1 message or the first `E-MANIFEST` finding as `memex.toml: E-MANIFEST <message>`. When it FAILs, `format` and every check up to `check` are omitted |
+| `store` | The store resolves (§3.1) and `memex.toml` is valid | PASS `<root>`, followed by `, name "<name>"` when the manifest has a name; FAIL with the §3.1 message (an unreadable `memex.toml` is `store <root>: <reason>`, the form of an unreadable store directory) or the first `E-MANIFEST` finding as `memex.toml: E-MANIFEST <message>`. When it FAILs, `format` and every check up to `check` are omitted |
 | `format` | The store format is supported (§4) | PASS `format 1`; FAIL with the §4 refusal message. When it FAILs, every check up to `check` is omitted |
-| `upstream` | The current branch has an upstream | PASS `<branch> tracks <upstream>`; WARN `branch <branch> has no upstream, so nothing is pushed; run git -C <root> push -u origin <branch>`, or `HEAD is not on a branch; run git -C <root> switch main` |
+| `upstream` | The current branch has an upstream | PASS `<branch> tracks <upstream>`; WARN `branch <branch> has no upstream, so nothing is pushed; run git -C <root> push -u origin <branch>`, or `HEAD is not on a branch; run git -C <root> switch main`. When the store root is not the top of its own git repository (`git rev-parse --show-toplevel` fails or, symbolic links resolved, names another directory), WARN `<root> is not a git repository; run memex init <root>`, and `fetch-age`, `clean` and `hooks` are omitted |
 | `fetch-age` | Age of `FETCH_HEAD`'s mtime in the store's git directory. A fleet check can watch this through `--json` | PASS `last fetch <time>`; WARN `last fetch <time>, more than 8 hours ago; run memex sync`, or `never fetched; run memex sync` when the file does not exist. `<time>` is RFC 3339 UTC to the second |
 | `clean` | The store has no uncommitted changes, no unpushed commits and no rebase in progress | PASS `nothing uncommitted or unpushed`; WARN with one or more of `<n> uncommitted changes; run memex save` (`git status --porcelain --untracked-files=all` lines, `change` when 1), `<n> unpushed commits; run memex sync` (`commit` when 1; only with an upstream), `a rebase is in progress; finish it with git -C <root> rebase --continue, or --abort`, joined by `; ` |
 | `hooks` | `core.hooksPath` is `.githooks` and `.githooks/pre-commit` is an executable file | PASS `core.hooksPath is .githooks and the pre-commit hook exists`; WARN `core.hooksPath is not set, so the pre-commit check does not run; run memex init <root>`, `core.hooksPath is "<value>", not .githooks; run git -C <root> config core.hooksPath .githooks`, or `.githooks/pre-commit is missing or not executable; run memex init <root>` |
 | `check` | Summary of `memex check` | PASS `<n> errors, <m> warnings` (with `n` = 0); FAIL `<n> errors, <m> warnings; run memex check` |
 | `path` | Every `memex` executable on `PATH` resolves to the same file, symbolic links resolved. Relative and empty `PATH` elements are skipped | PASS `1 memex on PATH`, or `<n> memex on PATH, all the same file`; WARN `memex on PATH resolves to different files: <paths>; the first one runs` (the paths as found on `PATH`, separated by `, `), or `no memex on PATH; hooks run memex by name` |
-| `leaks` | §12 leak scan, over the home locations and, when `workspace` is configured, the workspace | PASS `no files in coding tools' own memory`; WARN `<n> files in coding tools' own memory; move each into the store with memex capture --from PATH, then delete it` (`file` when 1), followed by one `LEAK <path>` line per finding, absolute paths in code-point order. A configured workspace that does not resolve (§12) appends `; the workspace was not scanned: <message>` and makes the check WARN even with no finding |
+| `leaks` | §12 leak scan, over the home locations and, when `workspace` is configured, the workspace | PASS `no files in coding tools' own memory`; WARN `<n> files in coding tools' own memory; move each into the store with memex capture --from PATH, then delete it` (`file` when 1), followed by one `LEAK <path>` line per finding, absolute paths in code-point order. A configured workspace that does not resolve (§12 rule 2: absent, relative, unreadable, not a directory, or inside the store) appends `; the workspace was not scanned: <message>` and makes the check WARN even with no finding |
 | `tool-memory` | §12 rule 5 | PASS `~/.claude does not exist`, `HOME is not set; no ~/.claude to check`, `Claude Code auto memory is disabled by CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, or `Claude Code auto memory is disabled in <file>` (the first of the rule 5 files that disables it, `~/.claude/settings.json` written so); WARN `Claude Code auto memory is not disabled; set "autoMemoryEnabled": false in ~/.claude/settings.json` |
 
 The `store`-dependent checks (`format` to `check`) run only when `store` PASSes, and `upstream`
 to `hooks` only when `git` PASSes too. `path`, `leaks` and `tool-memory` always run. Each git
-command `doctor` runs is bounded by 10 seconds; none of them touches the network.
+command `doctor` runs is bounded by 10 seconds; none of them touches the network. `doctor`
+takes no lock and runs every git command with `GIT_OPTIONAL_LOCKS=0`, so that `git status`
+does not refresh the index: it writes nothing anywhere. `git version` runs in `/`, so that it
+does not depend on `HOME` or the current directory.
 
 Exit 1 if any check FAILs, else 0. A usage error is exit 2.
 
@@ -1283,7 +1295,8 @@ the tool changes.
    `<store>` is the `store` string from the config file if that is where the store came from,
    otherwise the resolved absolute path. The check compares the pointer's path after §3.1
    expansion with the resolved store, so `~/memex-store` and `/home/x/memex-store` are the same
-   pointer. `check --workspace` reports `E-POINTER <path>` for every `CLAUDE.md`,
+   pointer, and so are `~/memex-store/` and `~/memex-store` (both sides are cleaned as §3.1
+   cleans the store path). `check --workspace` reports `E-POINTER <path>` for every `CLAUDE.md`,
    `CLAUDE.local.md`, `.claude/CLAUDE.md`, `AGENTS.md` or `GEMINI.md` under the workspace whose
    content differs, and `W-NO-POINTER <dir>` for every git top-level directory under the
    workspace that has no `CLAUDE.md` and no `AGENTS.md`.
@@ -1300,11 +1313,17 @@ the tool changes.
    - Each file is checked once, under the name of the first directory that reaches it, in
      path order: `a/.claude/CLAUDE.md` is `a`'s `.claude/CLAUDE.md`, not the `CLAUDE.md` of
      the visited directory `a/.claude`.
-   - The workspace is the `workspace` key (§3.2), expanded and checked like the store path
-     (§3.1): absent, relative, or not a directory is exit 2 for `check --workspace`, with
-     `memex: no workspace configured; set workspace = "..." in <config path>`,
-     `memex: workspace path "<path>" is relative; give an absolute path`, or
-     `memex: workspace <path> is not a directory` (or the reason it cannot be read).
+   - The workspace is the `workspace` key (§3.2), expanded, checked and cleaned like the store
+     path (§3.1). For `check --workspace` each of these is exit 2:
+     `memex: no workspace configured; set workspace = "..." in <config path>`;
+     `memex: workspace path "<path>" is relative; give an absolute path`;
+     `memex: workspace <path> is not a directory`;
+     `memex: workspace <path>: <reason>` when it does not exist or its entries cannot be listed
+     (`no such file or directory`, `permission denied`);
+     `memex: workspace <path> is inside the store <root>` when it is the store or below it
+     (compared as cleaned paths and, when they resolve, with symbolic links resolved), because
+     the scan would read the store's own files as a workspace.
+     Directories below the workspace that cannot be listed are skipped.
    - Findings name absolute paths, sort with the store's findings by path (§7), and count in
      the summary like any other finding.
 3. **Tool stores are scanned and never read as a source.** The leak scan reports, as
@@ -1668,7 +1687,9 @@ an earlier import and has been curated since, while the brains went on being wri
 brings over only the units that are not in the store yet, and never rewrites, re-dates or
 removes anything that is.
 
-1. **Refusals, before anything is written.** `DIR` without a regular `memex.toml` is exit 1
+1. **Refusals, before anything is written.** `--into ""` is the usage error
+   `empty value for --into` (and `--out ""` is `empty value for --out`). In the messages below
+   `<DIR>` is the absolute path. `DIR` without a regular `memex.toml` is exit 1
    (`memex: <DIR> is not a memex store; --into must name an existing store`); `DIR` that is not
    the top of its own git repository is exit 1; a store format memex does not read is the §4
    refusal (exit 2); uncommitted changes in `DIR` (any line of `git status --porcelain

@@ -56,7 +56,7 @@ func IsPointer(content, root, home string) bool {
 	}
 	got, err1 := config.Expand(m[1], home)
 	want, err2 := config.Expand(root, home)
-	return err1 == nil && err2 == nil && got == want
+	return err1 == nil && err2 == nil && filepath.Clean(got) == filepath.Clean(want)
 }
 
 // Scan is one run of the §12 scans.

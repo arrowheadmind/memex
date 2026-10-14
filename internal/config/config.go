@@ -218,6 +218,7 @@ func ResolveStore(flag string, flagSet bool, env Env, c *Config) (string, error)
 	if !filepath.IsAbs(path) {
 		return "", errorf("store path %q is relative; give an absolute path", path)
 	}
+	path = filepath.Clean(path) // a trailing / or a /./ names the same store
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", errorf("store %s: %v", path, unwrapPath(err))
@@ -258,8 +259,9 @@ func Today(env Env, now time.Time) (time.Time, error) {
 
 // ResolveWorkspace returns the configured workspace (SPEC §3.2, §12), expanded as §3.1
 // expands the store path. No `workspace` key is an *Error naming the config file, and so is
-// a relative path or one that is not a directory.
-func ResolveWorkspace(env Env, c *Config) (string, error) {
+// a relative path, one that is not a readable directory, and one inside the store at root
+// (when root is not "").
+func ResolveWorkspace(env Env, c *Config, root string) (string, error) {
 	if c.Workspace == "" {
 		return "", errorf("no workspace configured; set workspace = \"...\" in %s", c.displayPath())
 	}
@@ -270,6 +272,7 @@ func ResolveWorkspace(env Env, c *Config) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", errorf("workspace path %q is relative; give an absolute path", path)
 	}
+	path = filepath.Clean(path)
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", errorf("workspace %s: %v", path, unwrapPath(err))
@@ -277,5 +280,25 @@ func ResolveWorkspace(env Env, c *Config) (string, error) {
 	if !info.IsDir() {
 		return "", errorf("workspace %s is not a directory", path)
 	}
-	return filepath.Clean(path), nil
+	if _, err := os.ReadDir(path); err != nil {
+		return "", errorf("workspace %s: %v", path, unwrapPath(err))
+	}
+	if root != "" && inside(path, root) {
+		return "", errorf("workspace %s is inside the store %s", path, root)
+	}
+	return path, nil
+}
+
+// inside reports whether path is dir or below it, comparing the cleaned paths and, when
+// they resolve, the paths with symbolic links resolved.
+func inside(path, dir string) bool {
+	below := func(p, d string) bool {
+		return p == d || strings.HasPrefix(p, strings.TrimSuffix(d, "/")+"/")
+	}
+	if below(filepath.Clean(path), filepath.Clean(dir)) {
+		return true
+	}
+	rp, err1 := filepath.EvalSymlinks(path)
+	rd, err2 := filepath.EvalSymlinks(dir)
+	return err1 == nil && err2 == nil && below(rp, rd)
 }

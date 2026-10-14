@@ -147,3 +147,44 @@ func TestToday(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveWorkspace(t *testing.T) {
+	root := t.TempDir()
+	env := func(k string) string {
+		if k == "HOME" {
+			return root
+		}
+		return ""
+	}
+	ws := filepath.Join(root, "ws")
+	if err := os.Mkdir(ws, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := ResolveWorkspace(env, &Config{Workspace: "~/ws/"}, ""); err != nil || got != ws {
+		t.Errorf("trailing slash: %q %v", got, err)
+	}
+	if err := os.Chmod(ws, 0); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(ws, 0o755)
+	if os.Geteuid() != 0 { // root reads any directory
+		_, err := ResolveWorkspace(env, &Config{Workspace: ws}, "")
+		if err == nil || err.Error() != "workspace "+ws+": permission denied" {
+			t.Errorf("unreadable workspace: %v", err)
+		}
+	}
+	os.Chmod(ws, 0o755)
+	store := filepath.Join(root, "store")
+	if err := os.MkdirAll(filepath.Join(store, "rules"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []string{store, filepath.Join(store, "rules")} {
+		_, err := ResolveWorkspace(env, &Config{Workspace: w}, store)
+		if err == nil || err.Error() != "workspace "+w+" is inside the store "+store {
+			t.Errorf("inside the store: %v", err)
+		}
+	}
+	if _, err := ResolveWorkspace(env, &Config{Workspace: ws}, store); err != nil {
+		t.Errorf("beside the store: %v", err)
+	}
+}

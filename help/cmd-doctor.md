@@ -16,8 +16,8 @@ format, upstream, last fetch, uncommitted or unpushed work, the pre-commit hook,
 check`, shadowed `memex` executables on `PATH`, the leak scan (knowledge sitting in a coding
 tool's own memory) and whether Claude Code's auto memory is off. Read-only, no network, no
 lock; it works without a store, reporting that as a failed check. When `store` or `format`
-fails, the checks that need the store are left out. Each WARN and FAIL message ends with the
-command that fixes it.
+fails, the checks that need the store are left out. A WARN or FAIL message ends with the
+command that fixes it, where there is one. `doctor` writes nothing, not even git's index.
 
 ## Options
 

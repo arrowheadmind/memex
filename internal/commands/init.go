@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/gitx"
@@ -56,6 +57,9 @@ var PointerFiles = []string{"CLAUDE.md", "AGENTS.md", "GEMINI.md"}
 // `store` string when the store came from there, otherwise the resolved absolute path.
 func (e *Env) pointerStore(cfg *config.Config, root string) string {
 	if !e.StoreSet && e.Getenv("MEMEX_STORE") == "" && cfg.Store != "" {
+		if s := strings.TrimRight(cfg.Store, "/"); s != "" {
+			return s // a trailing / would make the pointer read <store>//AGENT.md
+		}
 		return cfg.Store
 	}
 	return root

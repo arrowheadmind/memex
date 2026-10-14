@@ -28,7 +28,7 @@ func Import(e *Env, o ImportOptions) int {
 	if err != nil {
 		return e.failErr(err)
 	}
-	if o.Into != "" {
+	if o.Into != "" { // main refuses an empty --into, so "" means the --out form
 		return importDelta(e, o, today)
 	}
 	out, err := filepath.Abs(o.Out)
@@ -104,7 +104,7 @@ func importDelta(e *Env, o ImportOptions, today time.Time) int {
 		return e.fail(spec.ExitUsage, "--into: %v", err)
 	}
 	if info, err := os.Stat(filepath.Join(into, "memex.toml")); err != nil || !info.Mode().IsRegular() {
-		return e.fail(spec.ExitFailure, "%s is not a memex store; --into must name an existing store", o.Into)
+		return e.fail(spec.ExitFailure, "%s is not a memex store; --into must name an existing store", into)
 	}
 	report, d, name, err := importv3.Delta(importv3.Options{
 		Sources: o.Sources, Leaks: o.Leaks, Today: today, Home: e.Getenv("HOME"),
