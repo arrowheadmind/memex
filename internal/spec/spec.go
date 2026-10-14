@@ -362,17 +362,19 @@ var Commands = []Command{
 	},
 	{
 		Name:    "import",
-		Summary: "Convert brain v3 stores into a new store",
-		Usage:   "memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…",
+		Summary: "Convert brain v3 stores into a new store, or add what is new to an existing one",
+		Usage: "memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…\n" +
+			"memex import brain-v3 SRC[@REV]… --into DIR [--leak PATH]…",
 		Options: []Option{
-			{Name: "--out", Value: "DIR", Required: true, Summary: "New store directory; must not exist"},
+			{Name: "--out", Value: "DIR", Summary: "New store directory; must not exist"},
+			{Name: "--into", Value: "DIR", Summary: "Existing store to add only the entries it does not hold yet"},
 			{Name: "--leak", Value: "PATH", Repeatable: true, Summary: "Tool-memory file to import as a raw journal entry"},
 		},
 		Positionals: []Positional{
 			{Name: "brain-v3", Required: true},
 			{Name: "SRC[@REV]", Repeatable: true, Required: true},
 		},
-		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},
+		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage, ExitLock},
 	},
 	{
 		Name:    "help",

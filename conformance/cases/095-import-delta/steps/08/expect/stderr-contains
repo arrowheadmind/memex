@@ -1,0 +1,1 @@
+memex: --out and --into cannot be combined; --out makes a new store, --into adds to an existing one

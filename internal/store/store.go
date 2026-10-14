@@ -5,6 +5,7 @@ package store
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -121,6 +122,9 @@ type Layout struct {
 // ignored are top-level names memex ignores besides dot-files (SPEC §4).
 var ignored = []string{"LICENSE", "flake.nix", "flake.lock", "import-report.json"}
 
+// deltaReport matches the report names of a delta import (SPEC §4, §13.7).
+var deltaReport = regexp.MustCompile(`^import-report-[0-9]{4}-[0-9]{2}-[0-9]{2}(-[0-9]+)?\.json$`)
+
 // known are the other top-level names of SPEC §4 that are not type directories.
 var known = []string{ManifestFile, "AGENT.md", "README.md"}
 
@@ -139,7 +143,7 @@ func Enumerate(t Tree) (*Layout, error) {
 	for _, it := range top {
 		name := it.Name
 		switch {
-		case strings.HasPrefix(name, "."), slices.Contains(ignored, name):
+		case strings.HasPrefix(name, "."), slices.Contains(ignored, name), deltaReport.MatchString(name):
 		case slices.Contains(known, name):
 			if !it.Regular {
 				notEntry(name, "not a regular file")

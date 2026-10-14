@@ -216,7 +216,8 @@ absent one means empty. memex creates a directory when it first writes into it.
 Type directories are flat. Any other file or directory inside a type directory is a validation
 error (§7). So is any top-level entry not in the list above, except dot-files and
 dot-directories (`.git`, `.gitattributes`, `.editorconfig`, …), `LICENSE`, `flake.nix`,
-`flake.lock` and `import-report.json` (§13.6), which memex ignores. Dot-files and
+`flake.lock`, `import-report.json` (§13.6) and `import-report-<YYYY-MM-DD>.json` or
+`import-report-<YYYY-MM-DD>-<n>.json` (§13.7), which memex ignores. Dot-files and
 dot-directories directly under `files/` are ignored in the same way.
 
 ---
@@ -1352,9 +1353,11 @@ the tool changes.
 
 ```
 memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…
+memex import brain-v3 SRC[@REV]… --into DIR [--leak PATH]…
 ```
 
-Converts one or more brainctl v3 brains into a new store at `DIR`. The rules below were
+Converts one or more brainctl v3 brains into a new store at `DIR` (`--out`), or brings into
+the existing store `DIR` only what it does not hold yet (`--into`, the delta form, §13.7). The rules below were
 written against the real predecessor data (457 investigations, 487 sections and 113 table rows
 of known mistakes, 35 sections, 77 rows and 9 "Always" bullets of constraints, 271 backlog
 items, 474 INDEX rows, 116 plans), and the counts in the notes are from it.
@@ -1366,9 +1369,10 @@ items, 474 INDEX rows, 116 plans), and the counts in the notes are from it.
   working tree, because dates come from history. `REV` defaults to `HEAD`; without `@REV`, a
   dirty SRC is refused (exit 1), since the import must describe a commit. With `@REV` the
   working tree is irrelevant.
-- **Fresh output.** `DIR` MUST NOT exist. memex creates it as in §11.1, except that `AGENT.md`
-  is built as §13.3 says, and writes all files. It does not commit. The operator reviews and
-  commits.
+- **Fresh output.** With `--out`, `DIR` MUST NOT exist. memex creates it as in §11.1, except
+  that `AGENT.md` is built as §13.3 says, and writes all files. It does not commit. The
+  operator reviews and commits. The delta form (§13.7) adds to an existing store instead and
+  never changes what is there.
 - **Deterministic.** The same SRC revisions, in the same order, with the same `MEMEX_TODAY`,
   produce byte-identical `DIR` contents. Re-running against later revisions brings over what was
   written in between.
@@ -1649,11 +1653,77 @@ and last `report: <DIR>/import-report.json`. Exit 0. With problems, every proble
 on standard error as `memex: <problem>` after the summary, followed by a last line
 `memex: import has <N> problems; see <DIR>/import-report.json`, and the exit code is 1; the
 output is written anyway so that the report can be read. An existing `DIR` is exit 1; a first
-argument other than the literal `brain-v3`, a missing SRC or a missing `--out` is a usage error (exit 2); a SRC that is
-not a git repository, a dirty SRC without `@REV`, or an unknown REV is exit 1.
+argument other than the literal `brain-v3`, a missing SRC, neither `--out` nor `--into`
+(`missing --out or --into`), or both (`--out and --into cannot be combined; --out makes a new
+store, --into adds to an existing one`) is a usage error (exit 2); a SRC that is not a git
+repository, a dirty SRC without `@REV`, or an unknown REV is exit 1.
 
 **Never automatic:** deduplication, rewording, or judging whether a rule is still true. Those
 are a separate, reviewed curation pass, done with ordinary memex commands.
+
+### 13.7 Delta import
+
+`memex import brain-v3 SRC[@REV]… --into DIR [--leak PATH]…` is for a store that was made by
+an earlier import and has been curated since, while the brains went on being written: it
+brings over only the units that are not in the store yet, and never rewrites, re-dates or
+removes anything that is.
+
+1. **Refusals, before anything is written.** `DIR` without a regular `memex.toml` is exit 1
+   (`memex: <DIR> is not a memex store; --into must name an existing store`); `DIR` that is not
+   the top of its own git repository is exit 1; a store format memex does not read is the §4
+   refusal (exit 2); uncommitted changes in `DIR` (any line of `git status --porcelain
+   --untracked-files=all`) are exit 1 with `memex: <DIR> has uncommitted changes; commit them
+   first, so that the import is the only change to review`. A clean tree makes the import's
+   whole effect one reviewable diff, and `git checkout . && git clean -fd` undoes it.
+2. **A fresh import first.** The sources are imported exactly as by `--out`, with every §13.1
+   to §13.6 rule, into a temporary directory outside `DIR`. If that import has problems, nothing
+   is merged: only the report (step 6) is written, with an empty `delta`, and the command exits 1.
+3. **Under the write lock** (§9.1 step 1, 60 s, exit 4 when it stays held), the tree is checked
+   clean again and every fresh entry is classified, in the fresh import's unit order (§13.3):
+   - **Present, by alias.** A store entry holds one of the fresh entry's aliases (§13.3: every
+     path and heading a unit was known by). Identity is the alias set, not the id, because a
+     fresh import of later revisions can shift `-2` suffixes and re-date an attachments entry.
+     Each store entry is claimed by at most one fresh entry; among several candidates, the one
+     with the fresh entry's id is preferred, else the first in alias order.
+   - **Present, by id.** Otherwise, an unclaimed store entry with the same id, type and body.
+   - **New**, otherwise.
+
+   Every fresh id is then mapped: a present entry to the id of the store entry that matched
+   it; a new one to its own id, or, when the store already has that id or alias, to the first of
+   `<id>-2`, `<id>-3`, … that is free (§5.4's length cap applies, as in §13.3).
+4. **Present entries are never written.** Their bodies are compared, after mapping (step 5),
+   with the store's: equal is `unchanged`, different is `changed`. A changed entry is a unit
+   that was edited in the brain after the first import, or an entry curated in the store;
+   either way it is left alone and listed, for the operator to reconcile by hand. Frontmatter
+   is not compared, because curation owns it.
+5. **New entries are written** into their type directory as the fresh import made them, with
+   the fresh ids mapped (step 3) in `[[…]]` link targets outside code (§6), in `files/<id>/`
+   prefixes, and in `superseded_by`, `parent` and `sources`; an alias that the store or an
+   earlier new entry already holds, or that equals an id, is dropped and listed; a journal
+   entry's `body_sha256` is recomputed. Each attachment under `files/<owner>/` is copied to
+   `files/<mapped owner>/` when no file exists at that path; a different file there is left
+   alone and listed. `AGENT.md`, `memex.toml` and every other existing file are untouched.
+6. **The report** is written next to the existing ones, never over them:
+   `DIR/import-report-<today>.json`, or the first free `import-report-<today>-<n>.json`,
+   `n` = 2, 3, …. It is the §13.6 object of the fresh import, followed by one more key,
+   `delta`: `{"added":[{"id":"…","fresh_id":"…","type":"…","path":"…"}],"unchanged":N,
+   "changed":[{"id":"…","fresh_id":"…"}],"moved":[{"id":"…","fresh_id":"…"}],
+   "attachments_added":["files/…"],"attachments_changed":["files/…"],
+   "aliases_dropped":[{"id":"…","alias":"…"}]}`, where `id` is the store's id, `moved` lists
+   the present entries whose fresh id differs, and the attachment lists are in code-point order.
+7. **Valid.** `memex check` on `DIR` after the merge reports zero errors, as §13.1 requires of
+   any import. Every error is a problem: it is printed on standard error after the summary as
+   in §13.6, the files stay written for review, and the exit code is 1.
+
+**Command output.** `imported <N> new entries from <k> sources into <DIR>`; then, when `N` > 0,
+`  new entries: <dir> <n>, …` in §5.2 order; `  already in the store: <u> unchanged, <c> with
+a different body (left alone), <m> under another id`; `  attachments added <a>, different and
+left alone <d>; aliases dropped <x>`; and last `report: <DIR>/<report name>`. It does not
+commit. Running it again with the same revisions adds nothing (`imported 0 new entries`) and
+writes one more report.
+
+An entry deleted from the store after the first import comes back with the next delta,
+because nothing in the store remembers it; retire entries (§5.2) instead of deleting them.
 
 ---
 

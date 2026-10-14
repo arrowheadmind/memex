@@ -215,11 +215,15 @@ func runImport(env *commands.Env, a *args, cmdErr func(string) *usageError) (int
 	if len(a.positionals) < 2 {
 		return 0, cmdErr("missing SRC")
 	}
-	out, ok := a.value("--out")
-	if !ok {
-		return 0, cmdErr("missing --out")
+	out, hasOut := a.value("--out")
+	into, hasInto := a.value("--into")
+	switch {
+	case hasOut && hasInto:
+		return 0, cmdErr("--out and --into cannot be combined; --out makes a new store, --into adds to an existing one")
+	case !hasOut && !hasInto:
+		return 0, cmdErr("missing --out or --into")
 	}
-	o := commands.ImportOptions{Sources: a.positionals[1:], Out: out, Leaks: a.values["--leak"], Version: version}
+	o := commands.ImportOptions{Sources: a.positionals[1:], Out: out, Into: into, Leaks: a.values["--leak"], Version: version}
 	return commands.Import(env, o), nil
 }
 

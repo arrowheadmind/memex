@@ -1,0 +1,7 @@
+add
+-A
+
+commit
+-q
+-m
+import

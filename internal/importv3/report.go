@@ -70,6 +70,7 @@ type Report struct {
 	Leaks          []string
 	Warnings       []countRec
 	Problems       []string
+	Delta          *DeltaReport // set by a delta import only (SPEC §13.7)
 }
 
 func strs(ss []string) jsonx.Array { return jsonx.Strings(ss) }
@@ -163,7 +164,7 @@ func (r *Report) JSON() []byte {
 	for _, d := range r.Duplicates {
 		dups = append(dups, jsonx.Object{{Key: "source", Value: jsonx.String(d.Source)}, {Key: "duplicate_of", Value: jsonx.String(d.DuplicateOf)}})
 	}
-	return jsonx.Encode(jsonx.Object{
+	obj := jsonx.Object{
 		{Key: "format", Value: jsonx.Int(1)},
 		{Key: "today", Value: jsonx.String(r.Today)},
 		{Key: "sources", Value: src},
@@ -192,7 +193,11 @@ func (r *Report) JSON() []byte {
 		{Key: "leaks", Value: strs(r.Leaks)},
 		{Key: "warnings", Value: countArray(r.Warnings)},
 		{Key: "problems", Value: strs(r.Problems)},
-	})
+	}
+	if r.Delta != nil {
+		obj = append(obj, jsonx.Member{Key: "delta", Value: r.Delta.json()})
+	}
+	return jsonx.Encode(obj)
 }
 
 // account fills the per-file summaries and checks every line is attributed and every unit's

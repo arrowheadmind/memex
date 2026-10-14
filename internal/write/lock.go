@@ -66,3 +66,10 @@ func lock(root string, wait time.Duration, stop func() bool) (*os.File, error) {
 		time.Sleep(lockPoll)
 	}
 }
+
+// Lock takes the write lock of SPEC §9.1 step 1 for a command that writes the working tree
+// without the write protocol (`import --into`, §13.7), waiting up to wait. Closing the file
+// releases it. A lock that stays held is a *LockError.
+func Lock(root string, wait time.Duration) (*os.File, error) {
+	return lock(root, wait, func() bool { return false })
+}

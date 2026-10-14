@@ -1,0 +1,7 @@
+import
+brain-v3
+<SRC:brain>
+--into
+<STORE>
+--out
+<HOME>/x

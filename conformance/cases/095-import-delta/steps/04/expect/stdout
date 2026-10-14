@@ -1,0 +1,28 @@
++++
+title = "Follow up on the collision"
+status = "kept"
+created = 2026-01-12
+tags = ["was-complete"]
+aliases = [".brain/investigations/2026-01-12-follow-up.md", "investigations/2026-01-12-follow-up.md"]
+body_sha256 = "e10bafbd34acf65b18ec31e23da2a95ab149e1258523507b7cf51ef8ec1e6ab2"
++++
+
+See [[2026-01-11-collide-here-2]] for the first part, and
+[[2026-01-06-pick-a-db]] for the database choice.
+
+--- links
+links to: journal/2026-01-11-collide-here-2.md, decisions/2026-01-06-pick-a-db.md
+---
++++
+title = "Collide here"
+status = "kept"
+created = 2026-01-11
+tags = ["was-complete"]
+aliases = [".brain/investigations/2026-01-11-collide-here.md", "investigations/2026-01-11-collide-here.md"]
+body_sha256 = "252f68bbc2fbeee71306643dedf115a4b96c99118ec4e6c7d22b40d1e6186446"
++++
+
+This investigation arrives in the second commit and takes the id of an existing rule.
+
+--- links
+linked from: journal/2026-01-12-follow-up.md

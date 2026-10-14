@@ -1,8 +1,9 @@
 # memex help importing
 
 `memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…` converts one or more brainctl v3
-brains (memex's predecessor) into a new store at `DIR`. It exists for the migration and is
-kept separate from everything else memex does.
+brains (memex's predecessor) into a new store at `DIR`; `--into DIR` instead adds to an
+existing store only what it does not hold yet. It exists for the migration and is kept
+separate from everything else memex does.
 
 ## Guarantees
 
@@ -51,6 +52,23 @@ nothing or conflicted with their file, duplicates between brains, dropped aliase
 unexpected shape, short bodies, unresolved references, the markers removed from headings,
 units dated by the blame fallback, and the leaks imported. Standard output summarizes the
 same counts and ends with `report: DIR/import-report.json`.
+
+## Importing again into a curated store
+
+`memex import brain-v3 SRC… --into DIR` runs the same import into a temporary directory and
+then, under the store's write lock, adds only the entries `DIR` does not have. The store's
+working tree must be clean, so the import is one diff to review.
+
+- An entry is already there when a store entry holds one of its aliases (the paths and
+  headings it was known by), or, failing that, has its id, type and body. Present entries are
+  never written; those whose body differs are listed under `delta.changed` to reconcile by
+  hand.
+- A new entry keeps its id unless the store has it, then gets `-2`, `-3`, …; its `[[…]]` links,
+  `superseded_by`, `parent`, `sources` and `files/<id>/` paths are mapped to the store's ids.
+- New attachments are copied; a different file at the same path is left alone and listed.
+- The report goes to `import-report-<today>.json` (`-2`, `-3`, … when that exists) with a
+  `delta` member: `added`, `unchanged`, `changed`, `moved`, `attachments_added`,
+  `attachments_changed`, `aliases_dropped`. A second run with the same revisions adds nothing.
 
 ## After the import
 

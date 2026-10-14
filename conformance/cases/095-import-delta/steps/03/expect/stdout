@@ -1,0 +1,5 @@
+imported 3 new entries from 2 sources into <STORE>
+  new entries: rules 1, journal 2
+  already in the store: 37 unchanged, 1 with a different body (left alone), 2 under another id
+  attachments added 1, different and left alone 0; aliases dropped 0
+report: <STORE>/import-report-2026-01-15.json
