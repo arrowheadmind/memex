@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,11 +10,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/search"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
+	"github.com/arrowheadmind/memex/internal/write"
 )
 
 // Preflight budget bounds (SPEC §11.4).
@@ -61,22 +62,33 @@ func lastFetch(root string) string {
 
 func codePoints(s string) int { return utf8.RuneCountInString(s) }
 
-// Preflight runs `memex preflight` (SPEC §11.4). The sync of §9.5 is not implemented yet:
-// unless sync is skipped, it is a usage error.
+// Preflight runs `memex preflight` (SPEC §11.4).
 func Preflight(e *Env, o PreflightOptions) (int, *UsageError) {
-	cfg, err := config.Load(e.Getenv)
+	cfg, _, root, err := e.openStore()
 	if err != nil {
 		return e.failErr(err), nil
 	}
+	if code, ok := e.checkManifest(root); !ok {
+		return code, nil
+	}
+	var head strings.Builder
 	if !o.NoSync && cfg.SyncOnPreflight {
-		return 0, &UsageError{"sync is not implemented yet; give --no-sync or set sync_on_preflight = false"}
+		// A failed sync never stops preflight and never changes its exit code.
+		_, state, _, err := syncState(e, root, cfg.NetworkTimeout, write.PreflightLockWait)
+		var le *write.LockError
+		if errors.As(err, &le) {
+			state = fmt.Sprintf("NOT SYNCED: locked by another memex for %ds", int(le.Wait/time.Second))
+		} else if err != nil {
+			panic(err)
+		}
+		fmt.Fprintf(&head, "store: %s\n\n## Always\n", state)
+	} else {
+		fmt.Fprintf(&head, "store: not synced (last fetch %s)\n\n## Always\n", lastFetch(root))
 	}
 	rs, code, ok := e.loadEntries()
 	if !ok {
 		return code, nil
 	}
-	var head strings.Builder
-	fmt.Fprintf(&head, "store: not synced (last fetch %s)\n\n## Always\n", lastFetch(rs.root))
 	var rules []*store.Entry
 	for _, en := range rs.entries {
 		if en.Type.Name == "rule" && en.Visible() && en.Fields["always"] == true {

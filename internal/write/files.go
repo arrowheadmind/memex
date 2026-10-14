@@ -129,6 +129,9 @@ func (s *Session) Check(today time.Time, paths []string) error {
 	return nil
 }
 
+// Restore puts back what Write replaced, for a command that refuses after writing.
+func (s *Session) Restore() { s.restore() }
+
 // restore puts back what Write replaced, newest first.
 func (s *Session) restore() {
 	for i := len(s.saved) - 1; i >= 0; i-- {

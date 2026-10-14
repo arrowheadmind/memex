@@ -15,6 +15,7 @@ import (
 
 // Env is what a command sees of the process.
 type Env struct {
+	Stdin          io.Reader
 	Stdout, Stderr io.Writer
 	Getenv         config.Env
 	Now            func() time.Time
@@ -24,7 +25,7 @@ type Env struct {
 
 // OSEnv returns the Env of this process.
 func OSEnv(stdout, stderr io.Writer) *Env {
-	return &Env{Stdout: stdout, Stderr: stderr, Getenv: os.Getenv, Now: time.Now}
+	return &Env{Stdin: os.Stdin, Stdout: stdout, Stderr: stderr, Getenv: os.Getenv, Now: time.Now}
 }
 
 // fail prints a diagnostic and returns code.

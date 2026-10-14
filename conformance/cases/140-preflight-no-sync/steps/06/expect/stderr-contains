@@ -1,3 +1,0 @@
-memex: sync is not implemented yet; give --no-sync or set sync_on_preflight = false
-memex preflight [QUERY…] [--no-sync] [--max-chars N] [search options]
-Run: memex help preflight

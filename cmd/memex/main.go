@@ -141,6 +141,14 @@ func dispatch(args []string, stdout, stderr io.Writer) (int, *usageError) {
 
 // runners are the implemented commands that take parsed arguments.
 var runners = map[string]func(*commands.Env, *args, func(string) *usageError) (int, *usageError){
+	"init":      runInit,
+	"new":       runNew,
+	"capture":   runCapture,
+	"set":       runSet,
+	"promote":   runPromote,
+	"fmt":       runFmt,
+	"save":      runSave,
+	"sync":      runSync,
 	"check":     runCheck,
 	"import":    runImport,
 	"search":    runSearch,

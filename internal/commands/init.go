@@ -1,0 +1,102 @@
+package commands
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/arrowheadmind/memex/internal/config"
+	"github.com/arrowheadmind/memex/internal/gitx"
+	"github.com/arrowheadmind/memex/internal/spec"
+	"github.com/arrowheadmind/memex/internal/store"
+)
+
+// InitOptions are the options of `memex init` (SPEC §11.1).
+type InitOptions struct {
+	Path     string // the store form
+	Name     string
+	NameSet  bool
+	Pointers string // the pointer form's DIR
+	Force    bool
+}
+
+// Init runs `memex init` (SPEC §11.1).
+func Init(e *Env, o InitOptions) int {
+	if o.Pointers != "" {
+		return e.initPointers(o)
+	}
+	dir, err := filepath.Abs(o.Path)
+	if err != nil {
+		return e.fail(spec.ExitUsage, "%s: %v", o.Path, err)
+	}
+	if info, err := os.Stat(dir); err == nil && !info.IsDir() {
+		return e.fail(spec.ExitFailure, "%s exists and is not a directory", o.Path)
+	}
+	name := filepath.Base(dir)
+	if o.NameSet {
+		name = o.Name
+	}
+	lines, err := store.CreateLayout(dir, name, gitx.New(dir, 0))
+	if err != nil {
+		return e.fail(spec.ExitFailure, "init %s: %v", o.Path, err)
+	}
+	for _, l := range lines {
+		fmt.Fprintln(e.Stdout, l)
+	}
+	fmt.Fprintf(e.Stdout, "initialized %s\n", dir)
+	return spec.ExitOK
+}
+
+// PointerFiles are the files `init --pointers` writes (SPEC §11.1, §12).
+var PointerFiles = []string{"CLAUDE.md", "AGENTS.md", "GEMINI.md"}
+
+// pointerStore is how the pointer text names the store (SPEC §12 rule 2): the config file's
+// `store` string when the store came from there, otherwise the resolved absolute path.
+func (e *Env) pointerStore(cfg *config.Config, root string) string {
+	if !e.StoreSet && e.Getenv("MEMEX_STORE") == "" && cfg.Store != "" {
+		return cfg.Store
+	}
+	return root
+}
+
+func (e *Env) initPointers(o InitOptions) int {
+	cfg, _, root, err := e.openStore()
+	if err != nil {
+		return e.failErr(err)
+	}
+	if info, err := os.Stat(o.Pointers); err != nil || !info.IsDir() {
+		return e.fail(spec.ExitFailure, "%s is not a directory", o.Pointers)
+	}
+	text := []byte(fmt.Sprintf("Read %s/AGENT.md before starting work, and follow it.\n", e.pointerStore(cfg, root)))
+	code := spec.ExitOK
+	for _, name := range PointerFiles {
+		p := filepath.Join(o.Pointers, name)
+		old, err := os.ReadFile(p)
+		switch {
+		case err == nil && bytes.Equal(old, text):
+			fmt.Fprintf(e.Stdout, "unchanged %s\n", p)
+			continue
+		case err == nil && !o.Force:
+			fmt.Fprintf(e.Stderr, "memex: %s exists with other content; left alone (use --force to replace it)\n", p)
+			code = spec.ExitFailure
+			continue
+		case err == nil:
+			e.Stdout.Write(old)
+			if len(old) > 0 && old[len(old)-1] != '\n' {
+				fmt.Fprintln(e.Stdout)
+			}
+		case !os.IsNotExist(err):
+			return e.fail(spec.ExitFailure, "%s: %v", p, unwrap(err))
+		}
+		if err := os.WriteFile(p, text, 0o644); err != nil {
+			return e.fail(spec.ExitFailure, "%s: %v", p, unwrap(err))
+		}
+		if old != nil {
+			fmt.Fprintf(e.Stdout, "replaced %s\n", p)
+		} else {
+			fmt.Fprintf(e.Stdout, "created %s\n", p)
+		}
+	}
+	return code
+}
