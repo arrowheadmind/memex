@@ -184,6 +184,15 @@ Open items for later blocks:
   brainctl); brain-kit's `.brain/` is not imported; `capture --from` alias form. Found at the
   close: the store's Always rule forbids Co-Authored-By trailers and this repository's commits
   carried them; no further commit adds one (history left as is, it is already mirrored).
+- post-B8 fix (2026-10-16): `capture --from` alias form, at e647f3f. A file path is recorded
+  as an alias in one form (§11.2): expanded as in §3.1, made absolute and cleaned lexically,
+  the home directory written `~/`; outside HOME it stays absolute. `capture --from` and the
+  importer's `--leak` both write it, and `capture --from` compares PATH as given or, for an
+  alias that is itself a file path, in that form, so `~/x`, `$HOME/x`, an absolute path and a
+  relative path to one file are the same alias; delta import also matches an older absolute
+  alias in that form (§13.7). Cases 215 (absolute, then `~/` and `$HOME`), 216 (`~/`, then
+  absolute and an uncleaned path), 217 (outside HOME) and 218 (relative) added; 157 now
+  expects `~/` aliases. All four fail on the previous binary.
 - Second history rewrite (2026-10-16, operator decision): every Co-Authored-By trailer removed
   from the commit messages (168 lines over 182 commits; every tree unchanged), because the
   store's Always rule forbids them in any repository. Shas above are remapped to the new
