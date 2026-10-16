@@ -24,8 +24,8 @@ EOF
 
 `--from PATH` imports a file that leaked into a coding tool's memory: title from its first
 heading (else YAML `name:`, else the filename), summary from YAML `description:` or `Imported
-from PATH`, body after a line `Imported from PATH (date)`, PATH as an alias. PATH is never
-deleted (`remove PATH after review`); one that is already an alias, also as `~/…`, is a no-op.
+from PATH`, body after `Imported from PATH (date)`; alias PATH, absolute, home as `~/`. PATH is
+never deleted (`remove PATH after review`); a file already an alias in any form is a no-op.
 
 ## Options
 

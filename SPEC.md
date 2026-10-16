@@ -977,13 +977,16 @@ the title defaults to the file's first ATX heading text; a file with no ATX head
 begins with a YAML block takes its `name:` as the title and its `description:`, when present,
 as the summary, as §13.3 does; else the title is the filename. The summary otherwise
 defaults to `Imported from <PATH>`; the body is the line `Imported from \`<PATH>\` (<today>).`,
-a blank line, then the file content, normalized; `aliases` gets `<PATH>` as written. It never
+a blank line, then the file content, normalized; `aliases` gets PATH in its **alias form**:
+expanded as in §3.1, made absolute and cleaned lexically (symbolic links are not resolved),
+with the home directory written `~/` when the file is under it, so that `~/x`, `$HOME/x` and
+a relative path to the same file are one alias. PATH is read after the §3.1 expansion. It never
 deletes PATH, and on success prints `remove <PATH> after review` before the outcome line,
-also after `exists <path>` in the repeat of step 3. When PATH is already an alias of an entry,
-in any of three forms (as given, as an absolute path, or as the absolute path with the home
-directory written `~/`, the form in which §13.6 records `--leak` files), the file is already
-in the store: `capture --from` prints `exists <path>` of that entry, `remove <PATH> after
-review` and `nothing to commit`, and exits 0, before any id is computed.
+also after `exists <path>` in the repeat of step 3. When an entry has an alias that is PATH as
+given, or that is a file path (absolute, or beginning with `~/`, `$HOME` or `${HOME}`) with
+the same alias form as PATH, the file is already in the store: `capture --from` prints
+`exists <path>` of that entry, `remove <PATH> after review` and `nothing to commit`, and exits
+0, before any id is computed.
 
 Behavior:
 
@@ -1651,8 +1654,8 @@ committed with the import) and prints a summary.
   so the curation pass can decide what to merge.
 - **Every `not-knowledge` file** is listed by path.
 - **Leaks:** each `--leak PATH` becomes a `raw` journal entry exactly as `capture --from PATH`
-  would make it (§11.2), without committing, dated today, with PATH written with `~` for the
-  home directory, and is listed under `leaks`.
+  would make it (§11.2), without committing, dated today, with PATH written in its alias form
+  (§11.2) in the summary, body and aliases, and is listed under `leaks` in that form.
 
 **Report shape.** `import-report.json` is one object with these keys, in this order: `format`
 (1), `today`, `sources` (basename, rev, commit, primary), `files` (per recognized file: lines
@@ -1702,8 +1705,9 @@ removes anything that is.
 3. **Under the write lock** (§9.1 step 1, 60 s, exit 4 when it stays held), the tree is checked
    clean again and every fresh entry is classified, in the fresh import's unit order (§13.3):
    - **Present, by alias.** A store entry holds one of the fresh entry's aliases (§13.3: every
-     path and heading a unit was known by). Identity is the alias set, not the id, because a
-     fresh import of later revisions can shift `-2` suffixes and re-date an attachments entry.
+     path and heading a unit was known by; a store alias that is an absolute path also counts
+     in its §11.2 alias form). Identity is the alias set, not the id, because a fresh import
+     of later revisions can shift `-2` suffixes and re-date an attachments entry.
      Each store entry is claimed by at most one fresh entry; among several candidates, the one
      with the fresh entry's id is preferred, else the first in alias order.
    - **Present, by id.** Otherwise, an unclaimed store entry with the same id, type and body.

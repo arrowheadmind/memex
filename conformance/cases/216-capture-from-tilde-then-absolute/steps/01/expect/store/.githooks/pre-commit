@@ -1,0 +1,10 @@
+#!/bin/sh
+# Written by memex init. Add your own checks as executables in .githooks/pre-commit.d/.
+store=$(git rev-parse --show-toplevel) || exit 1
+memex --store "$store" check --staged || exit 1
+if [ -d "$store/.githooks/pre-commit.d" ]; then
+  for hook in "$store"/.githooks/pre-commit.d/*; do
+    [ -x "$hook" ] && { "$hook" || exit 1; }
+  done
+fi
+exit 0

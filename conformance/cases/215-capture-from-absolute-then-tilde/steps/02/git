@@ -1,0 +1,6 @@
+grep
+-q
+-F
+aliases = ["~/.claude/projects/p/memory/note.md"]
+--
+journal/

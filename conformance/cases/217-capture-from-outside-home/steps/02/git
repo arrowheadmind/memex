@@ -1,0 +1,6 @@
+grep
+-q
+-F
+aliases = ["<STORE>/.outside/note.md"]
+--
+journal/

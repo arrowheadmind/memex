@@ -189,7 +189,11 @@ func (p *prepared) data() []byte { return []byte(entry.Render(p.fields, p.body))
 func (e *Env) prepareBody(o *NewOptions, today time.Time) (title, summary, body string, code int, uerr *UsageError) {
 	title, summary = o.Title, o.Summary
 	if o.From != "" {
-		content, err := os.ReadFile(o.From)
+		name, err := config.Expand(o.From, e.Getenv("HOME")) // ~/ and $HOME as in §3.1
+		if err != nil {
+			name = o.From
+		}
+		content, err := os.ReadFile(name)
 		if err != nil {
 			return "", "", "", 0, &UsageError{fmt.Sprintf("cannot read --from %s: %v", o.From, unwrap(err))}
 		}
@@ -349,14 +353,18 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 	if len(o.Repos) == 0 && !o.NoRepo {
 		repos = attribution(w.root)
 	}
-	if o.From != "" && !slices.Contains(o.Alias, o.From) {
-		o.Alias = append(o.Alias, o.From) // the imported file's path resolves to the entry
+	home := e.Getenv("HOME")
+	if o.From != "" {
+		// The imported file's path resolves to the entry, in its alias form (SPEC §11.2).
+		if a := config.PathAlias(o.From, home); !slices.Contains(o.Alias, a) {
+			o.Alias = append(o.Alias, a)
+		}
 	}
 	entries := w.entries()
 	if o.From != "" {
-		// A file the importer already brought in (SPEC §13.6, --leak) is an alias of its entry,
-		// written with ~/ for the home directory; capturing it again is the §11.2 no-op.
-		if en := fromAlias(entries, o.From, e.Getenv("HOME")); en != nil {
+		// A file already brought in, by capture --from or by the importer's --leak (SPEC
+		// §13.6), is an alias of its entry; capturing it again is the §11.2 no-op.
+		if en := fromAlias(entries, o.From, home); en != nil {
 			return w.nothing("exists "+en.Path, "remove "+o.From+" after review"), nil
 		}
 	}
@@ -392,19 +400,12 @@ func (e *Env) failedValidation(err error) int {
 	panic(err)
 }
 
-// fromAlias returns the entry that holds the --from path as an alias: as given, as an
-// absolute path, or as the absolute path with the home directory written ~/ (SPEC §11.2).
+// fromAlias returns the entry that holds the --from path as an alias, as given or in the
+// same alias form (SPEC §11.2).
 func fromAlias(entries []*store.Entry, from, home string) *store.Entry {
-	forms := []string{from}
-	if abs, err := filepath.Abs(from); err == nil {
-		forms = append(forms, abs)
-		if home != "" && strings.HasPrefix(abs, strings.TrimSuffix(home, "/")+"/") {
-			forms = append(forms, "~/"+strings.TrimPrefix(abs, strings.TrimSuffix(home, "/")+"/"))
-		}
-	}
 	for _, en := range entries {
 		for _, a := range en.Fields.Strings("aliases") {
-			if slices.Contains(forms, a) {
+			if config.AliasNamesPath(a, from, home) {
 				return en
 			}
 		}

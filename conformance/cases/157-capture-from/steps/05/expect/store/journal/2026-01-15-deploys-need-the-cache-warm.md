@@ -4,7 +4,7 @@ status = "raw"
 created = 2026-01-15
 summary = "Imported from .claude/projects/p/memory/notes.md"
 tags = ["leak"]
-aliases = [".claude/projects/p/memory/notes.md"]
+aliases = ["~/.claude/projects/p/memory/notes.md"]
 body_sha256 = "77b891f24c2d4b309ee928dc2ae72cef06eef6d136234151cc8456c61a4e7575"
 +++
 

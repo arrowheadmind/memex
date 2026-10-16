@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/arrowheadmind/memex/internal/check"
+	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/jsonx"
@@ -156,7 +157,7 @@ func Delta(o Options, into string) (*Report, *DeltaReport, string, error) {
 		}
 		return report, d, name, failure
 	}
-	if err := merge(report, d, fo.Out, into, o.Today); err != nil {
+	if err := merge(report, d, fo.Out, into, o.Today, o.Home); err != nil {
 		return nil, nil, "", err
 	}
 	report.Delta = d
@@ -172,7 +173,7 @@ func Delta(o Options, into string) (*Report, *DeltaReport, string, error) {
 // merge adds to the store at into the entries and attachments of the fresh import at fresh
 // that it does not hold yet (SPEC §13.7), and records what it did in d. Validation errors
 // of the result are appended to the report's problems.
-func merge(report *Report, d *DeltaReport, fresh, into string, today time.Time) error {
+func merge(report *Report, d *DeltaReport, fresh, into string, today time.Time, home string) error {
 	freshEntries, _, err := store.LoadEntries(store.WorkTree{Root: fresh})
 	if err != nil {
 		return err
@@ -211,6 +212,11 @@ func merge(report *Report, d *DeltaReport, fresh, into string, today time.Time) 
 		for _, a := range e.Fields.Strings("aliases") {
 			holders[a] = append(holders[a], e)
 			taken[a] = true
+			// A file path recorded absolute (an older capture --from) is also held in its
+			// alias form, as --leak records it (SPEC §11.2, §13.7).
+			if f := config.PathAlias(a, home); strings.HasPrefix(a, "/") && f != a {
+				holders[f] = append(holders[f], e)
+			}
 		}
 	}
 	for _, s := range skipped { // an unreadable entry still holds its id

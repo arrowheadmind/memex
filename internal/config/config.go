@@ -197,6 +197,42 @@ func Expand(path, home string) (string, error) {
 	return path, nil
 }
 
+// PathAlias returns the alias form of a file path (SPEC §11.2): expanded as in §3.1, made
+// absolute against the working directory and cleaned lexically, with the home directory
+// written "~/" when the file is under it. Symbolic links are not resolved. A path that cannot
+// be expanded or made absolute is returned as given.
+func PathAlias(path, home string) string {
+	p, err := Expand(path, home)
+	if err != nil {
+		return path
+	}
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return path
+	}
+	if home != "" {
+		if h := filepath.Clean(home); h != "/" && strings.HasPrefix(abs, h+"/") {
+			return "~/" + abs[len(h)+1:]
+		}
+	}
+	return abs
+}
+
+// AliasNamesPath reports whether alias names the file at path (SPEC §11.2): alias is path as
+// given, or alias is itself a file path (absolute, or beginning with "~/", "$HOME" or
+// "${HOME}") with the same alias form. Other aliases are store names, not file paths, and are
+// compared as given only.
+func AliasNamesPath(alias, path, home string) bool {
+	if alias == path {
+		return true
+	}
+	if !strings.HasPrefix(alias, "/") && !strings.HasPrefix(alias, "~/") &&
+		!strings.HasPrefix(alias, "$HOME") && !strings.HasPrefix(alias, "${HOME}") {
+		return false
+	}
+	return PathAlias(alias, home) == PathAlias(path, home)
+}
+
 // ResolveStore returns the store root (SPEC §3.1). flag is the --store value and flagSet
 // whether it was given.
 func ResolveStore(flag string, flagSet bool, env Env, c *Config) (string, error) {

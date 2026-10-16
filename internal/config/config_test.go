@@ -188,3 +188,42 @@ func TestResolveWorkspace(t *testing.T) {
 		t.Errorf("beside the store: %v", err)
 	}
 }
+
+func TestPathAlias(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for in, want := range map[string]string{
+		"/h/a/b.md":         "~/a/b.md",
+		"~/a/b.md":          "~/a/b.md",
+		"$HOME/a/b.md":      "~/a/b.md",
+		"${HOME}/a/./b.md":  "~/a/b.md",
+		"/h/a/../a//b.md":   "~/a/b.md",
+		"/hx/b.md":          "/hx/b.md",
+		"/elsewhere/./b.md": "/elsewhere/b.md",
+		"rel/b.md":          filepath.Join(wd, "rel/b.md"),
+	} {
+		if got := PathAlias(in, "/h/"); got != want {
+			t.Errorf("PathAlias(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := PathAlias("~/b.md", ""); got != "~/b.md" {
+		t.Errorf("PathAlias without HOME = %q, want it as given", got)
+	}
+	for _, c := range []struct {
+		alias, path string
+		want        bool
+	}{
+		{"~/a/b.md", "/h/a/b.md", true},
+		{"/h/a/b.md", "~/a/b.md", true},
+		{"/h/a/b.md", "$HOME/a/b.md", true},
+		{"docs/b.md", "docs/b.md", true},
+		{"~/a/c.md", "/h/a/b.md", false},
+		{"a/b.md", "/h/a/b.md", false}, // a store name, not a file path
+	} {
+		if got := AliasNamesPath(c.alias, c.path, "/h"); got != c.want {
+			t.Errorf("AliasNamesPath(%q, %q) = %v, want %v", c.alias, c.path, got, c.want)
+		}
+	}
+}

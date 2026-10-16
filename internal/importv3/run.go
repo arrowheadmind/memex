@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/arrowheadmind/memex/internal/check"
+	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/spec"
@@ -298,14 +299,15 @@ func (im *Importer) walk(s *Source) error {
 // leaks makes a raw journal entry per --leak file, as capture --from would (SPEC §11.2).
 func (im *Importer) leaks() error {
 	for _, p := range im.opts.Leaks {
-		data, err := os.ReadFile(p)
+		name, err := config.Expand(p, im.home) // ~/ and $HOME as in §3.1
+		if err != nil {
+			name = p
+		}
+		data, err := os.ReadFile(name)
 		if err != nil {
 			return err
 		}
-		shown := p // written as given, except that the home directory becomes ~
-		if im.home != "" && strings.HasPrefix(p, im.home+"/") {
-			shown = "~/" + strings.TrimPrefix(p, im.home+"/")
-		}
+		shown := config.PathAlias(p, im.home) // the alias form capture --from records (§11.2)
 		text := string(data)
 		title := ""
 		for _, l := range splitLines(text) {

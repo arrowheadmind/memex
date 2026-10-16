@@ -3,7 +3,7 @@ title = "Warm the cache before deploys"
 status = "raw"
 created = 2026-01-15
 summary = "A cold cache makes the first deploy of the day rebuild from source."
-aliases = ["notes/feedback.md"]
+aliases = ["~/notes/feedback.md"]
 body_sha256 = "4bdee638b0de57a80019dc3d9fced0bc2a34df496728b9d94ebcc7e139951331"
 +++
 
