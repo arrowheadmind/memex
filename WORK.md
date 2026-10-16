@@ -12,14 +12,14 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | id | block | owner | review | done when | status | done at |
 |---|---|---|---|---|---|---|
 | B0 | Scaffold: go.mod, cmd/memex, internal/spec table, jsonx writer, conformance runner skeleton, CI checks | opus | fable | `go build`, `go vet` and the runner pass with zero cases; `memex version` and `memex help` work | done | 4023dc0, reviewed fable |
-| B1 | Store read path: §3 config, §4 layout, §5 entries, §6 links, §7 check (text and --json) | opus | fable | §3–§7 Implemented with conformance cases; `check` runs on a fixture store | done | 6dd3da5, reviewed fable |
-| B2 | Importer §13 against the pinned brain revision, with --leak | fable | opus | `memex check` on the output has zero errors; the report balances; the counts in the plan are reproduced | done | 3fc8827, reviewed opus+fable |
-| B3 | Search and read commands: §8, search, list, show, preflight --no-sync | opus | fable | §8 and §11.3–11.6 Implemented; snippet and rounding cases green | done | af1a646, reviewed opus+fable |
+| B1 | Store read path: §3 config, §4 layout, §5 entries, §6 links, §7 check (text and --json) | opus | fable | §3–§7 Implemented with conformance cases; `check` runs on a fixture store | done | 2a1aedb, reviewed fable |
+| B2 | Importer §13 against the pinned brain revision, with --leak | fable | opus | `memex check` on the output has zero errors; the report balances; the counts in the plan are reproduced | done | 583c573, reviewed opus+fable |
+| B3 | Search and read commands: §8, search, list, show, preflight --no-sync | opus | fable | §8 and §11.3–11.6 Implemented; snippet and rounding cases green | done | d3ad24f, reviewed opus+fable |
 | B4 | Replay harness and gate G1: 40 real queries plus known misses, scored against brainctl preflight | fable | operator | Report captured in the brain; operator decides whether retrieval is good enough to continue | done | eb8f9a2, gate G1: operator chose A (2026-10-14) |
-| B5 | Write path: §9, new/capture, set, save, sync, promote, fmt, init, hooks, preflight with sync | opus | fable | §9 and the rest of §11 Implemented; dirty-tree, timeout and hook-environment cases green | done | fc60251, reviewed opus+fable |
-| B6 | Help: §16 pages, help agents, help --json, executed examples; cold-agent test | fable | opus | A fresh session of a different model captures correctly with only `memex help agents` | done | e327057, reviewed opus+fable; 3 cold rounds |
-| B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 82a4eed |
-| B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | 198eed4 |
+| B5 | Write path: §9, new/capture, set, save, sync, promote, fmt, init, hooks, preflight with sync | opus | fable | §9 and the rest of §11 Implemented; dirty-tree, timeout and hook-environment cases green | done | 37ce4f9, reviewed opus+fable |
+| B6 | Help: §16 pages, help agents, help --json, executed examples; cold-agent test | fable | opus | A fresh session of a different model captures correctly with only `memex help agents` | done | 9f963ae, reviewed opus+fable; 3 cold rounds |
+| B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 5186fbc |
+| B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | c395ca3 |
 
 Rules of the ledger:
 
@@ -80,7 +80,7 @@ Open items for later blocks:
   store) and the stray `.brain/` directory were removed from every commit, and two host names
   in an old test string replaced. Every sha changed; the ledger's "done at" column was remapped
   from the filter-repo commit map. Shas cited in brain captures and the plan are the old ones:
-  B0 00ccd9d→d8793e5; B1 7822a9a→6dd3da5; B2 81b86b3→3fc8827; B3 2210083→af1a646; B4 gate f3ebc8e→1d2da16; B5 70999f2→fc60251; B6 f5be017→e327057; B7 377a2b5→82a4eed; B8 fix round 58cb357→648d99e.
+  B0 00ccd9d→987a24e; B1 7822a9a→2a1aedb; B2 81b86b3→583c573; B3 2210083→d3ad24f; B4 gate f3ebc8e→07b030f; B5 70999f2→37ce4f9; B6 f5be017→9f963ae; B7 377a2b5→5186fbc; B8 fix round 58cb357→35ba766.
 - B8: `doctor` (§11.13) and all of §12 (`check --workspace`, the leak scan, the tool-memory
   check) moved here from B5, because they need the fleet configuration to test against. §11
   is marked Implemented except 11.13; `doctor` still answers "not implemented yet". §12 stays
@@ -184,3 +184,11 @@ Open items for later blocks:
   brainctl); brain-kit's `.brain/` is not imported; `capture --from` alias form. Found at the
   close: the store's Always rule forbids Co-Authored-By trailers and this repository's commits
   carried them; no further commit adds one (history left as is, it is already mirrored).
+- Second history rewrite (2026-10-16, operator decision): every Co-Authored-By trailer removed
+  from the commit messages (168 lines over 182 commits; every tree unchanged), because the
+  store's Always rule forbids them in any repository. Shas above are remapped to the new
+  history; the previous map's left-hand sides are the original shas. Block closes before and
+  after: B0 d8793e5→987a24e; B1 6dd3da5→2a1aedb; B2 3fc8827→583c573; B3 af1a646→d3ad24f; B4
+  gate 1d2da16→07b030f; B5 fc60251→37ce4f9; B6 e327057→9f963ae; B7 82a4eed→5186fbc; B8 fix
+  round 648d99e→35ba766; B8 close 198eed4→c395ca3. Backup mirror of the pre-strip history kept
+  by the manager outside the repository.
