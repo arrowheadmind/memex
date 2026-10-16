@@ -169,3 +169,18 @@ Open items for later blocks:
   of a path that is already an alias (as given, absolute, or `~/…`) is the no-op `exists` +
   `nothing to commit`. Cases 211–214 added. The replay data moved to the store (manager); the
   scripts take `--data`.
+- B8 close (2026-10-16, manager): the photo/book migration session finished, so the cutover
+  completed. Second delta import from brain@b6a6f01: 6 new (5 handover plans, 1 rule), 14
+  changed; 9 changed only in the brain (plans, the alerting reference, the to-do index) took
+  the brain's body plus 3 attachments, 5 changed only in the store (the reworded Always rules,
+  the network reference) kept the store's. Brain renamed to brain-v3 with memex pointer files.
+  Deployments `memex-cutover` rebased onto a moved main (clean), evaluated for all four
+  workstations, merged by the operator and deployed to thinkcentre-02: system memex only
+  (user-profile copy removed), brainctl off PATH, managed drop-in `50-memex.json` (hook +
+  auto memory off), `~/.config/memex/config.toml` written by activation, hook command exits 0
+  with the Always rules, `doctor` all PASS, no failed units. Pending outside the block: the
+  other hosts converge on their daily auto-upgrade or the next deploy; the deployments
+  pre-commit hook still names `brainctl work start` in its message (it runs nothing from
+  brainctl); brain-kit's `.brain/` is not imported; `capture --from` alias form. Found at the
+  close: the store's Always rule forbids Co-Authored-By trailers and this repository's commits
+  carried them; no further commit adds one (history left as is, it is already mirrored).

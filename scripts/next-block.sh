@@ -48,7 +48,7 @@ describe() {
   printf 'Done when: %s\n' "$(field "$r" 6)"
   printf 'Rule: if you are not %s, stop and tell the operator to switch with /model %s before working on this block.\n' \
     "$(field "$r" 4)" "$(field "$r" 4)"
-  printf 'When the block is done: scripts/next-block.sh done %s, then brainctl capture --global.\n' "$id"
+  printf 'When the block is done: scripts/next-block.sh done %s, then memex capture (the store is the memory).\n' "$id"
 }
 
 set_status() {
@@ -93,7 +93,7 @@ case "${1:-}" in
       printf 'Owner: %s. Start a NEW session and run /model %s before any work on it.\n' \
         "$(field "$r" 4)" "$(field "$r" 4)"
     fi
-    printf '\nTell the operator the two lines above verbatim, then capture this session with brainctl capture --global.\n'
+    printf '\nTell the operator the two lines above verbatim, then capture this session with memex capture.\n'
     ;;
   *)
     die "unknown command: $1"
