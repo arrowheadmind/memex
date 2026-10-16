@@ -192,3 +192,9 @@ Open items for later blocks:
   gate 1d2da16→07b030f; B5 fc60251→37ce4f9; B6 e327057→9f963ae; B7 82a4eed→5186fbc; B8 fix
   round 648d99e→35ba766; B8 close 198eed4→c395ca3. Backup mirror of the pre-strip history kept
   by the manager outside the repository.
+- Trailer strip in the two other repositories (2026-10-16, operator decision, same rule): the
+  deployments and brain histories lost every Co-Authored-By and Claude-Session line (157 and
+  294 lines; every tree on every branch unchanged; branch protection lifted by the operator for
+  the push). Shas this ledger names move with them: deployments 896b9ef→9dd792c,
+  5cd405c→0aa8771; brain b627487→5c78630, b6a6f01→7c8bc33, 4544db4→e24b495, 59790e6→48d02e3,
+  15e5f87→c4cc3c9. The store's journal entries quote the old shas and stay as written.
