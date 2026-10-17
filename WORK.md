@@ -245,3 +245,7 @@ Open items for later blocks:
   an 18,000-word plan that length normalization keeps at rank 30, and the SSH access runbook at
   rank 1 is the better answer. Search candidates measured on branch `search-exp` (e42f23c):
   none adopted, §8.3 unchanged; report and grades are replay attachments.
+- Fleet (2026-10-17): deployments 362512e pins memex 2b9e62a (B9's `set --batch`) and renames
+  the sync check to `workspace-sync-check` (discovery skips linked worktrees); deployed to the
+  three push targets, laptops on their daily converge. Open elsewhere: `check-brain-pointers.sh`
+  reports 37 bare pointers on deployments main; two app repos still mention `brainctl work`.
