@@ -232,3 +232,16 @@ Open items for later blocks:
   `ASSIGNMENT` required (§16.7 has no condition string for positionals); the subject says
   `1 entries` for one entry, as `fmt` does. Timing: 300 lines against a local copy of the
   store (no upstream) took 5.5 s; each line runs one `git status`, not profiled further.
+- Post-cutover housekeeping (2026-10-17): the ten `W-SECRET` findings were all false positives
+  (placeholders such as `?token=VALUE`, field names, a Python `password=None`, an SSH key
+  fingerprint); eight entries carry `<!-- memex: allow-secret -->` now. The two left are in one
+  journal entry, whose body cannot take the marker without breaking `body_sha256`: a spec gap,
+  since W-SECRET's only suppression is a body line. Candidates: honour the marker in a
+  front-matter field, or treat an all-caps word such as `VALUE` as a placeholder. All 58
+  `W-RAW-OLD` journals reviewed by a Sonnet curator (read-only) and set `kept`; its one
+  promotion (an empty-2xx-body JSON lesson) was kept as a journal, not fleet knowledge.
+  brain-kit's `.brain/constraints.md` captured, its `.brain/` removed (brain-kit e7c6b34).
+  Keywords added to three entries for replay misses; the "ssh access review" expected entry is
+  an 18,000-word plan that length normalization keeps at rank 30, and the SSH access runbook at
+  rank 1 is the better answer. Search candidates measured on branch `search-exp` (e42f23c):
+  none adopted, §8.3 unchanged; report and grades are replay attachments.
