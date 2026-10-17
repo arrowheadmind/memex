@@ -1,0 +1,3 @@
+journal/2026-01-10-feed-notes.md: W-SECRET line 11 looks like a credential (a password, token or secret assignment); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set 2026-01-10-feed-notes allow_secret=true
+rules/2026-01-10-feed-tokens.md: W-CANONICAL not in canonical form; run memex fmt rules/2026-01-10-feed-tokens.md
+check: 0 errors, 2 warnings

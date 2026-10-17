@@ -1,0 +1,5 @@
+memex: fmt 1 entries
+memex: set 2026-01-10-feed-notes allow_secret=false
+memex: set 2026-01-10-feed-notes allow_secret=true
+memex: set 2026-01-10-feed-notes allow_secret=
+memex: set 2026-01-10-feed-notes allow_secret=true
