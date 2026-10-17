@@ -1,0 +1,4 @@
+rev-parse
+--verify
+--quiet
+:/^memex: set 3 entries[[:space:]]+memex: set 2026-01-10-existing-rule title=Existing cache rule tags\+=cache[[:space:]]+memex: set 2026-01-10-replacement summary=Replaces the "existing" rule\. keywords=warm,cold[[:space:]]+memex: set 2026-01-10-cache-host verified=2026-01-14[[:space:]]*$

@@ -51,7 +51,7 @@ Rules of engagement for a language-model agent, as imperatives.
 ## Editing and history
 
 - To correct a current entry, edit its file directly, then run `memex save`.
-  `memex set <id> field=value` changes frontmatter without an editor.
+  `memex set <id> field=value` changes frontmatter; for many entries, `memex set --batch FILE`.
 - To replace a rule or decision, supersede it: create the new entry, then
   `memex set <old> status=superseded superseded_by=<new>`. Do not rewrite it into another one.
 - Journal bodies are immutable: capture the correction, then supersede the old journal likewise.

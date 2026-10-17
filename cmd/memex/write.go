@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/arrowheadmind/memex/internal/commands"
 	"github.com/arrowheadmind/memex/internal/spec"
 )
@@ -103,6 +105,12 @@ func runPromote(env *commands.Env, a *args, cmdErr func(string) *usageError) (in
 }
 
 func runSet(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	if file, ok := a.value("--batch"); ok {
+		if len(a.positionals) > 0 {
+			return 0, cmdErr(fmt.Sprintf("unexpected argument %q; with --batch, each line of FILE holds ID ASSIGNMENT…", a.positionals[0]))
+		}
+		return usage(commands.SetBatch(env, file))(cmdErr)
+	}
 	switch len(a.positionals) {
 	case 0:
 		return 0, cmdErr("missing ID")

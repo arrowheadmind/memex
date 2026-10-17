@@ -288,8 +288,11 @@ var Commands = []Command{
 	{
 		Name:     "set",
 		Summary:  "Change frontmatter fields of an entry and commit it",
-		Usage:    "memex set ID ASSIGNMENT…",
+		Usage:    "memex set ID ASSIGNMENT…\nmemex set --batch FILE|-",
 		Mutating: true,
+		Options: []Option{
+			{Name: "--batch", Value: "FILE", Summary: "Apply one ID ASSIGNMENT… line of FILE (- for standard input) per entry, in one commit"},
+		},
 		Positionals: []Positional{
 			{Name: "ID", Required: true},
 			{Name: "ASSIGNMENT", Repeatable: true, Required: true},

@@ -58,6 +58,8 @@ rewrites the selected entries into canonical form first.
 
 `memex set` changes frontmatter without an editor, but refuses an entry that has uncommitted
 edits (`run memex save first`), so its commit never carries someone else's unsaved work.
+`memex set --batch FILE` applies one `ID ASSIGNMENT…` line per entry as one commit; one bad
+line writes nothing.
 
 ## Sync
 

@@ -1,0 +1,7 @@
+# Retitle, retag and re-verify three entries in one commit.
+
+2026-01-10-existing-rule 'title=Existing cache rule' tags+=cache
+	# an indented comment is skipped too
+rules/2026-01-10-replacement.md "summary=Replaces the \"existing\" rule." keywords=warm,cold
+
+2026-01-10-cache-host verified=2026-01-14

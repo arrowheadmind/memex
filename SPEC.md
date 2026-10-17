@@ -798,6 +798,7 @@ Exactly:
 | new / capture | `memex: new <type> <id>` |
 | promote | `memex: promote <source-id> to <type> <new-id>` |
 | set | `memex: set <id> <field>=<value>[ <field>=<value>…]`, in argument order; a value longer than 40 code points is cut to 39 plus `…` |
+| set --batch | `memex: set <n> entries`, where `<n>` counts the entries the batch changed, then an empty line and a body of one line per changed entry, in file order, each exactly the message the single form would give for that line |
 | fmt | `memex: fmt <n> entries` |
 | save | `memex: save <n> files`, or the `-m` text if given |
 
@@ -1148,6 +1149,7 @@ where `frontmatter` holds the §5.3 fields present, in canonical order, with dat
 
 ```
 memex set ID ASSIGNMENT…
+memex set --batch FILE|-
 ```
 
 | Assignment | Effect |
@@ -1174,6 +1176,42 @@ memex set ID ASSIGNMENT…
 - Commits through §9.1. Standard output is only the outcome line; an assignment that changes
   nothing gives `nothing to commit`. The commit message shows each value as resolved: ids,
   not the paths or aliases given.
+
+**Batch form.** `memex set --batch FILE` applies many sets as one §9.1 unit, so that a pass
+over hundreds of entries is one commit and one push, not hundreds. `FILE` is `-` for standard
+input. `--batch` takes no positional arguments: any is a usage error (exit 2), and so is a
+`FILE` that cannot be read (`cannot read --batch <FILE>: <reason>`).
+
+- Each line of `FILE` is `ID ASSIGNMENT…`, split into words like a POSIX shell without
+  expansions: words are separated by spaces and tabs, single quotes are literal, double quotes
+  allow `\"` and `\\`, and a backslash outside quotes escapes the next character. A value with
+  spaces is written as on a command line: `'title=A b'` or `"title=A b"`. Lines end at LF; a CR at
+  the end of a line is dropped. Lines are numbered from 1, counting every line.
+- A line that is empty or blank, or whose first non-blank character is `#`, is skipped. A `#`
+  anywhere else is part of a word.
+- `ID` resolves like every id argument (§10), and each line obeys every rule of the single
+  form above.
+- The batch is one §9.1 unit: one lock and one freshen; then step 3 for every line, in file
+  order, before anything is written; then one write and read-back of every changed entry, one
+  commit (§9.2) and one integrate step.
+- A line that is invalid refuses the whole batch, exit 1, and nothing is written. The first
+  invalid line in file order is reported as `memex: --batch line <n>: <message>`, where
+  `<message>` is what the single form would print after `memex: `, its continuation lines
+  included. This covers a line that does not split (`unterminated single quote`,
+  `unterminated double quote`), a line with no assignment, a malformed assignment or unknown
+  field, an unknown id, a field that cannot be set, and an entry with uncommitted changes.
+  What the single form reports as a usage error (exit 2) is a refused line here (exit 1),
+  without the usage and `Run:` lines, because the fault is in the file, not the command line.
+- An entry named on two lines (by any mix of id, path and alias) is refused at the second
+  line: `memex: --batch line <n>: <path> is already set by line <m>; put all its assignments
+  on one line`.
+- The result is validated once, for all changed entries together. Each error finding is
+  printed as in the single form, with `--batch line <n>: ` after `memex: ` when its path is an
+  entry the batch changes, then
+  `memex: refused: the result would not validate; nothing was changed`.
+- A line that changes nothing is not an error and is left out of the commit. When no line
+  changes anything, the outcome is `nothing to commit`. Standard output is only the outcome
+  line.
 
 ### 11.8 `promote`
 

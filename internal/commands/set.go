@@ -241,3 +241,133 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 	}
 	return w.commit(files, msg), nil
 }
+
+// SetBatch runs `memex set --batch FILE` (SPEC §11.7): every line of FILE is one set, and the
+// whole batch is one §9.1 unit with one commit. File is a path, or "-" for standard input.
+func SetBatch(e *Env, file string) (int, *UsageError) {
+	text, err := e.readBody(file)
+	if err != nil {
+		return 0, &UsageError{fmt.Sprintf("cannot read --batch %s: %v", file, unwrap(err))}
+	}
+	w, code, ok := e.beginWrite(true)
+	if !ok {
+		return code, nil
+	}
+	res := newResolver(w.entries())
+	lineOf := map[string]int{} // entry path -> the line that names it
+	var files []write.File
+	var body []string
+	for i, line := range strings.Split(text, "\n") {
+		n := i + 1
+		fail := func(msg string) (int, *UsageError) {
+			w.end(nil)
+			return e.fail(spec.ExitFailure, "--batch line %d: %s", n, msg), nil
+		}
+		line = strings.TrimSuffix(line, "\r")
+		if t := strings.TrimLeft(line, " \t"); t == "" || strings.HasPrefix(t, "#") {
+			continue
+		}
+		words, problem := splitWords(line)
+		if problem != "" {
+			return fail(problem)
+		}
+		if len(words) == 1 {
+			return fail("missing ASSIGNMENT; write field=value, field=, field+=value or field-=value")
+		}
+		var asgs []Assignment
+		for _, arg := range words[1:] {
+			a, problem := ParseAssignment(arg)
+			if problem != "" {
+				return fail(problem)
+			}
+			asgs = append(asgs, a)
+		}
+		en, _ := res.lookup(words[0])
+		if en == nil {
+			return fail(res.explain(words[0]))
+		}
+		if m, dup := lineOf[en.Path]; dup {
+			return fail(fmt.Sprintf("%s is already set by line %d; put all its assignments on one line", en.Path, m))
+		}
+		lineOf[en.Path] = n
+		data, msg, r := planSet(w, res, en, asgs)
+		if r != nil {
+			return fail(r.msg)
+		}
+		if string(data) != string(en.Data) {
+			files = append(files, write.File{Path: en.Path, Data: data, Check: true, Expect: en.Data})
+			body = append(body, msg)
+		}
+	}
+	if len(files) == 0 {
+		return w.nothing(), nil
+	}
+	if err := write.Validate(w.root, w.today, files); err != nil {
+		w.end(nil)
+		ve, ok := err.(*write.ValidationError)
+		if !ok {
+			panic(err)
+		}
+		for _, f := range ve.Findings {
+			prefix := ""
+			if n, ok := lineOf[f.Path]; ok {
+				prefix = fmt.Sprintf("--batch line %d: ", n)
+			}
+			fmt.Fprintf(e.Stderr, "memex: %s%s: %s %s\n", prefix, f.Path, f.Code, f.Message)
+		}
+		return e.fail(spec.ExitFailure, "refused: the result would not validate; nothing was changed"), nil
+	}
+	msg := fmt.Sprintf("memex: set %d entries\n\n%s", len(files), strings.Join(body, "\n"))
+	return w.commit(files, msg), nil
+}
+
+// splitWords splits a --batch line like a POSIX shell without expansions (SPEC §11.7):
+// single quotes are literal, double quotes allow \" and \\, and a backslash outside quotes
+// escapes the next character. Words are separated by spaces and tabs.
+func splitWords(line string) ([]string, string) {
+	var words []string
+	var cur strings.Builder
+	inWord := false
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+		switch {
+		case ch == '\'':
+			end := strings.IndexByte(line[i+1:], '\'')
+			if end < 0 {
+				return nil, "unterminated single quote"
+			}
+			cur.WriteString(line[i+1 : i+1+end])
+			i += end + 1
+			inWord = true
+		case ch == '"':
+			i++
+			for ; i < len(line) && line[i] != '"'; i++ {
+				if line[i] == '\\' && i+1 < len(line) && (line[i+1] == '"' || line[i+1] == '\\') {
+					i++
+				}
+				cur.WriteByte(line[i])
+			}
+			if i >= len(line) {
+				return nil, "unterminated double quote"
+			}
+			inWord = true
+		case ch == '\\' && i+1 < len(line):
+			i++
+			cur.WriteByte(line[i])
+			inWord = true
+		case ch == ' ' || ch == '\t':
+			if inWord {
+				words = append(words, cur.String())
+				cur.Reset()
+				inWord = false
+			}
+		default:
+			cur.WriteByte(ch)
+			inWord = true
+		}
+	}
+	if inWord {
+		words = append(words, cur.String())
+	}
+	return words, ""
+}
