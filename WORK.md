@@ -249,3 +249,8 @@ Open items for later blocks:
   the sync check to `workspace-sync-check` (discovery skips linked worktrees); deployed to the
   three push targets, laptops on their daily converge. Open elsewhere: `check-brain-pointers.sh`
   reports 37 bare pointers on deployments main; two app repos still mention `brainctl work`.
+- `allow_secret` (2026-10-17): closes the gap the housekeeping note found. A boolean frontmatter
+  field, allowed on every type and placed beside `always`, suppresses `W-SECRET` like the body
+  line does; it is how a journal entry, whose body cannot change, clears a false positive. The
+  message names `memex set <id> allow_secret=true`. SPEC §5.3 and §7, help (entries and check
+  codes topics), case 076's expected messages, new case 221.
