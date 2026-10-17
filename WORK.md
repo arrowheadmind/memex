@@ -260,3 +260,8 @@ Open items for later blocks:
   1c711be; deployed to the three push targets. Both page repos' `release.sh` describe the
   worktree and `fleet/images.nix` flow instead of `brainctl work`. Nothing is left open from
   the cutover.
+- Release v0.1.0 (2026-10-17): the first tag. 77b801f sets `flake.nix` to 0.1.0 and adds
+  `CHANGELOG.md`; the Nix build prints `memex 0.1.0 (store format 1)` and passes the 137
+  conformance cases; the tag is on Gitea and the GitHub mirror. This commit sets the flake
+  version back to `0.0.0-dev` (IMPLEMENTATION.md, "Packaging"). The fleet pins the release
+  commit, not this one.
