@@ -81,24 +81,25 @@ func rewritable(en *store.Entry) string {
 	return strings.Join(bad, "; ")
 }
 
-// Set runs `memex set` (SPEC §11.7).
-func Set(e *Env, o SetOptions) (int, *UsageError) {
-	w, code, ok := e.beginWrite(true)
-	if !ok {
-		return code, nil
-	}
-	entries := w.entries()
-	res := newResolver(entries)
-	en := res.resolve(e, o.ID)
-	if en == nil {
-		w.end(nil)
-		return spec.ExitFailure, nil
-	}
+// refusal is why one set cannot be made: the diagnostic without the "memex: " prefix, and
+// whether the single form reports it as a usage error (SPEC §16.8).
+type refusal struct {
+	msg   string
+	usage bool
+}
+
+func refused(format string, args ...any) *refusal {
+	return &refusal{msg: fmt.Sprintf(format, args...)}
+}
+
+// planSet computes the new contents of en with the assignments applied (SPEC §11.7), and the
+// text of the assignments for the commit message, with ids as resolved. It writes nothing.
+func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]byte, string, *refusal) {
 	if why := rewritable(en); why != "" {
-		return w.refuse(spec.ExitFailure, "%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why), nil
+		return nil, "", refused("%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why)
 	}
-	if code, refused := w.refuseUncommitted(en.Path); refused {
-		return code, nil
+	if w.s.Uncommitted(en.Path) {
+		return nil, "", refused("%s has uncommitted changes; run memex save first", en.Path)
 	}
 	f := entry.Fields{}
 	for k, v := range en.Fields {
@@ -106,17 +107,16 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 	}
 	var texts []string
 	explicitBy := false
-	for _, a := range o.Assignments {
+	for _, a := range asgs {
 		def := a.field
 		switch {
 		case a.Field == "created" || a.Field == "body_sha256":
-			return w.refuse(spec.ExitFailure, "%s cannot be set: created is fixed by the id, and body_sha256 by the immutable journal body", a.Field), nil
+			return nil, "", refused("%s cannot be set: created is fixed by the id, and body_sha256 by the immutable journal body", a.Field)
 		case !def.AllowedOnType(en.Type.Name):
-			return w.refuse(spec.ExitFailure, "field %s is not allowed on a %s; it is allowed on: %s",
-				entry.Quote(a.Field), en.Type.Name, strings.Join(def.AllowedOn, ", ")), nil
+			return nil, "", refused("field %s is not allowed on a %s; it is allowed on: %s",
+				entry.Quote(a.Field), en.Type.Name, strings.Join(def.AllowedOn, ", "))
 		case a.Field == "status" && a.Value != "" && !slices.Contains(en.Type.Statuses, a.Value):
-			w.end(nil)
-			return 0, &UsageError{unknownStatus(en.Type, a.Value)}
+			return nil, "", &refusal{msg: unknownStatus(en.Type, a.Value), usage: true}
 		}
 		value := a.Value
 		if a.Field == "superseded_by" {
@@ -124,40 +124,38 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 		}
 		if a.Op == "=" && value == "" {
 			if def.Required == "yes" {
-				return w.refuse(spec.ExitFailure, "%s is required and cannot be removed", a.Field), nil
+				return nil, "", refused("%s is required and cannot be removed", a.Field)
 			}
 			delete(f, a.Field)
 			texts = append(texts, a.Field+"=")
 			continue
 		}
-		resolveID := func(v string) (string, bool) {
+		resolveID := func(v string) (string, *refusal) {
 			if a.Field != "superseded_by" && a.Field != "parent" && a.Field != "sources" {
-				return v, true
+				return v, nil
 			}
-			t := res.resolve(e, v)
-			if t == nil {
-				return "", false
+			if t, _ := res.lookup(v); t != nil {
+				return t.ID, nil
 			}
-			return t.ID, true
+			return "", &refusal{msg: res.explain(v)}
 		}
 		switch def.Kind {
 		case spec.KindString:
-			id, ok := resolveID(value)
-			if !ok {
-				w.end(nil)
-				return spec.ExitFailure, nil
+			id, r := resolveID(value)
+			if r != nil {
+				return nil, "", r
 			}
 			f[a.Field], value = id, id
 		case spec.KindDate:
 			d, ok := config.ParseDate(value)
 			if !ok {
-				return w.refuse(spec.ExitFailure, "%s must be a date written YYYY-MM-DD, not %s", a.Field, entry.Quote(value)), nil
+				return nil, "", refused("%s must be a date written YYYY-MM-DD, not %s", a.Field, entry.Quote(value))
 			}
 			f[a.Field] = d
 		case spec.KindInteger:
 			n, err := strconv.ParseInt(value, 10, 64)
 			if err != nil || strings.HasPrefix(value, "+") {
-				return w.refuse(spec.ExitFailure, "%s must be an integer, not %s", a.Field, entry.Quote(value)), nil
+				return nil, "", refused("%s must be an integer, not %s", a.Field, entry.Quote(value))
 			}
 			f[a.Field] = n
 		case spec.KindBoolean:
@@ -167,7 +165,7 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 			case "false":
 				delete(f, a.Field)
 			default:
-				return w.refuse(spec.ExitFailure, "%s must be true or false, not %s", a.Field, entry.Quote(value)), nil
+				return nil, "", refused("%s must be true or false, not %s", a.Field, entry.Quote(value))
 			}
 		case spec.KindArray:
 			items := []string{value}
@@ -175,10 +173,9 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 				items = strings.Split(value, ",")
 			}
 			for i, it := range items {
-				id, ok := resolveID(it)
-				if !ok {
-					w.end(nil)
-					return spec.ExitFailure, nil
+				id, r := resolveID(it)
+				if r != nil {
+					return nil, "", r
 				}
 				items[i] = id
 			}
@@ -211,7 +208,29 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 	if en.Status() == "superseded" && f.String("status") != "superseded" && !explicitBy {
 		delete(f, "superseded_by")
 	}
-	data := []byte(entry.Render(f, en.Body))
+	return []byte(entry.Render(f, en.Body)), "memex: set " + en.ID + " " + strings.Join(texts, " "), nil
+}
+
+// Set runs `memex set ID ASSIGNMENT…` (SPEC §11.7).
+func Set(e *Env, o SetOptions) (int, *UsageError) {
+	w, code, ok := e.beginWrite(true)
+	if !ok {
+		return code, nil
+	}
+	res := newResolver(w.entries())
+	en := res.resolve(e, o.ID)
+	if en == nil {
+		w.end(nil)
+		return spec.ExitFailure, nil
+	}
+	data, msg, r := planSet(w, res, en, o.Assignments)
+	if r != nil {
+		w.end(nil)
+		if r.usage {
+			return 0, &UsageError{r.msg}
+		}
+		return e.fail(spec.ExitFailure, "%s", r.msg), nil
+	}
 	if string(data) == string(en.Data) {
 		return w.nothing(), nil
 	}
@@ -220,5 +239,5 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 		w.end(nil)
 		return e.failedValidation(err), nil
 	}
-	return w.commit(files, "memex: set "+en.ID+" "+strings.Join(texts, " ")), nil
+	return w.commit(files, msg), nil
 }

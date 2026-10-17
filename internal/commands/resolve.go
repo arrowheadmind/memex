@@ -58,29 +58,36 @@ func (r *resolver) lookup(arg string) (*store.Entry, []*store.Entry) {
 	}
 }
 
-// resolve returns the entry arg names. When there is none it prints `no entry "<arg>"` and up
-// to three candidates, by search score of arg, on standard error (SPEC §17.4) and returns
-// nil. An alias shared by several entries names none of them; its holders are the candidates.
+// resolve returns the entry arg names. When there is none it prints the diagnostic of
+// explain on standard error (SPEC §17.4) and returns nil.
 func (r *resolver) resolve(e *Env, arg string) *store.Entry {
-	en, holders := r.lookup(arg)
-	if en != nil {
-		return en
+	en, _ := r.lookup(arg)
+	if en == nil {
+		fmt.Fprintf(e.Stderr, "memex: %s\n", r.explain(arg))
 	}
+	return en
+}
+
+// explain is the diagnostic for an arg that names no entry, without the "memex: " prefix:
+// `no entry "<arg>"` and up to three candidates, by search score of arg, as continuation
+// lines. An alias shared by several entries names none of them; its holders are the
+// candidates.
+func (r *resolver) explain(arg string) string {
+	_, holders := r.lookup(arg)
 	var b strings.Builder
 	if holders != nil {
-		fmt.Fprintf(&b, "memex: no entry %q: it is an alias of %d entries; give an id\n", arg, len(holders))
+		fmt.Fprintf(&b, "no entry %q: it is an alias of %d entries; give an id", arg, len(holders))
 	} else {
-		fmt.Fprintf(&b, "memex: no entry %q\n", arg)
+		fmt.Fprintf(&b, "no entry %q", arg)
 		holders = r.candidates(arg)
 	}
 	for i, h := range holders {
 		if i == MaxCandidates {
 			break
 		}
-		fmt.Fprintf(&b, "  candidate: %s\n", h.Path)
+		fmt.Fprintf(&b, "\n  candidate: %s", h.Path)
 	}
-	fmt.Fprint(e.Stderr, b.String())
-	return nil
+	return b.String()
 }
 
 var datePrefix = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}-`)
