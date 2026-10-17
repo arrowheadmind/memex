@@ -254,3 +254,9 @@ Open items for later blocks:
   line does; it is how a journal entry, whose body cannot change, clears a false positive. The
   message names `memex set <id> allow_secret=true`. SPEC §5.3 and §7, help (entries and check
   codes topics), case 076's expected messages, new case 221.
+- Fixes landed (2026-10-17, later): `allow_secret` applied to the one journal with false
+  positives, the store has 0 `W-SECRET`. deployments 28c67d3 qualifies the 37 bare store
+  pointers as `memex show <path>` (every target checked to resolve) and 6b86498 pins memex
+  1c711be; deployed to the three push targets. Both page repos' `release.sh` describe the
+  worktree and `fleet/images.nix` flow instead of `brainctl work`. Nothing is left open from
+  the cutover.
