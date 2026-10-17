@@ -40,5 +40,7 @@ PATH=$PWD:$PATH MEMEX_STORE=<store> REPLAY_DATA=<data dir> \
 ```
 
 Items the original judges never saw count as grade 0, so a lower score is a prompt to grade
-them (`packets.py`, then `merge-grades.py`), not by itself a regression. Keep a report worth
-keeping by adding it to the store entry's attachments and running `memex save`.
+them, not by itself a regression. Grades given later go in `DATA/grades-additions-<date>.json`
+(`{"<query index>": {"<entry id>": grade}}`); `rerun.py` overlays every such file on both grade
+sets and names them at the top of its report. Keep a report worth keeping by adding it to the
+store entry's attachments and running `memex save`.

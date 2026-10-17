@@ -207,3 +207,14 @@ Open items for later blocks:
   the push). Shas this ledger names move with them: deployments 896b9ef→9dd792c,
   5cd405c→0aa8771; brain b627487→5c78630, b6a6f01→7c8bc33, 4544db4→e24b495, 59790e6→48d02e3,
   15e5f87→c4cc3c9. The store's journal entries quote the old shas and stay as written.
+- Night curation and replay (2026-10-16/17): the operator ran four scripts against the store
+  (121 `marker-*` tag strips, 18 captured entries triaged and 8 retitled, 4 rules extracted,
+  637 rule summaries; every active rule now has one). Summaries sit in the keywords field at
+  weight 8, so the replay reshuffled 59 of 62 top-10 lists and put 38 ungraded items in graded
+  top 10s. Three Sonnet judges graded them blind (71% agreement with the implementer grades on
+  252 controls); `rerun.py` now overlays `DATA/grades-additions-*.json` on both grade sets.
+  Graded result: mean nDCG@10 0.764 before and after under the implementer grades, 0.803→0.791
+  under Sonnet's; grade-2 top result 27→25; a grade-2 in the top 10 44→44; expected-id hits
+  unchanged. The queries that fell are old-brain vocabulary (brain plan commits, the Pi rebuild
+  script); `git commit` and `git commit backlog` rose. Reports and grades are attachments of
+  the replay reference entry (`rerun-2026-10-17.md`, `rerun-2026-10-17-graded.md`).
