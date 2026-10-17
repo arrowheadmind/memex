@@ -20,7 +20,7 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | B6 | Help: §16 pages, help agents, help --json, executed examples; cold-agent test | fable | opus | A fresh session of a different model captures correctly with only `memex help agents` | done | 9f963ae, reviewed opus+fable; 3 cold rounds |
 | B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 5186fbc |
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | c395ca3 |
-| B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | doing | |
+| B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
 
 Rules of the ledger:
 
