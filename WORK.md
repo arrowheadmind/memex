@@ -20,6 +20,7 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | B6 | Help: §16 pages, help agents, help --json, executed examples; cold-agent test | fable | opus | A fresh session of a different model captures correctly with only `memex help agents` | done | 9f963ae, reviewed opus+fable; 3 cold rounds |
 | B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 5186fbc |
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | c395ca3 |
+| B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | doing | |
 
 Rules of the ledger:
 
@@ -218,3 +219,16 @@ Open items for later blocks:
   unchanged. The queries that fell are old-brain vocabulary (brain plan commits, the Pi rebuild
   script); `git commit` and `git commit backlog` rose. Reports and grades are attachments of
   the replay reference entry (`rerun-2026-10-17.md`, `rerun-2026-10-17-graded.md`).
+- B9 batch `set` (2026-10-17): the night curation needed 637 separate `memex set` calls, each
+  its own commit and push, 45 minutes. `memex set --batch FILE|-` reads one `ID ASSIGNMENT…`
+  line per entry (shell-style quoting, blank and `#` lines skipped) and runs the whole batch as
+  one §9.1 unit: every line resolved and computed first, the changed entries validated together,
+  one commit `memex: set <n> entries` whose body is the single form's message per changed entry,
+  one push. The first bad line refuses the batch as `memex: --batch line <n>: <single-form
+  message>`, exit 1, also for what the single form calls a usage error; naming one entry twice
+  is refused. SPEC §9.2 and §11.7, help (set page with an executed example, agents and writing
+  topics), cases 219 and 220; 219 checks the commit body with `git rev-parse :/<regex>`, since
+  `expect/commits` holds subjects only. Left out: `help --json` still marks `ID` and
+  `ASSIGNMENT` required (§16.7 has no condition string for positionals); the subject says
+  `1 entries` for one entry, as `fmt` does. Timing: 300 lines against a local copy of the
+  store (no upstream) took 5.5 s; each line runs one `git status`, not profiled further.
