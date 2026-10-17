@@ -53,6 +53,7 @@ In canonical order. A field not in this table, or on a type it is not allowed on
 | `repos` | array | no | all | Source repository names the entry concerns |
 | `hosts` | array | no | all | Machine names the entry concerns |
 | `always` | boolean | no | rule | Printed by every `preflight` |
+| `allow_secret` | boolean | no | all | Suppresses `W-SECRET`; the way to clear a journal entry's false positive |
 | `kind` | string | no | plan | `prompt` or `report`; absent means an ordinary plan |
 | `parent` | string | no | plan, task | Id of an enclosing plan |
 | `sources` | array | no | all | Ids this entry was derived from |

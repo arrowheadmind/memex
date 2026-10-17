@@ -290,9 +290,11 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 			c.add(p.Path, "W-PROMOTED-UNCITED", "promoted, but no entry lists %s in sources", q(p.ID))
 		}
 	}
-	for _, s := range secrets(p.body) {
-		c.add(p.Path, "W-SECRET", "line %d looks like a credential (%s); remove it, or add the line %s if it is not one",
-			p.bodyLine+s.line-1, s.what, allowSecret)
+	if f["allow_secret"] != true {
+		for _, s := range secrets(p.body) {
+			c.add(p.Path, "W-SECRET", "line %d looks like a credential (%s); remove it; if it is not one, add the line %s, "+
+				"or for a journal entry: memex set %s allow_secret=true", p.bodyLine+s.line-1, s.what, allowSecret, p.ID)
+		}
 	}
 }
 

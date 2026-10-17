@@ -1,4 +1,4 @@
-rules/2026-01-10-assign.md: W-SECRET line 10 looks like a credential (a password, token or secret assignment); remove it, or add the line <!-- memex: allow-secret --> if it is not one
-rules/2026-01-10-blob.md: W-SECRET line 11 looks like a credential (a run of 40 or more base64 characters); remove it, or add the line <!-- memex: allow-secret --> if it is not one
-rules/2026-01-10-key.md: W-SECRET line 10 looks like a credential (a private key header); remove it, or add the line <!-- memex: allow-secret --> if it is not one
+rules/2026-01-10-assign.md: W-SECRET line 10 looks like a credential (a password, token or secret assignment); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set 2026-01-10-assign allow_secret=true
+rules/2026-01-10-blob.md: W-SECRET line 11 looks like a credential (a run of 40 or more base64 characters); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set 2026-01-10-blob allow_secret=true
+rules/2026-01-10-key.md: W-SECRET line 10 looks like a credential (a private key header); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set 2026-01-10-key allow_secret=true
 check: 0 errors, 3 warnings

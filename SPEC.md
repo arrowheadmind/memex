@@ -336,14 +336,15 @@ Listed in canonical order.
 | 7 | `repos` | array | no | all | Source repository names the entry concerns |
 | 8 | `hosts` | array | no | all | Machine names the entry concerns |
 | 9 | `always` | boolean | no | rule | Printed by every `preflight` (§11.4) |
-| 10 | `kind` | string | no | plan | `prompt` or `report`. Absent means an ordinary plan |
-| 11 | `parent` | string | no | plan, task | Id of an enclosing plan |
-| 12 | `sources` | array | no | all | Ids this entry was derived from |
-| 13 | `superseded_by` | string | iff status is `superseded` | all | Id of the replacing entry |
-| 14 | `verified` | date | yes | reference | When the facts were last checked against the live system |
-| 15 | `review_days` | integer, 1–36500 | no | reference | Staleness threshold for `verified` |
-| 16 | `aliases` | array | no | all | Former names or paths that resolve to this entry (§6) |
-| 17 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
+| 10 | `allow_secret` | boolean | no | all | Suppresses `W-SECRET` (§7), also on a journal entry, whose body cannot change. Placed beside `always`, the other boolean |
+| 11 | `kind` | string | no | plan | `prompt` or `report`. Absent means an ordinary plan |
+| 12 | `parent` | string | no | plan, task | Id of an enclosing plan |
+| 13 | `sources` | array | no | all | Ids this entry was derived from |
+| 14 | `superseded_by` | string | iff status is `superseded` | all | Id of the replacing entry |
+| 15 | `verified` | date | yes | reference | When the facts were last checked against the live system |
+| 16 | `review_days` | integer, 1–36500 | no | reference | Staleness threshold for `verified` |
+| 17 | `aliases` | array | no | all | Former names or paths that resolve to this entry (§6) |
+| 18 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
 
 - A field not in this table is an error.
 - A field on a type not listed under "Allowed on" is an error.
@@ -517,7 +518,7 @@ Warnings:
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save` |
-| `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body | One finding per line: `line <line> looks like a credential (<what>); remove it, or add the line <!-- memex: allow-secret --> if it is not one`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
+| `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body, or by `allow_secret = true` in the frontmatter (§5.3); a journal body cannot change (`E-HASH`), so the field is how a false positive there is cleared | One finding per line: `line <line> looks like a credential (<what>); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set <id> allow_secret=true`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
 `W-LEAK`). Their `<path>` is absolute, `<dir>` is the directory that holds the file, and

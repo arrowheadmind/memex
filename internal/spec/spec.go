@@ -91,6 +91,7 @@ var Fields = []Field{
 	{"repos", KindArray, "no", []string{AllTypes}},
 	{"hosts", KindArray, "no", []string{AllTypes}},
 	{"always", KindBoolean, "no", []string{"rule"}},
+	{"allow_secret", KindBoolean, "no", []string{AllTypes}},
 	{"kind", KindString, "no", []string{"plan"}},
 	{"parent", KindString, "no", []string{"plan", "task"}},
 	{"sources", KindArray, "no", []string{AllTypes}},

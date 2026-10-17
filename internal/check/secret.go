@@ -7,7 +7,8 @@ import (
 	"github.com/arrowheadmind/memex/internal/entry"
 )
 
-// allowSecret is the body line that suppresses W-SECRET (SPEC §7).
+// allowSecret is the body line that suppresses W-SECRET (SPEC §7); allow_secret = true in the
+// frontmatter does too, and is checked by the caller.
 const allowSecret = "<!-- memex: allow-secret -->"
 
 var (
