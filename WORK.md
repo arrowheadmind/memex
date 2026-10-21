@@ -265,3 +265,19 @@ Open items for later blocks:
   conformance cases; the tag is on Gitea and the GitHub mirror. This commit sets the flake
   version back to `0.0.0-dev` (IMPLEMENTATION.md, "Packaging"). The fleet pins the release
   commit, not this one.
+- Refusal reason (2026-10-21, branch `refusal-reason`, not merged): the store task of 2026-10-20
+  asked that `refused: the result would not validate` name the failing rule and field. It
+  already does: `validationFailed` (internal/commands/write.go, since B5) prints every error
+  finding as `memex: <path>: <CODE> <message>` before the refusal line, for `new`, `capture`,
+  `promote`, `set` (both forms), `save` and `fmt`. Reproduced on HEAD and on the installed
+  0.1.0, against a scratch store and a clone of the real store, with a 501-character summary,
+  a bad tag and both together: the finding line is there every time. The 2026-10-20 reports
+  (two long summaries, one unsupported flag) could not be reproduced; the store holds no
+  transcript, and an unsupported flag is a usage error (exit 2) that names the option. Done
+  instead: case 222 (`new` and `capture` with a 501-character summary: exit 1, the
+  E-FIELD-VALUE line, the refusal line, store unchanged; checked to fail on a binary without
+  the finding loop and on a wrong expectation), SPEC §9.1 step 5 states the format and §11.2
+  and §11.7 point to it, the `new`, `capture` and writing pages say it, CHANGELOG Unreleased.
+  Decision: every error finding stays printed (§11.7 already says so for `--batch`; one line
+  per entry would be a "Changed output" that says less). If it recurs: record the exact
+  command, `memex version` and the full standard error before filing.
