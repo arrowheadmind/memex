@@ -77,6 +77,10 @@ exit 1
 
 - A title starting with `-` must be written `--title=-x`; a bare `--title -x` is refused.
 - Headings alone are not a body; the check counts text, including code.
+- A summary is one line of at most 500 characters. A refused write says what failed before
+  the refusal line, as `memex check` would: `memex: <path>: E-FIELD-VALUE summary must be one
+  line of at most 500 characters`, then `memex: refused: the result would not validate;
+  nothing was changed`. Fix the named field and retry; nothing was created.
 - The same title twice on one day is refused when the body differs: read the existing entry
   (`memex show <path>`) or choose a more specific title.
 

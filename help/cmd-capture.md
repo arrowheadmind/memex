@@ -85,6 +85,9 @@ nothing to commit
 - A title starting with `-` (`capture --help` once created a junk entry in the predecessor)
   must be written `--title=-x`; `--help` prints this page instead.
 - An empty or heading-only body is refused; write what the next reader needs.
+- A summary is one line of at most 500 characters; a longer one is refused with
+  `memex: <path>: E-FIELD-VALUE summary must be one line of at most 500 characters` before the
+  refusal line. Shorten it and retry; nothing was created.
 - Do not write the lesson into a tool's own memory file instead; capture it here, where every
   tool and the next session find it.
 

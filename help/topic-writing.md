@@ -14,7 +14,9 @@ Every command that changes the store (`new`, `capture`, `promote`, `set`, `fmt`,
 4. **Write** each file through a temporary file and a rename. A file that changed since memex
    read it is refused: `<path> changed while memex was working; retry`.
 5. **Read back** and validate the written entries and their link targets; on failure the
-   previous contents are restored and the command exits 1.
+   previous contents are restored and the command exits 1, naming each finding as `memex check`
+   would (`memex: <path>: <CODE> <message>`) before
+   `memex: refused: the result would not validate; nothing was changed`.
 6. **Commit** exactly those paths. The pre-commit hook runs `memex check --staged`. Other
    changes in the working tree are left as they are.
 7. **Integrate.** No upstream: stop. Other uncommitted changes: stop, the commit is kept but

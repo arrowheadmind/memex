@@ -755,6 +755,11 @@ unit:
    step is validation only: on failure the working tree is left exactly as found. Any error
    counts, also one the entry or a link target already had: the pre-commit hook would refuse
    the commit for the same finding.
+   A validation failure, here or in step 3, is reported on standard error as the §7 findings
+   it rests on, each as `memex: <path>: <CODE> <message>` in §7's order, then
+   `memex: refused: the result would not validate; nothing was changed`: the caller learns the
+   field and the rule without running `memex check`, and the last line stays fixed for the
+   scripts that match it.
 6. **Commit.** `git add -- <paths>`, then `git commit -m <message> -- <paths>`. Only these paths
    are committed. Other changes in the working tree or index are left as they are. After the
    add, each file memex wrote must be staged with exactly the bytes it wrote; otherwise the
@@ -999,7 +1004,9 @@ Behavior:
    `verified` defaults to today for references.
    An unknown type or status, an option not allowed on the type, and a malformed `--verified`
    or `--review-days` are usage errors (exit 2); a value that fails §5.3 or §7 (a bad tag, a
-   `parent` that is not a plan, an unresolved link) exits 1 with the findings.
+   `parent` that is not a plan, an unresolved link) exits 1 with the findings, printed as
+   §9.1 step 5 describes (for example `memex: <path>: E-FIELD-VALUE summary must be one line
+   of at most 500 characters`, then the refusal line).
 2. Normalize the body (§5.1) and check its content measure (§5.6).
 3. Compute the id (§5.4).
    - If the id already exists with the same type and an identical body: print
@@ -1164,8 +1171,9 @@ memex set --batch FILE|-
 - Booleans are `true` or `false`. Dates are `YYYY-MM-DD`.
 - `title`, `status`, `summary` and every other §5.3 field may be set, except `created` and
   `body_sha256` (exit 1).
-- The result must validate. In particular `status=superseded` needs `superseded_by=` in the
-  same command, and leaving `superseded` removes `superseded_by` automatically.
+- The result must validate; a failure is reported as §9.1 step 5 describes. In particular
+  `status=superseded` needs `superseded_by=` in the same command, and leaving `superseded`
+  removes `superseded_by` automatically.
 - The body bytes are preserved exactly.
 - An entry with uncommitted changes (it differs from `HEAD`, or is untracked) is refused,
   exit 1, with `memex: <path> has uncommitted changes; run memex save first`, so that its

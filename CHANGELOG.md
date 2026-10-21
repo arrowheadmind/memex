@@ -4,6 +4,16 @@ Notable changes to memex, newest first. The version is the git tag (IMPLEMENTATI
 "Packaging"); a build that is not a release reports `0.0.0-dev`. A change to the shape of
 text output is an interface change and is listed under "Changed output" (SPEC.md §17.3).
 
+## Unreleased
+
+### Documented
+
+- A write refused by validation names its findings before the refusal line, each as
+  `memex: <path>: <CODE> <message>` (the `memex check` line), then
+  `memex: refused: the result would not validate; nothing was changed`. The lines were printed
+  since 0.1.0, but SPEC.md §9.1 and the `new` and `capture` pages did not say so. Conformance
+  case 222 pins it: a 501-character summary on `new` and `capture`.
+
 ## 0.1.0 (2026-10-17)
 
 First release: the tool, its specification (SPEC.md) and the conformance suite (137 cases)
