@@ -31,5 +31,14 @@
         };
         default = memex;
       });
+
+      # Without this, `nix develop` falls back to the package above, whose environment sets
+      # GOFLAGS=-mod=vendor although no vendor directory exists outside a build.
+      # scripts/check.sh needs go (with gofmt) and git.
+      devShells = forAll (pkgs: {
+        default = pkgs.mkShell {
+          packages = [ pkgs.go_1_27 pkgs.git ];
+        };
+      });
     };
 }

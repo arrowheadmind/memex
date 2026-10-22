@@ -6,6 +6,12 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Fixed
+
+- `nix develop` now enters a dedicated dev shell (Go 1.27 and git, what `scripts/check.sh`
+  needs). It previously fell back to the package's build environment, which sets
+  `-mod=vendor` without a vendor directory, so every `go` command failed.
+
 ### Documented
 
 - A write refused by validation names its findings before the refusal line, each as
