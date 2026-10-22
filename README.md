@@ -7,9 +7,15 @@ they share.
 
 The name comes from Vannevar Bush's 1945 *memex*, a "memory extender".
 
-**Status: in development.** The specification is complete; the implementation is being built
-block by block (see [WORK.md](WORK.md)). The status table at the top of SPEC.md says which
-sections are implemented.
+**Status:** 0.1.0 released 2026-10-17; the specification and the Go implementation are
+complete for that release, and later changes are listed under "Unreleased" in
+[CHANGELOG.md](CHANGELOG.md). Releases are git tags (`vMAJOR.MINOR.PATCH`).
+
+**Check:** `scripts/check.sh` (gofmt, go vet, go test, build, then the conformance suite against
+the built binary). With Nix: `nix develop --command scripts/check.sh`.
+
+**Docs:** [SPEC.md](SPEC.md) (the specification), [IMPLEMENTATION.md](IMPLEMENTATION.md) and
+`memex help`.
 
 - [SPEC.md](SPEC.md) is the single specification. It is language-neutral and precise enough that
   two implementations produce byte-identical results. Each section is marked Planned or
@@ -47,4 +53,4 @@ go install github.com/arrowheadmind/memex/cmd/memex@latest
 
 Then `memex help` for the overview, or `memex help agents` for an agent's rules of engagement.
 
-License: MIT.
+**License:** MIT (see [LICENSE](LICENSE)).

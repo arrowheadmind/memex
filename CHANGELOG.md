@@ -19,6 +19,8 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
   `memex: refused: the result would not validate; nothing was changed`. The lines were printed
   since 0.1.0, but SPEC.md §9.1 and the `new` and `capture` pages did not say so. Conformance
   case 222 pins it: a 501-character summary on `new` and `capture`.
+- The README states the status after the 0.1.0 release and names the check command
+  (`scripts/check.sh`), the documentation entry points and the licence.
 
 ## 0.1.0 (2026-10-17)
 
