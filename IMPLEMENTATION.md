@@ -12,7 +12,7 @@ The spec and the conformance suite (`conformance/`) are the contract, and nothin
   and `toolchain` lines in `go.mod`.
 - **Module path:** `github.com/arrowheadmind/memex`. It names the canonical public home, which
   is the GitHub organization `arrowheadmind`, even though development happens on the operator's
-  Gitea (`eduardo/memex`) and GitHub receives the repository later through a Gitea push mirror.
+  Gitea (`<operator>/memex`) and GitHub receives the repository later through a Gitea push mirror.
   The path is baked into every import and into `go install`, and changing it after a release
   breaks installs, so it is fixed here before the first line of code. Hosting is not checked
   until someone runs `go install`, by which time the mirror exists.

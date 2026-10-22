@@ -8,7 +8,7 @@ once, in the shell you run the steps from, with your own values (the examples ar
 specification's; `$APPS` is split on spaces, so write `$HOME` rather than `~` in it):
 
 ```sh
-STORE=~/memex-store                 # the memex store (a clone of its private remote)
+STORE=~/path/to/store              # the memex store (a clone of its private remote)
 WS=~/src                            # the workspace: the tree that holds your repositories
 BRAIN=~/src/brain                   # the brainctl v3 brain (the primary import source)
 APPS="$HOME/src/apps/alpha $HOME/src/apps/beta"   # application repositories with a .brain/

@@ -41,9 +41,9 @@ Open items for later blocks:
 - B6: option summaries are Go code in `internal/spec`, so another implementation would have to
   copy them. Operator leans towards a language-neutral `help/interface.json` that
   `internal/spec` loads and the conformance suite compares with `help --json`.
-- B2 pin (2026-10-13): primary brain ~/Programming/brain@1e3e921629461a714f415b0c1eb5db8466a21f65;
-  secondaries ~/Programming/apps/mesorobots-page@8ccd0c59b94c4179b1e2b61497e99e4af8800f03 and
-  ~/Programming/apps/arrowheadmind-page@0859f9057d58905ed1dab493b8fe6bc5f34de62b. Every importer run in B2 uses these.
+- B2 pin (2026-10-13): the importer source was pinned to one commit of the primary predecessor
+  brain and one of each secondary repository (the exact pins are operator narrative, kept in the
+  operator's store). Every importer run in B2 uses these.
 - B2 facts for the real run: the pinned brain has 463 investigations and 480 INDEX rows (the
   plan's 457 and 474 were a week older), and no `.brain/dispatch-logs/` directory at all, so
   the dispatch-log attachment rule has no real input yet. Most path references in bodies are
@@ -144,10 +144,10 @@ Open items for later blocks:
   config file or `MEMEX_STORE`.
 - B8 cutover progress (2026-10-14, manager): store-side steps 1, 2, 6 done (delta import from
   brain@b627487: 21 new, 9 updated; Always rules and AGENT.md reworded; 18 leaks captured or
-  already present, files deleted by the operator); on thinkcentre-02 steps 0, 3 (session
+  already present, files deleted by the operator); on the first workstation steps 0, 3 (session
   form), 5, 7, 8, 9a done; the fleet change (hook, config file, package, brainctl removal,
   auto memory off) is deployments branch `memex-cutover` at 7f7f66e, evaluated for
-  thinkcentre-02 and thinkpad, not merged or deployed. Open for the B8 close: step 10 (GitHub
+  two workstations, not merged or deployed. Open for the B8 close: step 10 (GitHub
   mirror) and the deploy; `capture --from` should store the alias in the `~/` form when the
   file is under HOME (the importer did; today `show` resolves only the form stored).
 - B8 findings for the manager: (1) a 3.7 MB conformance-runner binary was committed at the repo
@@ -176,7 +176,7 @@ Open items for later blocks:
   the brain's body plus 3 attachments, 5 changed only in the store (the reworded Always rules,
   the network reference) kept the store's. Brain renamed to brain-v3 with memex pointer files.
   Deployments `memex-cutover` rebased onto a moved main (clean), evaluated for all four
-  workstations, merged by the operator and deployed to thinkcentre-02: system memex only
+  workstations, merged by the operator and deployed to the first workstation: system memex only
   (user-profile copy removed), brainctl off PATH, managed drop-in `50-memex.json` (hook +
   auto memory off), `~/.config/memex/config.toml` written by activation, hook command exits 0
   with the Always rules, `doctor` all PASS, no failed units. Pending outside the block: the
