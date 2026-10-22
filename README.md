@@ -51,6 +51,8 @@ A NixOS or home-manager configuration takes the flake as an input and adds
 go install github.com/arrowheadmind/memex/cmd/memex@latest
 ```
 
+CI runs `scripts/check.sh` (`nix develop -c scripts/check.sh`) on every push.
+
 Then `memex help` for the overview, or `memex help agents` for an agent's rules of engagement.
 
 **License:** MIT (see [LICENSE](LICENSE)).

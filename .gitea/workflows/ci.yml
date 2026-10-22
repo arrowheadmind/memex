@@ -1,0 +1,48 @@
+name: ci
+
+# One job: enter the repository's own dev environment and run its single check entry point,
+# scripts/check.sh (gofmt, go vet, go test, go build, then the conformance suite). The same
+# command a contributor runs by hand: `nix develop -c scripts/check.sh`.
+#
+# Written for a Gitea or Forgejo Actions runner that serves the label `ci` as a host executor
+# with git and nix on its PATH. It needs no secret beyond the per-job token the server mints
+# for the run, scoped read-only below. No `uses:` anywhere: every `uses:` is resolved against
+# an external host before a job exists.
+#
+# No `paths:` or `branches:` filter, so a completed run exists for every pushed commit.
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ci
+    steps:
+      # Plain git instead of a checkout action. The workspace of a host executor persists
+      # between runs, so the token goes through GIT_CONFIG_* (never into .git/config) and the
+      # checkout ends in `git clean -ffdx`: the check must see the commit, not the commit plus
+      # debris. scripts/check.sh also refuses untracked conformance fixtures, which needs this.
+      - name: Check out the pushed commit
+        env:
+          JOB_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -eu
+          [ -n "${JOB_TOKEN:-}" ] || { echo "no per-job token in this run" >&2; exit 1; }
+          GIT_CONFIG_COUNT=1
+          GIT_CONFIG_KEY_0=http.extraheader
+          GIT_CONFIG_VALUE_0="Authorization: basic $(printf 'x-access-token:%s' "$JOB_TOKEN" | base64 -w0)"
+          export GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+          if [ -d "$GITHUB_WORKSPACE/.git" ]; then
+            git -C "$GITHUB_WORKSPACE" remote set-url origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+            git -C "$GITHUB_WORKSPACE" fetch --quiet --force origin "$GITHUB_SHA"
+          else
+            git clone --quiet "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "$GITHUB_WORKSPACE"
+          fi
+          git -C "$GITHUB_WORKSPACE" checkout --quiet --force "$GITHUB_SHA"
+          git -C "$GITHUB_WORKSPACE" clean --quiet -ffdx
+
+      - name: scripts/check.sh in the dev shell
+        run: nix develop -c scripts/check.sh

@@ -6,6 +6,10 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Added
+
+- A CI workflow (`.gitea/workflows/ci.yml`) runs `nix develop -c scripts/check.sh` on every push.
+
 ### Fixed
 
 - `nix develop` now enters a dedicated dev shell (Go 1.27 and git, what `scripts/check.sh`
