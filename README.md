@@ -10,6 +10,9 @@ The name comes from Vannevar Bush's 1945 *memex*, a "memory extender".
 **Status:** 0.1.0 released 2026-10-17; the specification and the Go implementation are
 complete for that release, and later changes are listed under "Unreleased" in
 [CHANGELOG.md](CHANGELOG.md). Releases are git tags (`vMAJOR.MINOR.PATCH`).
+Pushing a `v*` tag publishes the release page (`.gitea/workflows/release.yml`: the CHANGELOG
+section as the body, the Linux binary and its sha256 file attached); for an existing tag, Actions,
+Release, Run workflow with the tag.
 
 **Check:** `scripts/check.sh` (gofmt, go vet, go test, build, then the conformance suite against
 the built binary). With Nix: `nix develop --command scripts/check.sh`.

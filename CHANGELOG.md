@@ -9,6 +9,9 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 ### Added
 
 - A CI workflow (`.gitea/workflows/ci.yml`) runs `nix develop -c scripts/check.sh` on every push.
+- A release workflow (`.gitea/workflows/release.yml`): pushing a `v*` tag, or running it by hand
+  with an existing tag, creates the release page from the tag's CHANGELOG section and attaches
+  `memex-<tag>-linux-amd64` and its `.sha256` file, using only the run's own token.
 
 ### Fixed
 

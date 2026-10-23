@@ -1,0 +1,155 @@
+name: release
+
+# Publishes the Gitea release page for a version tag: the body is the tag's CHANGELOG.md
+# section, the binary `memex-<tag>-linux-amd64` and its sha256 file are attached.
+# Triggers: pushing a tag `v*`, or running this workflow by hand (Actions, Release, Run
+# workflow) with the `tag` input, which creates or refreshes the page of a tag that already
+# exists without re-tagging. Running it again for the same tag updates the page and replaces
+# its assets of the same name.
+#
+# Same rules as ci.yml: runner label `ci`, plain git and curl, no `uses:` anywhere, no
+# secret beyond the per-job token the server mints for the run. That token is the only
+# credential: no personal token exists for this. `contents: write` below is what lets it
+# create a release; if the API step answers 403, the repository's Actions token permissions
+# (Settings, Actions, General) are the place to look. No `pull_request` trigger, ever.
+#
+# Only `github.*` contexts and the GITHUB_* variables are used: the runner's schema check
+# rejects the `gitea` context in some places (see the comment in the older workflows).
+# The tag reaches the shell through the environment, never by interpolation into a script,
+# and is validated before it is used.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish, for example v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ci
+    steps:
+      # Plain git instead of a checkout action; the token goes through GIT_CONFIG_*, never
+      # into .git/config, because the workspace persists between runs (see ci.yml). The tag
+      # comes from the pushed ref, or from the `tag` input of a manual run; the checkout is
+      # that tag, not the branch the manual run was started from.
+      - name: Check out the tag
+        env:
+          JOB_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          TAG_INPUT: ${{ github.event.inputs.tag }}
+        run: |
+          set -eu
+          [ -n "${JOB_TOKEN:-}" ] || { echo "no per-job token in this run" >&2; exit 1; }
+          tag="${TAG_INPUT:-}"
+          if [ -z "$tag" ] && [ "${GITHUB_REF_TYPE:-}" = tag ]; then tag="$GITHUB_REF_NAME"; fi
+          printf '%s\n' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-+.][0-9A-Za-z.+-]+)?$' \
+            || { echo "not a version tag (vMAJOR.MINOR.PATCH): '$tag'" >&2; exit 1; }
+          printf 'TAG=%s\nVERSION=%s\n' "$tag" "${tag#v}" >> "$GITHUB_ENV"
+          GIT_CONFIG_COUNT=1
+          GIT_CONFIG_KEY_0=http.extraheader
+          GIT_CONFIG_VALUE_0="Authorization: basic $(printf 'x-access-token:%s' "$JOB_TOKEN" | base64 -w0)"
+          export GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+          if [ -d "$GITHUB_WORKSPACE/.git" ]; then
+            git -C "$GITHUB_WORKSPACE" remote set-url origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          else
+            git init --quiet "$GITHUB_WORKSPACE"
+            git -C "$GITHUB_WORKSPACE" remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          fi
+          git -C "$GITHUB_WORKSPACE" fetch --quiet --force origin "refs/tags/$tag:refs/tags/$tag" \
+            || { echo "tag $tag does not exist in $GITHUB_REPOSITORY" >&2; exit 1; }
+          git -C "$GITHUB_WORKSPACE" checkout --quiet --force "refs/tags/$tag"
+          git -C "$GITHUB_WORKSPACE" clean --quiet -ffdx
+
+      # The release body: the CHANGELOG.md section headed `## <version> (` up to the next
+      # `## ` heading. A tag without such a section is not releasable, so the run fails here.
+      - name: Extract the CHANGELOG section
+        run: |
+          set -eu
+          out="$(mktemp -d)"
+          echo "OUT=$out" >> "$GITHUB_ENV"
+          awk -v h="## $VERSION (" 'index($0, h) == 1 { on = 1; next } on && /^## / { exit } on { print }' \
+            CHANGELOG.md | sed -e '/./,$!d' | tac | sed -e '/./,$!d' | tac > "$out/notes.md"
+          grep -q '[^[:space:]]' "$out/notes.md" \
+            || { echo "CHANGELOG.md has no '## $VERSION (' section with content" >&2; exit 1; }
+          echo "release notes for $VERSION:"; cat "$out/notes.md"
+
+      # The binary is the flake's default package, built exactly as `nix build` documents in
+      # IMPLEMENTATION.md ("Packaging"), static (CGO off), attached with its sha256 file. The
+      # flake's version is set by the release commit, so the built binary must report the
+      # tag's version: a tag on a commit that forgot to set it fails here.
+      - name: Build the binary
+        run: |
+          set -eu
+          mkdir -p "$OUT/assets"
+          nix build .#packages.x86_64-linux.default --out-link "$OUT/result"
+          bin="$OUT/result/bin/memex"
+          "$bin" version | grep -q "^memex $VERSION " \
+            || { echo "built binary reports '$("$bin" version)', not $VERSION: flake.nix version not set for this tag" >&2; exit 1; }
+          name="memex-$TAG-linux-amd64"
+          cp "$bin" "$OUT/assets/$name"
+          (cd "$OUT/assets" && sha256sum "$name" > "$name.sha256" && cat "$name.sha256")
+
+
+      # Create the release for the tag, or update the existing one, then upload each file of
+      # $OUT/assets, replacing an asset of the same name. The API is reached with curl and
+      # the per-job token; the token is passed as a header read from stdin so it does not
+      # appear in the process list.
+      - name: Publish the release
+        env:
+          JOB_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -eu
+          [ -n "${JOB_TOKEN:-}" ] || { echo "no per-job token in this run" >&2; exit 1; }
+          api="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY"
+          resp="$OUT/response.json"
+          call() { # method url [curl args]: prints the HTTP status, body in $resp
+            m="$1"; u="$2"; shift 2
+            printf 'Authorization: token %s\n' "$JOB_TOKEN" \
+              | curl -sS -o "$resp" -w '%{http_code}' -X "$m" -H @- -H 'Accept: application/json' "$@" "$u"
+          }
+          expect() { # what status wanted...: fail with the API's answer unless status is wanted
+            what="$1"; got="$2"; shift 2
+            for w in "$@"; do [ "$got" = "$w" ] && return 0; done
+            echo "$what: HTTP $got" >&2; cat "$resp" >&2; echo >&2
+            if [ "$got" = 401 ] || [ "$got" = 403 ]; then
+              echo "the run's token may not write releases: check the repository's Actions token permissions" >&2
+            fi
+            exit 1
+          }
+          jq -n --arg tag "$TAG" --arg name "${GITHUB_REPOSITORY##*/} $VERSION" --rawfile body "$OUT/notes.md" \
+            '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: false}' > "$OUT/release.json"
+          st="$(call GET "$api/releases/tags/$TAG")"
+          if [ "$st" = 200 ]; then
+            id="$(jq -r .id "$resp")"
+            echo "release for $TAG exists (id $id): updating it"
+            jq 'del(.tag_name)' "$OUT/release.json" > "$OUT/patch.json"
+            st="$(call PATCH "$api/releases/$id" -H 'Content-Type: application/json' --data @"$OUT/patch.json")"
+            expect "update release" "$st" 200
+          else
+            expect "look up release" "$st" 404
+            st="$(call POST "$api/releases" -H 'Content-Type: application/json' --data @"$OUT/release.json")"
+            expect "create release" "$st" 201
+            id="$(jq -r .id "$resp")"
+            echo "created release id $id for $TAG"
+          fi
+          st="$(call GET "$api/releases/$id/assets")"
+          expect "list assets" "$st" 200
+          cp "$resp" "$OUT/assets.json"
+          for f in "$OUT"/assets/*; do
+            [ -f "$f" ] || continue
+            n="$(basename "$f")"
+            for aid in $(jq -r --arg n "$n" '.[] | select(.name == $n) | .id' "$OUT/assets.json"); do
+              st="$(call DELETE "$api/releases/$id/assets/$aid")"
+              expect "delete old asset $n" "$st" 204
+            done
+            st="$(call POST "$api/releases/$id/assets?name=$n" -F "attachment=@$f")"
+            expect "upload $n" "$st" 201
+            echo "uploaded $n"
+          done
+          echo "release page: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
