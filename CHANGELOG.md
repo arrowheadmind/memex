@@ -16,7 +16,8 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
   pre-commit hook) and `doctor`'s check report a task or plan whose summary did not change when
   a section was added to its body or when it was closed or reopened. It reads `HEAD`'s
   first-parent history in one `git log` and one `git cat-file --batch`, plus the working tree
-  or the index; a shallow clone's oldest commit counts as the creation. (`.gitea/workflows/ci.yml`) runs `nix develop -c scripts/check.sh` on every push.
+  or the index; a shallow clone's oldest commit counts as the creation.
+- A CI workflow (`.gitea/workflows/ci.yml`) runs `nix develop -c scripts/check.sh` on every push.
 - A release workflow (`.gitea/workflows/release.yml`): pushing a `v*` tag, or running it by hand
   with an existing tag, creates the release page from the tag's CHANGELOG section and attaches
   `memex-<tag>-linux-amd64` and its `.sha256` file, using only the run's own token.
@@ -36,8 +37,26 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 - `memex check` and `doctor` count `W-STALE-SUMMARY` warnings; a store whose tasks and plans
   were closed with `set status=done` alone shows one per such entry.
 - `help --all`, `help topics` and the overview list `update` after `version` (§11 order).
+- `set` and `update` check in one defined order (SPEC.md §11.7, refusal order): the command
+  line, the store and lock, the id, the entry, the values, the visibility rule, validation.
+  `update` now resolves its ID before reading `--body`, and refuses uncommitted edits before
+  comparing the summary. `set` reports uncommitted edits before fields it cannot keep.
+- `set` and `update` on an entry deleted from the working tree, or whose file cannot be
+  parsed, say `<path> has uncommitted changes; run memex save first` (or, for a committed file
+  that cannot be parsed, that its fields cannot be kept) instead of `no entry "<id>"`.
+- A history `check` cannot read is reported with git's first error line only
+  (`memex: check needs the store's git history: <reason>`), and `doctor`'s `check` FAILs with
+  the same text; both printed the git command and its whole standard error before.
 
 ### Fixed
+
+- `memex update --status=` (an empty status) is a usage error; it committed the update with the
+  status unchanged. A CR in `--heading` is a usage error, as an LF is; it failed validation.
+- `check --staged` checks an entry whose type changed in the index (a symbolic link replaced
+  by a file); it skipped it.
+- `W-STALE-SUMMARY` leaves out a version whose summary is not valid (not a string, or not one
+  line of at most 500 characters), and does not check an entry whose current summary is not
+  valid; such summaries were compared as empty.
 
 - `nix develop` now enters a dedicated dev shell (Go 1.27 and git, what `scripts/check.sh`
   needs). It previously fell back to the package's build environment, which sets

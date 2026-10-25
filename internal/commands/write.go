@@ -3,10 +3,14 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"path"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/arrowheadmind/memex/internal/config"
+	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
@@ -20,6 +24,8 @@ type writing struct {
 	today time.Time
 	root  string
 	s     *write.Session
+	// unusable holds the entry files that entries skipped, with the reason (SPEC §11.7).
+	unusable map[string]string
 }
 
 // beginWrite opens the store and takes the lock; with freshen, it also runs step 2. On
@@ -45,7 +51,7 @@ func (e *Env) beginWriteFor(freshen, needCommitted bool) (*writing, int, bool) {
 	if err != nil {
 		return nil, e.beginFailed(err), false
 	}
-	w := &writing{e, cfg, today, root, s}
+	w := &writing{e: e, cfg: cfg, today: today, root: root, s: s}
 	if err := s.CheckInProgress(); err != nil {
 		return nil, w.refuse(spec.ExitFailure, "%s", err.Error()), false
 	}
@@ -99,10 +105,65 @@ func (w *writing) entries() []*store.Entry {
 	if err != nil {
 		panic(err)
 	}
+	w.unusable = map[string]string{}
 	for _, s := range skipped {
 		fmt.Fprintf(w.e.Stderr, "memex: skipped %s: %s; run memex check\n", s.Path, s.Problem)
+		w.unusable[s.Path] = s.Problem
 	}
 	return entries
+}
+
+// target resolves the id argument of a command that rewrites an entry (set, update; SPEC
+// §11.7): an id, then a store-relative path, then an entry file the working tree cannot
+// supply, then an alias. That file is one that HEAD holds but the working tree has deleted or
+// made something other than a regular file, or one whose frontmatter cannot be read; it
+// resolves by its id or path only, as a bare entry that planFields then refuses.
+func (w *writing) target(res *resolver, arg string) (*store.Entry, *refusal) {
+	if en := res.byID[arg]; en != nil {
+		return en, nil
+	}
+	if en := res.byPath[arg]; en != nil {
+		return en, nil
+	}
+	if en := w.unusableEntry(arg); en != nil {
+		return en, nil
+	}
+	if en, _ := res.lookup(arg); en != nil {
+		return en, nil
+	}
+	return nil, &refusal{msg: res.explain(arg)}
+}
+
+// unusableEntry returns the entry file named by arg, as an id or a store-relative path, that
+// the working tree cannot supply as an entry (see target), or nil.
+func (w *writing) unusableEntry(arg string) *store.Entry {
+	var dirs []string
+	for _, t := range spec.Types {
+		dirs = append(dirs, t.Directory)
+	}
+	paths := slices.Sorted(maps.Keys(w.unusable))
+	args := append([]string{"diff", "--name-only", "-z", "--no-renames", "--diff-filter=DT", "HEAD", "--"}, dirs...)
+	if out, err := gitx.New(w.root, 0).Run(args...); err == nil {
+		for _, p := range strings.Split(out, "\x00") {
+			if p != "" {
+				paths = append(paths, p)
+			}
+		}
+	}
+	for _, p := range paths {
+		dir, name := path.Split(p)
+		typ := spec.LookupDirectory(strings.TrimSuffix(dir, "/"))
+		id, ok := strings.CutSuffix(name, ".md")
+		if typ == nil || !ok || (arg != p && arg != id) {
+			continue
+		}
+		en := &store.Entry{File: store.File{Path: p, Type: typ, ID: id}, Fields: entry.Fields{}}
+		if _, skipped := w.unusable[p]; !skipped {
+			w.unusable[p] = "the file is not in the working tree"
+		}
+		return en
+	}
+	return nil
 }
 
 // end releases the lock and reports a fetch that failed while freshening, unless the

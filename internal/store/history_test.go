@@ -4,7 +4,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/arrowheadmind/memex/internal/gitx"
 )
@@ -68,5 +70,47 @@ func TestReadHistory(t *testing.T) {
 				t.Errorf("%s[%d] = %q, want %q", p, i, got[i], vs[i])
 			}
 		}
+	}
+}
+
+// A file version the log names but the repository does not hold is "object <oid> is
+// missing" (SPEC §7, summary currency); a git error is git's first error line.
+func TestReadHistoryFailure(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	setGitEnv(t, t.TempDir())
+	g := gitx.New(root, 0)
+	run := func(args ...string) string {
+		t.Helper()
+		out, err := g.Run(args...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	run("init", "-q")
+	os.MkdirAll(filepath.Join(root, "tasks"), 0o755)
+	os.WriteFile(filepath.Join(root, "tasks/a.md"), []byte("a1"), 0o644)
+	run("add", "-A")
+	run("commit", "-q", "-m", "1")
+	oid := strings.TrimSpace(run("rev-parse", "HEAD:tasks/a.md"))
+	if err := os.Remove(filepath.Join(root, ".git", "objects", oid[:2], oid[2:])); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ReadHistory(g, []string{"tasks"})
+	if err == nil || HistoryReason(err, 0) != "object "+oid+" is missing" {
+		t.Errorf("missing blob: %v", err)
+	}
+	ge := &gitx.Error{Args: []string{"log"}, ExitCode: 128, Stderr: "warning: x\nerror: Object 1 not a commit\nfatal: cannot simplify\n"}
+	if r := HistoryReason(ge, 0); r != "error: Object 1 not a commit" {
+		t.Errorf("git error: %q", r)
+	}
+	if r := HistoryReason(&gitx.Error{ExitCode: 1}, 0); r != "git exited with status 1" {
+		t.Errorf("no stderr: %q", r)
+	}
+	if r := HistoryReason(&gitx.Error{TimedOut: true}, 10*time.Second); r != "timed out after 10s" {
+		t.Errorf("timeout: %q", r)
 	}
 }

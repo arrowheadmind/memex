@@ -440,7 +440,8 @@ Any other URL, path or `repo@sha` pin is free text and is not checked.
 ## 7. Validation
 
 `memex check` validates the whole store. `memex check --staged` validates the entries that are
-added or modified in the git index, plus the link targets they reference.
+added, modified or changed in type (a symbolic link replaced by a file) in the git index, plus
+the link targets they reference.
 
 **Output** is one line per finding, sorted by path, then code, then message (all by code
 point):
@@ -463,8 +464,8 @@ path and code a finding on line 12 sorts before one on line 7.
 
 **`--staged`** reads the store as the git index holds it: the entries, their contents, the
 layout and the existence of `files/` paths all come from the index, not the working tree.
-When nothing is added or modified, an empty index included, there are no findings and the
-exit code is 0.
+When nothing is added, modified or changed in type, an empty index included, there are no
+findings and the exit code is 0.
 
 A file directly under `files/` (not inside `files/<id>/`) is `E-FILES-OWNER`. Invalid TOML,
 in an entry or the manifest, is reported only as `at line <line>`, the line in the file,
@@ -518,7 +519,7 @@ Warnings:
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save` |
-| `W-STALE-SUMMARY` | A task or plan with a `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
+| `W-STALE-SUMMARY` | A task or plan with a valid `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body, or by `allow_secret = true` in the frontmatter (§5.3); a journal body cannot change (`E-HASH`), so the field is how a false positive there is cleared | One finding per line: `line <line> looks like a credential (<what>); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set <id> allow_secret=true`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
 **Summary currency.** Lists and search show an entry's summary, not its body (§8.5,
@@ -536,21 +537,27 @@ the author knows what the new section changes; it checks that the summary was to
     that deletes it or makes it something other than a regular file, ends it: a file deleted
     and added again starts over at the add, and a file that `HEAD` does not hold has only its
     working-tree (or index) version.
-  - A version whose frontmatter cannot be read (§5.1 delimiters, invalid TOML) is left out, as
-    if that commit had not changed the file.
+  - A version whose frontmatter cannot be read (§5.1 delimiters, invalid TOML), or whose
+    `summary` is present but not valid (§5.3: not a string, or not one line of at most 500
+    characters, the `E-FIELD-VALUE` of §7), is left out, as if that commit had not changed the
+    file. Summaries are compared only as strings.
   - A store with no commits, or that is not a git repository, has no committed versions.
 - A version **changes the summary** when its `summary` differs from the older version's (an
   absent summary counts as a value), and always when it is the oldest.
 - A version is **significant** when, compared with the older version:
   - its body contains some ATX heading line (§5.6), outside fenced code blocks, more times than
-    the older body does, lines compared exactly as written: a new section; the finding names
-    the first such line in body order, as `<heading>`, without its leading spaces and `#`
+    the older body does, lines compared exactly as written: a new section. The finding names
+    the first extra occurrence in body order: reading the newer body from the top, the first
+    heading line that is the n-th occurrence of its text where the older body holds that text
+    fewer than n times (older `A`; newer `A`, `B`, `A`: `B` is named, the line the older body
+    lacks at that point). It is written as `<heading>`, without its leading spaces and `#`
     characters, the space after them and trailing whitespace; or
   - its status is visible by default (§5.2) and the older version's is not, or the reverse: the
     entry was closed or reopened; the finding names both statuses.
   When a version is significant for both reasons, the section is named. The oldest version is
   never significant.
-- An entry of type task or plan that has a `summary` gets `W-STALE-SUMMARY` when its newest
+- An entry of type task or plan whose current file has a valid `summary` (§5.3) gets
+  `W-STALE-SUMMARY` when its newest
   significant version is newer than its newest summary-changing version. A version that both
   adds a section and changes the summary is current. Rules, decisions, runbooks and references
   are not checked: their sections are rarely status notes, and references have `verified`.
@@ -559,8 +566,16 @@ the author knows what the new section changes; it checks that the summary was to
   and `doctor`'s `check` read it; the validation of a write (§9.1 steps 3 and 5) uses errors
   only and does not. The history is read in one pass, so that `check` stays fast on a store of
   thousands of entries: one `git log` of `HEAD`'s first-parent history over `tasks/` and
-  `plans/`, then one read of the file versions it names. A history that cannot be read in a
-  git repository with commits is exit 2, `memex: check needs the store's git history: <reason>`.
+  `plans/`, then one read of the file versions it names.
+- A history that cannot be read in a git repository with commits is exit 2 for `check`,
+  `memex: check needs the store's git history: <reason>`, with no finding lines. In `doctor`,
+  which never exits 2 for a store it resolved, it is the `check` row's
+  `FAIL check needs the store's git history: <reason>` (§11.13), and so exit 1. `<reason>` is
+  git's first line of standard error as §9.4 defines it (the first line that starts with
+  `fatal:` or `error:`, else the first non-empty line, with surrounding whitespace removed), or
+  `git exited with status <n>` when git printed nothing; `timed out after <N>s` for a git
+  command `doctor` bounds (§11.13); `object <oid> is missing` when a file version the log
+  names is not in the repository.
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
 `W-LEAK`). Their `<path>` is absolute, `<dir>` is the directory that holds the file, and
@@ -935,7 +950,8 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
 - **Ids as arguments.** Wherever a command takes an entry id (`show`, `set`, `promote`,
   `--parent`, `--source`, `superseded_by=`), it also accepts the entry's store-relative path
   (`rules/2026-….md`) or an alias, because search and list print paths. The value is resolved
-  to the id before anything else happens.
+  to the id before anything that concerns the entry happens; for `set` and `update`, §11.7
+  (refusal order) gives the whole order.
 - **JSON.** Every `--json` output is one compact JSON text (no spaces outside strings) followed
   by one LF, with keys in the order this specification lists. Strings escape exactly these
   characters: `"` as `\"`, `\` as `\\`, U+000A as `\n`, U+000D as `\r`, U+0009 as `\t`, and every
@@ -1231,9 +1247,12 @@ memex set --batch FILE|-
 - **A status change that crosses visibility needs a new summary.** On a task or a
   plan, `status=<new>` where exactly one of the old and the new status is visible by default
   (§5.2) — closing it (`done`, `dropped`; `done`, `abandoned`, `superseded`) or reopening it —
-  is refused unless the same command also assigns `summary=` a non-empty value different from
-  the current summary (removing the summary with `summary=` does not count). The old and new
-  statuses are those of the entry before and after the whole command. Exit 1, nothing changed,
+  is refused unless the same command also gives it a new summary (removing the summary with
+  `summary=` does not count). The rule looks only at the entry before and after the whole
+  command: the old and new status, and whether the summary after it is non-empty and differs
+  from the summary before it. With repeated assignments the last one of a field wins, so
+  `status=done summary=New summary=<the current summary>` is refused, and
+  `status=done status=open` on an open task changes no status. Exit 1, nothing changed,
   with
   `memex: <id> changes status from "<old>" to "<new>" but keeps its summary; add summary=<sentence> to the same command, saying where it stands now`.
   In `--batch` the line rules below apply (`memex: --batch line <n>: …`). The summary is what
@@ -1242,6 +1261,44 @@ memex set --batch FILE|-
 - Commits through §9.1. Standard output is only the outcome line; an assignment that changes
   nothing gives `nothing to commit`. The commit message shows each value as resolved: ids,
   not the paths or aliases given.
+
+**Refusal order.** `set` and `update` (§11.17) check in this order and report only the first
+failure, so that one store and one command line give one result:
+
+1. **The command line alone**, before the store is read: a missing argument, an unknown or
+   repeated option, a malformed assignment, an unknown field name, `+=` or `-=` on a field that
+   is not an array; for `update`, a missing or empty `--summary`, a missing `--body` and a
+   `--heading` that is not 1–100 characters on one line; for `--batch`, a positional argument
+   and a `FILE` that cannot be read. Usage errors, exit 2.
+2. **The store and §9.1 steps 1–2**: the store resolves (§3.1) and its format is supported
+   (§4), exit 2; `memex.toml` is in `HEAD`, exit 1; the lock, exit 4; no rebase, merge or
+   cherry-pick in progress, exit 1; then the freshen step.
+3. **The id** (§10), exit 1. An entry file the working tree cannot supply as an entry still
+   resolves, by its id or store-relative path only (an alias would have to be read from it):
+   one that `HEAD` holds and the working tree has deleted or made something other than a
+   regular file, and one that cannot be parsed (§8.1, whose `memex: skipped` line is printed
+   as for every write). It is tried after ids and paths and before aliases, and step 4
+   refuses it.
+4. **The entry**, exit 1: for `update`, a journal entry; then uncommitted changes (a deleted
+   entry has them); then fields that cannot be kept, where a file that cannot be parsed is
+   named by its §8.1 problem:
+   `memex: <path> has fields that set cannot keep (<problems>); edit the file, then memex save`.
+5. **The values.** For `set`, each assignment in argument order: `created` or `body_sha256`, a
+   field not allowed on the type, an unknown status (a usage error, exit 2), removing a
+   required field, a value of the wrong form, an id value that does not resolve; exit 1
+   unless noted. For `update`, its options in synopsis order: a `--summary` equal to the
+   current one (exit 1); a `--body` that cannot be read (a usage error, exit 2) or whose
+   content measure is below 80 (exit 1); a `--status` that is not one of the type's statuses,
+   the empty value included (a usage error, exit 2).
+6. **The visibility rule** above, exit 1. `update` always gives a new summary, so it always
+   satisfies it.
+7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
+
+In `--batch`, steps 3 to 6 run for each line in file order, after the line's own forms of step
+1 (it splits, it has an assignment, each assignment parses), with the refusal of an entry
+named on two lines right after step 3; step 7 runs once for the whole batch. In the single
+form, a usage error found after step 1 (an unknown status, an unreadable `--body`) is printed
+with the usage and `Run:` lines of §16.8 like any other; in `--batch` it is a refused line.
 
 **Batch form.** `memex set --batch FILE` applies many sets as one §9.1 unit, so that a pass
 over hundreds of entries is one commit and one push, not hundreds. `FILE` is `-` for standard
@@ -1350,7 +1407,7 @@ where `details` holds the `LEAK <path>` lines of the `leaks` check and is otherw
 | `fetch-age` | Age of `FETCH_HEAD`'s mtime in the store's git directory. A fleet check can watch this through `--json` | PASS `last fetch <time>`; WARN `last fetch <time>, more than 8 hours ago; run memex sync`, or `never fetched; run memex sync` when the file does not exist. `<time>` is RFC 3339 UTC to the second |
 | `clean` | The store has no uncommitted changes, no unpushed commits and no rebase in progress | PASS `nothing uncommitted or unpushed`; WARN with one or more of `<n> uncommitted changes; run memex save` (`git status --porcelain --untracked-files=all` lines, `change` when 1), `<n> unpushed commits; run memex sync` (`commit` when 1; only with an upstream), `a rebase is in progress; finish it with git -C <root> rebase --continue, or --abort`, joined by `; ` |
 | `hooks` | `core.hooksPath` is `.githooks` and `.githooks/pre-commit` is an executable file | PASS `core.hooksPath is .githooks and the pre-commit hook exists`; WARN `core.hooksPath is not set, so the pre-commit check does not run; run memex init <root>`, `core.hooksPath is "<value>", not .githooks; run git -C <root> config core.hooksPath .githooks`, or `.githooks/pre-commit is missing or not executable; run memex init <root>` |
-| `check` | Summary of `memex check` | PASS `<n> errors, <m> warnings` (with `n` = 0); FAIL `<n> errors, <m> warnings; run memex check` |
+| `check` | Summary of `memex check` | PASS `<n> errors, <m> warnings` (with `n` = 0); FAIL `<n> errors, <m> warnings; run memex check`, or `check needs the store's git history: <reason>` when the history cannot be read (§7, summary currency) |
 | `path` | Every `memex` executable on `PATH` resolves to the same file, symbolic links resolved. Relative and empty `PATH` elements are skipped | PASS `1 memex on PATH`, or `<n> memex on PATH, all the same file`; WARN `memex on PATH resolves to different files: <paths>; the first one runs` (the paths as found on `PATH`, separated by `, `), or `no memex on PATH; hooks run memex by name` |
 | `leaks` | §12 leak scan, over the home locations and, when `workspace` is configured, the workspace | PASS `no files in coding tools' own memory`; WARN `<n> files in coding tools' own memory; move each into the store with memex capture --from PATH, then delete it` (`file` when 1), followed by one `LEAK <path>` line per finding, absolute paths in code-point order. A configured workspace that does not resolve (§12 rule 2: absent, relative, unreadable, not a directory, or inside the store) appends `; the workspace was not scanned: <message>` and makes the check WARN even with no finding |
 | `tool-memory` | §12 rule 5 | PASS `~/.claude does not exist`, `HOME is not set; no ~/.claude to check`, `Claude Code auto memory is disabled by CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, or `Claude Code auto memory is disabled in <file>` (the first of the rule 5 files that disables it, `~/.claude/settings.json` written so); WARN `Claude Code auto memory is not disabled; set "autoMemoryEnabled": false in ~/.claude/settings.json` |
@@ -1402,18 +1459,23 @@ allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten
    satisfy §5.3 like any summary.
 3. The section text is the `--body` input, normalized (§5.1). Its content measure (§5.6) must
    be at least 80, as for `new`; the refusal names the rule and points to `memex help entries`.
-4. `--heading` is 1–100 characters on one line; a longer value or an LF is a usage error
+4. `--heading` is 1–100 characters on one line; a longer value, an LF or a CR is a usage error
    (exit 2). Absent, it is `Status`.
-5. `--status`, when given, must be one of the type's statuses (an unknown one is a usage error,
-   exit 2) and is set in the same commit. Because the summary changes too, this satisfies the
-   rule of §11.7 for a status change that crosses visibility; `status=superseded` still needs
-   `superseded_by`, which `update` does not set (use `memex set`).
-6. The new body is the current body with trailing whitespace removed, then `\n\n## <H> <today>\n\n`
+5. `--status`, when given, must be one of the type's statuses (an unknown one, `--status=`
+   included, is a usage error, exit 2) and is set in the same commit. Because the summary
+   changes too, this satisfies the rule of §11.7 for a status change that crosses
+   visibility; `status=superseded` still needs `superseded_by`, which `update` does not set
+   (use `memex set`).
+6. The new body is the current body with all trailing whitespace removed (§5.1: every code
+   point with the `White_Space` property, so blank lines and a trailing U+00A0 go too), then `\n\n## <H> <today>\n\n`
    (`<H>` the heading, `<today>` as §2), then the section text. When the current body is empty
    the leading `\n\n` is omitted. The result is in normalized form: one final LF.
 7. An entry with uncommitted changes, or with a field that cannot be kept, is refused exactly
    as in `set` (§11.7).
-8. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
+8. The checks run in the refusal order of §11.7: the command line, the store and the lock,
+   the id, the entry (step 1's journal refusal, then step 7), then the options in synopsis
+   order (steps 2, 3 and 5; `--body` is read only then), then validation.
+9. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
 
 Example:
 
@@ -1932,10 +1994,11 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | `git` | Optional. git arguments, one per line, run as `git -C <store> <args>` with the runner's environment (the case's `env` included) after the previous step and before this step's `cmd`, so that a case can stage changes for `check --staged`, commit by hand or move `origin`. An empty line separates commands, which run in order; a command that starts with `-C <path>` runs elsewhere, as git applies successive `-C` options in turn. `<STORE>` and `<HOME>` are replaced as in `env`. A git command that fails fails the case, except the last one when `expect/git-exit` exists. |
 | `expect/git-exit` | Optional. The expected exit code of the step's last git command, for a git step that must fail (a commit the pre-commit hook refuses), or `0` for one that must succeed and whose standard error the case checks (a warning the hook prints). |
 | `expect/git-stderr-contains` | Optional. Lines that must each appear in that last git command's standard error; read only when `expect/git-exit` exists. |
-| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
+| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<SHA>` matches any 40 hex digits (a full object id, which a hand commit's date makes unpredictable); `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
 | `expect/exit` | Expected exit code |
 | `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex`. Regular files are compared by relative path, bytes and executable bit. Directories are not compared: an empty directory is ignored on both sides, because a case directory kept in git cannot hold one |
 | `expect/commits` | Optional. Expected `git log --format=%s` of the store, newest first, without the `conformance: seed` commit |
+| `expect/stderr` | Optional. Exact expected standard error, with the placeholders of `expect/stdout`. Diagnostics are exact (§7, §10), so a case that checks a refusal should use this form, which also fails on any extra line |
 | `expect/stderr-contains` | Optional. Lines that must each appear in standard error |
 
 **Runner environment.** Every command runs with exactly this environment, then the case's `env`:

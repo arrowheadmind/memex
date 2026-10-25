@@ -1,10 +1,34 @@
 package store
 
 import (
+	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/arrowheadmind/memex/internal/gitx"
 )
+
+// HistoryReason is the <reason> of a history that cannot be read (SPEC §7, summary currency):
+// git's first line of standard error (§9.4), or "git exited with status <n>" when git printed
+// none; "timed out after <N>s" for a git command bounded by timeout; "object <oid> is
+// missing" for a file version the log names that the repository does not hold.
+func HistoryReason(err error, timeout time.Duration) string {
+	var ge *gitx.Error
+	if !errors.As(err, &ge) {
+		return err.Error()
+	}
+	switch {
+	case ge.TimedOut:
+		return fmt.Sprintf("timed out after %ds", int(timeout/time.Second))
+	case ge.Interrupted:
+		return "interrupted"
+	}
+	if l := gitx.Reason(ge.Stderr); l != "" {
+		return l
+	}
+	return fmt.Sprintf("git exited with status %d", ge.ExitCode)
+}
 
 // History holds, for each entry path under the directories it was read for, the file as it
 // is in each commit on HEAD's first-parent history that changes it, newest first (SPEC §7,

@@ -576,6 +576,13 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	if !pattern(string(wantStdout), subst, true).MatchString(res.stdout) {
 		problems = append(problems, fmt.Sprintf("stdout differs\n--- want\n%s--- got\n%s---", wantStdout, res.stdout))
 	}
+	if b, err := os.ReadFile(filepath.Join(expect, "stderr")); err == nil {
+		if !pattern(string(b), subst, true).MatchString(res.stderr) {
+			problems = append(problems, fmt.Sprintf("stderr differs\n--- want\n%s--- got\n%s---", b, res.stderr))
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
 	if b, err := os.ReadFile(filepath.Join(expect, "stderr-contains")); err == nil {
 		for _, line := range strings.Split(string(b), "\n") {
 			if line != "" && !pattern(line, subst, false).MatchString(res.stderr) {
@@ -690,11 +697,11 @@ func (s *sandbox) commits() (string, error) {
 	return out + "\n", nil
 }
 
-var placeholder = regexp.MustCompile(`<(SHA7|TIME|STORE|HOME|VERSION)>`)
+var placeholder = regexp.MustCompile(`<(SHA7|SHA|TIME|STORE|HOME|VERSION)>`)
 
 const rfc3339 = `[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})`
 
-// pattern turns expected text into a regexp: <SHA7> and <TIME> match their shapes, and
+// pattern turns expected text into a regexp: <SHA7>, <SHA> and <TIME> match their shapes, and
 // <STORE>, <HOME> and <VERSION> their literal values (SPEC §15). Whole anchors the match.
 func pattern(text string, subst map[string]string, whole bool) *regexp.Regexp {
 	var b strings.Builder
@@ -707,6 +714,8 @@ func pattern(text string, subst map[string]string, whole bool) *regexp.Regexp {
 		switch name := text[m[2]:m[3]]; name {
 		case "SHA7":
 			b.WriteString(`[0-9a-f]{7}`)
+		case "SHA":
+			b.WriteString(`[0-9a-f]{40}`)
 		case "TIME":
 			b.WriteString(rfc3339)
 		default:

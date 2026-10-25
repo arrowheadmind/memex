@@ -160,7 +160,7 @@ func ReadIndex(root string, g *gitx.Git) (*IndexTree, []string, error) {
 			changed = append(changed, p)
 		}
 	} else {
-		out, err := g.Run("diff", "--cached", "--name-only", "--no-renames", "--diff-filter=AM", "-z", "HEAD")
+		out, err := g.Run("diff", "--cached", "--name-only", "--no-renames", "--diff-filter=AMT", "-z", "HEAD")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -191,6 +191,9 @@ func catBlobs(g *gitx.Git, objects []string) (map[string][]byte, error) {
 			return nil, fmt.Errorf("git cat-file --batch: %v", err)
 		}
 		f := strings.Fields(header)
+		if len(f) == 2 && f[1] == "missing" {
+			return nil, fmt.Errorf("object %s is missing", f[0])
+		}
 		if len(f) != 3 {
 			return nil, fmt.Errorf("git cat-file --batch: unexpected header %q", header)
 		}

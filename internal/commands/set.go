@@ -112,11 +112,15 @@ func crossesVisibility(typ *spec.Type, old, new string) bool {
 // planFields computes the fields of en with the assignments applied, and the text of each
 // assignment for the commit message (SPEC §11.7).
 func planFields(w *writing, res *resolver, en *store.Entry, asgs []Assignment) (entry.Fields, []string, *refusal) {
-	if why := rewritable(en); why != "" {
-		return nil, nil, refused("%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why)
-	}
 	if w.s.Uncommitted(en.Path) {
 		return nil, nil, refused("%s has uncommitted changes; run memex save first", en.Path)
+	}
+	why, unusable := w.unusable[en.Path]
+	if !unusable {
+		why = rewritable(en)
+	}
+	if why != "" {
+		return nil, nil, refused("%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why)
 	}
 	f := entry.Fields{}
 	for k, v := range en.Fields {
@@ -241,10 +245,9 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 		return code, nil
 	}
 	res := newResolver(w.entries())
-	en := res.resolve(e, o.ID)
-	if en == nil {
-		w.end(nil)
-		return spec.ExitFailure, nil
+	en, r := w.target(res, o.ID)
+	if r != nil {
+		return w.refuse(spec.ExitFailure, "%s", r.msg), nil
 	}
 	data, msg, r := planSet(w, res, en, o.Assignments)
 	if r != nil {
@@ -305,9 +308,9 @@ func SetBatch(e *Env, file string) (int, *UsageError) {
 			}
 			asgs = append(asgs, a)
 		}
-		en, _ := res.lookup(words[0])
-		if en == nil {
-			return fail(res.explain(words[0]))
+		en, r := w.target(res, words[0])
+		if r != nil {
+			return fail(r.msg)
 		}
 		if m, dup := lineOf[en.Path]; dup {
 			return fail(fmt.Sprintf("%s is already set by line %d; put all its assignments on one line", en.Path, m))

@@ -144,7 +144,7 @@ func runUpdate(env *commands.Env, a *args, cmdErr func(string) *usageError) (int
 	o := commands.UpdateOptions{ID: a.positionals[0]}
 	o.Summary, _ = a.value("--summary")
 	o.Body, _ = a.value("--body")
-	o.Status, _ = a.value("--status")
+	o.Status, o.StatusSet = a.value("--status")
 	if o.Summary == "" {
 		return 0, cmdErr("empty value for --summary; write the summary as it stands after this section")
 	}

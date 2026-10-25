@@ -58,7 +58,7 @@ func Check(e *Env, o CheckOptions) int {
 	if !o.Staged || len(staged) > 0 { // nothing staged, an empty index included: nothing to check
 		hist, herr := store.ReadHistory(g, check.CurrencyDirs())
 		if herr != nil {
-			return e.fail(spec.ExitUsage, "check needs the store's git history: %v", herr)
+			return e.fail(spec.ExitUsage, "check needs the store's git history: %s", store.HistoryReason(herr, 0))
 		}
 		findings, err = check.RunHistory(tree, today, staged, hist)
 	}

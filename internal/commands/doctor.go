@@ -30,6 +30,9 @@ const (
 // fetchAgeLimit is the age of FETCH_HEAD past which fetch-age warns (SPEC §11.13).
 const fetchAgeLimit = 8 * time.Hour
 
+// doctorGitTimeout bounds each git command doctor runs (SPEC §11.13).
+const doctorGitTimeout = 10 * time.Second
+
 // minGit is the oldest git doctor accepts (SPEC §11.13).
 var minGit = [2]int{2, 30}
 
@@ -49,7 +52,7 @@ func Doctor(e *Env, asJSON bool) int {
 
 	// git
 	gitOK := false
-	if out, err := gitx.New("/", 10*time.Second, noLocks).Run("version"); err != nil {
+	if out, err := gitx.New("/", doctorGitTimeout, noLocks).Run("version"); err != nil {
 		add("git", fail, "git is not runnable: %s", firstLine(err.Error()))
 	} else if v, ok := gitVersion(out); !ok {
 		add("git", fail, "cannot read the git version from %q", strings.TrimSpace(out))
@@ -108,14 +111,18 @@ func Doctor(e *Env, asJSON bool) int {
 		e.doctorGit(root, add)
 	}
 	if storeOK {
-		hist, err := store.ReadHistory(gitx.New(root, 10*time.Second, noLocks), check.CurrencyDirs())
+		hist, herr := store.ReadHistory(gitx.New(root, doctorGitTimeout, noLocks), check.CurrencyDirs())
 		var findings []check.Finding
-		if err == nil {
+		var err error
+		if herr == nil {
 			findings, err = check.RunHistory(store.WorkTree{Root: root}, today, nil, hist)
 		}
-		if err != nil {
+		switch {
+		case herr != nil:
+			add("check", fail, "check needs the store's git history: %s", store.HistoryReason(herr, doctorGitTimeout))
+		case err != nil:
 			add("check", fail, "%v", err)
-		} else {
+		default:
 			errs, warns := 0, 0
 			for _, f := range findings {
 				if check.IsError(f) {
@@ -236,7 +243,7 @@ var noLocks = gitx.Extra("GIT_OPTIONAL_LOCKS=0")
 
 // doctorGit runs the upstream, fetch-age, clean and hooks checks (SPEC §11.13).
 func (e *Env) doctorGit(root string, add func(id, result, format string, args ...any) *doctorCheck) {
-	g := gitx.New(root, 10*time.Second, noLocks)
+	g := gitx.New(root, doctorGitTimeout, noLocks)
 	run := func(args ...string) (string, bool) {
 		out, err := g.Run(args...)
 		return strings.TrimSpace(out), err == nil

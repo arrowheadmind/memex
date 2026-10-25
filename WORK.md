@@ -314,3 +314,14 @@ Open items for later blocks:
   removing the summary does not satisfy the close rule; an empty `--summary` is a usage error;
   the `exists` refusal is type-aware; `expect/git-exit` may be 0 so that a case can check what
   the pre-commit hook prints.
+- B10 fix round (2026-10-25, after an independent review returned "request changes"): code
+  fixes for `update --status=` (now a usage error), `update` reading `--body` before resolving
+  its ID, deleted or unparseable dirty entries resolving to `no entry` in `set` and `update`,
+  and `check --staged` skipping type changes (`T`). Spec decisions: one refusal order for `set`
+  and `update` (§11.7); the visibility rule looks at final values; a version with an invalid
+  summary is left out; the named heading is the first extra occurrence; a history read failure
+  is `check` exit 2 and `doctor` FAIL, with git's first error line as the reason; a CR in
+  `--heading` is a usage error. The runner gained `expect/stderr` (exact) and `<SHA>`. Cases
+  229-232. The store copy still gets 182 `W-STALE-SUMMARY` findings, the same set as before.
+  Left as is: `new`, `capture` and `promote` still read `--body` before the lock (§11.2 does
+  not order it), unlike `update` now.

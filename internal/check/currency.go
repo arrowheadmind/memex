@@ -36,13 +36,20 @@ func readVersion(typ *spec.Type, id string, data []byte) (version, bool) {
 		return version{}, false
 	}
 	fields, _ := entry.ParseFields(split, typ, id)
-	if fields == nil {
+	if fields == nil || !validSummary(fields) {
 		return version{}, false
 	}
 	return version{
 		summary: fields.String("summary"), hasSummary: fields.Has("summary"),
 		status: fields.String("status"), body: split.Body,
 	}, true
+}
+
+// validSummary reports whether fields has no summary or a valid one (SPEC §5.3): a summary of
+// the wrong kind or outside its constraints makes a version unreadable for summary currency.
+func validSummary(fields entry.Fields) bool {
+	_, invalid := fields["summary"].(entry.Invalid)
+	return !invalid
 }
 
 // headings returns the ATX heading lines of body that are outside fenced code blocks, in
@@ -88,7 +95,7 @@ func headingName(line string) string {
 // is newer than its newest summary-changing one (SPEC §7, summary currency). committed holds
 // the file in each commit that changes it, newest first; the current file is p.data.
 func (c *checker) checkCurrency(p *parsed, committed [][]byte) {
-	if !slices.Contains(CurrencyTypes, p.Type.Name) || !p.fields.Has("summary") {
+	if !slices.Contains(CurrencyTypes, p.Type.Name) || !p.fields.Has("summary") || !validSummary(p.fields) {
 		return
 	}
 	datas := committed
