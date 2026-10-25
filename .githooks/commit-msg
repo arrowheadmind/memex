@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+# Strips AI-assistant attribution trailers (Co-Authored-By: Claude ..., Claude-Session: ...)
+# from commit messages. Commits in this repository carry no such trailers; the
+# hook enforces that instead of relying on every agent's instructions.
+# Enable it once per clone: git config core.hooksPath .githooks
+set -eu
+
+MSG_FILE="$1"
+
+grep -v -iE '^(Co-Authored-By:.*claude|Claude-Session:)' "$MSG_FILE" >"${MSG_FILE}.stripped" || true
+
+# Collapse a trailing run of blank lines left behind by the removal.
+awk 'BEGIN{blank=0} /^[[:space:]]*$/{blank++; next} {for(i=0;i<blank;i++) print ""; blank=0; print}' \
+  "${MSG_FILE}.stripped" >"$MSG_FILE"
+
+rm -f "${MSG_FILE}.stripped"
