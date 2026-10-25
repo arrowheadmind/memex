@@ -46,6 +46,10 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
 | 17 Agent-first requirements | Implemented |
+| 7 `W-STALE-SUMMARY` and summary currency | Planned |
+| 9.2 `update` commit message | Planned |
+| 11.7 A status change that crosses visibility needs a new summary | Planned |
+| 11.17 `update` | Planned |
 
 ---
 
@@ -518,7 +522,37 @@ Warnings:
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save` |
+| `W-STALE-SUMMARY` | (Planned.) A task or plan with a `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body, or by `allow_secret = true` in the frontmatter (§5.3); a journal body cannot change (`E-HASH`), so the field is how a false positive there is cleared | One finding per line: `line <line> looks like a credential (<what>); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set <id> allow_secret=true`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
+
+**Summary currency** (Planned). Lists and search show an entry's summary, not its body (§8.5,
+§11.5), so a task or plan whose body has moved on while its summary has not misleads every
+reader who decides from the list. The usual cause is a status section appended by hand (or a
+status set) without the summary being rewritten. memex cannot write the summary, because only
+the author knows what the new section changes; it checks that the summary was touched.
+
+- **Versions.** The versions of an entry are, newest first: the working-tree file when it
+  differs from `HEAD` (with `--staged`, the index file when it differs from `HEAD`); then the
+  file as it is in each commit on `HEAD`'s first-parent history that changes it, newest first.
+  Each version is compared with the next older one. The oldest version (the entry's creation,
+  or the oldest commit a shallow clone holds) is compared with nothing.
+- A version **changes the summary** when its `summary` differs from the older version's (an
+  absent summary counts as a value), and always when it is the oldest.
+- A version is **significant** when, compared with the older version:
+  - its body contains some ATX heading line (§5.6), outside fenced code blocks, more times than
+    the older body does: a new section; the finding names the first such line in body order,
+    as `<heading>`, without its leading `#` characters, the space after them and trailing
+    whitespace; or
+  - its status is visible by default (§5.2) and the older version's is not, or the reverse: the
+    entry was closed or reopened; the finding names both statuses.
+  When a version is significant for both reasons, the section is named. The oldest version is
+  never significant.
+- An entry of type task or plan that has a `summary` gets `W-STALE-SUMMARY` when its newest
+  significant version is newer than its newest summary-changing version. A version that both
+  adds a section and changes the summary is current. Rules, decisions, runbooks and references
+  are not checked: their sections are rarely status notes, and references have `verified`.
+- Reading history is the only use `check` makes of commits; the current findings of every
+  other code come from the files alone.
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
 `W-LEAK`). Their `<path>` is absolute, `<dir>` is the directory that holds the file, and
@@ -807,6 +841,7 @@ Exactly:
 | set --batch | `memex: set <n> entries`, where `<n>` counts the entries the batch changed, then an empty line and a body of one line per changed entry, in file order, each exactly the message the single form would give for that line |
 | fmt | `memex: fmt <n> entries` |
 | save | `memex: save <n> files`, or the `-m` text if given |
+| update (Planned) | `memex: update <id>`, followed by ` status=<value>` when `--status` changes the status |
 
 ### 9.3 Direct edits
 
@@ -1182,6 +1217,15 @@ memex set --batch FILE|-
   because rewriting it would drop that field; fix it by hand, then `memex save`.
 - The values of `superseded_by`, `parent` and `sources` are resolved like every id argument
   (§10): an id, a store-relative path or an alias.
+- **A status change that crosses visibility needs a new summary** (Planned). On a task or a
+  plan, `status=<new>` where exactly one of the old and the new status is visible by default
+  (§5.2) — closing it (`done`, `dropped`; `done`, `abandoned`, `superseded`) or reopening it —
+  is refused unless the same command also assigns `summary=` a value different from the
+  current summary. Exit 1, nothing changed, with
+  `memex: <id> changes status from "<old>" to "<new>" but keeps its summary; add summary=<sentence> to the same command, saying where it stands now`.
+  In `--batch` the line rules below apply (`memex: --batch line <n>: …`). The summary is what
+  lists and search show; a closed task whose summary still describes open work misleads every
+  later reader, and `W-STALE-SUMMARY` (§7) would report it.
 - Commits through §9.1. Standard output is only the outcome line; an assignment that changes
   nothing gives `nothing to commit`. The commit message shows each value as resolved: ids,
   not the paths or aliases given.
@@ -1324,6 +1368,50 @@ memex version
 Prints one line, `memex <version> (store format 1)`, and exits 0. `memex --version` is the
 same. It needs no store and accepts no options other than `--help`/`-h`. `<version>` is the
 release version, or `0.0.0-dev` for a build that is not a release.
+
+### 11.17 `update`
+
+(Planned.)
+
+```
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S]
+```
+
+Records progress on an entry in one step: it appends a dated section to the body and replaces
+the summary, in one commit. It is the way to add a status note to a task or plan, so that the
+summary and the body cannot drift apart (§7, summary currency). Editing the file by hand stays
+allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten.
+
+1. `ID` resolves as every id argument (§10). A journal entry is refused, exit 1, with
+   `memex: journal bodies are immutable; record the progress with memex capture, then memex set <id> status=superseded superseded_by=<new> if it replaces this one`.
+2. `--summary` and `--body` are required. The summary must differ from the entry's current
+   summary: otherwise exit 1, `memex: --summary is the current summary of <id>; write the
+   summary as it stands after this section`. It must satisfy §5.3 like any summary.
+3. The section text is the `--body` input, normalized (§5.1). Its content measure (§5.6) must
+   be at least 80, as for `new`; the refusal names the rule and points to `memex help entries`.
+4. `--heading` is 1–100 characters on one line; a longer value or an LF is a usage error
+   (exit 2). Absent, it is `Status`.
+5. `--status`, when given, must be one of the type's statuses (an unknown one is a usage error,
+   exit 2) and is set in the same commit. Because the summary changes too, this satisfies the
+   rule of §11.7 for a status change that crosses visibility; `status=superseded` still needs
+   `superseded_by`, which `update` does not set (use `memex set`).
+6. The new body is the current body with trailing whitespace removed, then `\n\n## <H> <today>\n\n`
+   (`<H>` the heading, `<today>` as §2), then the section text. When the current body is empty
+   the leading `\n\n` is omitted. The result is in normalized form: one final LF.
+7. An entry with uncommitted changes, or with a field that cannot be kept, is refused exactly
+   as in `set` (§11.7).
+8. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
+
+Example:
+
+```
+memex update 2026-01-10-rotate-the-backup-key --status done \
+  --summary "Done 2026-01-12: key rotated on both hosts, old key revoked, restore re-tested." \
+  --body - <<'EOF'
+Rotated on alpha and beta; the old key is revoked in the vault and a restore from the
+newest snapshot succeeded with the new key on both hosts.
+EOF
+```
 
 ---
 

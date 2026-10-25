@@ -21,6 +21,7 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 5186fbc |
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | c395ca3 |
 | B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
+| B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | opus | fable | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | todo | |
 
 Rules of the ledger:
 
@@ -281,3 +282,16 @@ Open items for later blocks:
   Decision: every error finding stays printed (§11.7 already says so for `--batch`; one line
   per entry would be a "Changed output" that says less). If it recurs: record the exact
   command, `memex version` and the full standard error before filing.
+- B10 summary currency (spec written 2026-10-25, operator request): in the operator's store,
+  14 of 27 open tasks and active plans had a summary older than their newest status section,
+  and a backlog list built from summaries passed finished work off as open twice in one day.
+  82 earlier closes were `set status=done` without a summary change. Design: memex cannot write
+  a summary, so it refuses or reports when one was not touched. `update` appends a dated
+  section and replaces the summary in one commit; `set` refuses a close or reopen of a task or
+  plan without a new summary; `check` reads first-parent history (and the working tree or the
+  index) to find a section added, or a visibility change, after the summary's last change.
+  Expect the first full `check` after B10 to warn on most of those 82 closed entries: they are
+  genuinely stale; clean them up with one `memex set --batch` pass, reviewed by the operator.
+  For the implementer: history reading must stay fast on a store of about 1,000 entries (one
+  `git log --name-only` pass, not one `git log` per entry; record the time in this note); a
+  shallow clone treats its oldest commit as the creation.
