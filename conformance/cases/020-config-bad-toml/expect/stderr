@@ -1,0 +1,1 @@
+memex: config file <STORE>/.config.toml: toml: line 1 (last key "store"): expected value but found '\n' instead

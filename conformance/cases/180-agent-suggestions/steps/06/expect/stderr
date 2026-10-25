@@ -1,0 +1,4 @@
+memex: unknown option --tittle (did you mean --title?)
+memex capture --title=T --summary=S --body FILE|- [same options]
+memex capture --from PATH [--title=T] [--summary=S] [same options]
+Run: memex help capture

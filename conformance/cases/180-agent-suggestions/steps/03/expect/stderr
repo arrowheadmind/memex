@@ -1,0 +1,4 @@
+memex: unknown status "opne"; did you mean "open"?
+memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N]
+           [--fields F,…] [--json]
+Run: memex help list

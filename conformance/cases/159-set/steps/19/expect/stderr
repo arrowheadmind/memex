@@ -1,0 +1,4 @@
+memex: assignment "status" has no "="; write field=value, field=, field+=value or field-=value
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

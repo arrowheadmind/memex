@@ -1,0 +1,4 @@
+memex: unknown field "titel"; did you mean "title"?
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

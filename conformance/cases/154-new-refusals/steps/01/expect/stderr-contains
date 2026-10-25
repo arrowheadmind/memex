@@ -1,3 +1,0 @@
-memex: option --always is not allowed on a task; it is allowed on: rule
-memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…
-Run: memex help new

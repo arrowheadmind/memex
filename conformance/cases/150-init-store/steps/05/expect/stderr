@@ -1,0 +1,4 @@
+memex: missing PATH
+memex init PATH [--name NAME]
+memex init --pointers DIR [--force]
+Run: memex help init

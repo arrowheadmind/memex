@@ -1,0 +1,4 @@
+memex: unknown field "ids"; did you mean "id"?
+memex list [--type T]… [--status S]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N]
+           [--fields F,…] [--json]
+Run: memex help list

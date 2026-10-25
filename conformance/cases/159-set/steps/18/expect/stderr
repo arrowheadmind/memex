@@ -1,0 +1,4 @@
+memex: unknown status "retird" for a rule; did you mean "retired"?
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

@@ -1,0 +1,3 @@
+memex: unknown type "rulez"; did you mean "rule"?
+memex search QUERY… [--type T]… [--tag X]… [--repo R]… [--host H]… [--all] [--limit N] [--json]
+Run: memex help search

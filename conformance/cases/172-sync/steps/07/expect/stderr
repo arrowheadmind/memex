@@ -1,0 +1,3 @@
+memex: unexpected argument "extra"
+memex sync
+Run: memex help sync

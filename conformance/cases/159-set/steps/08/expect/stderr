@@ -1,0 +1,4 @@
+memex: title+= works only on array fields; title is a string, write title=VALUE
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

@@ -1,0 +1,4 @@
+memex: --from and --body cannot be combined; --from PATH supplies the body
+memex capture --title=T --summary=S --body FILE|- [same options]
+memex capture --from PATH [--title=T] [--summary=S] [same options]
+Run: memex help capture

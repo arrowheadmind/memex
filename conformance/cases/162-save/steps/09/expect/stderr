@@ -1,0 +1,3 @@
+memex: empty value for -m; give a commit message, or leave -m out
+memex save [-m MSG] [PATHS…] [--allow-delete] [--fmt]
+Run: memex help save

@@ -1,2 +1,0 @@
-memex: --from and --body cannot be combined; --from PATH supplies the body
-Run: memex help capture

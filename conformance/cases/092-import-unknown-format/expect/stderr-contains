@@ -1,3 +1,0 @@
-memex: unknown format "brain-v2"; the only format is brain-v3
-memex import brain-v3 SRC[@REV]… --out DIR [--leak PATH]…
-Run: memex help import
