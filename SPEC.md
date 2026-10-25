@@ -46,6 +46,9 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
 | 17 Agent-first requirements | Implemented |
+| 9.1 Inputs are read under the lock | Planned |
+| 11.2 Refusal order of `new` and `capture` | Planned |
+| 11.8 Refusal order of `promote` | Planned |
 
 ---
 
@@ -805,6 +808,13 @@ runs as one unit:
    Every mutating command except `save` (and `init`, which is not one) first refuses, exit 1,
    with `memex: store has no commits yet; run memex save` when `memex.toml` is not in `HEAD`:
    the store's pre-commit hook could not validate the commit.
+   (Planned.) **Inputs are read under the lock.** Only what the command line shows by itself
+   is checked before step 1: the usage errors of step 1 of the command's refusal order (§11.2,
+   §11.7, §11.8), which for `set --batch` includes reading `FILE`. Every other input, a
+   `--body` file or standard input and a `capture --from` file included, is read after step 2,
+   in the refusal order the command's section gives, so that one store and one command line
+   give one result whatever the inputs hold. The lock is held while standard input is read; a
+   caller that produces a body slowly writes it to a file first.
 4. **Write** each file via a temporary file in the same directory, then rename it into place.
    A file that cannot be written (permission denied, disk full) restores what was written and
    exits 1 with `memex: cannot write <path>: <reason>; nothing was changed`, where `<path>` is
@@ -956,7 +966,8 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   `--parent`, `--source`, `superseded_by=`), it also accepts the entry's store-relative path
   (`rules/2026-….md`) or an alias, because search and list print paths. The value is resolved
   to the id before anything that concerns the entry happens; for `set` and `update`, §11.7
-  (refusal order) gives the whole order.
+  (refusal order) gives the whole order, and for `new`, `capture` and `promote` §11.2 and
+  §11.8 (Planned).
 - **JSON.** Every `--json` output is one compact JSON text (no spaces outside strings) followed
   by one LF, with keys in the order this specification lists. Strings escape exactly these
   characters: `"` as `\"`, `\` as `\\`, U+000A as `\n`, U+000D as `\r`, U+0009 as `\t`, and every
@@ -1058,6 +1069,10 @@ given, or that is a file path (absolute, or beginning with `~/`, `$HOME` or `${H
 the same alias form as PATH, the file is already in the store: `capture --from` prints
 `exists <path>` of that entry, `remove <PATH> after review` and `nothing to commit`, and exits
 0, before any id is computed.
+(Planned.) This **alias no-op** is decided from the store alone, before PATH is read (refusal
+order, below), so that a repeat after the file was removed, as the first run told, is still
+the no-op. `remove <PATH> after review` is printed only when PATH, expanded as in §3.1,
+exists (`lstat` succeeds); otherwise the output is `exists <path>` and `nothing to commit`.
 
 Behavior:
 
@@ -1091,6 +1106,33 @@ Behavior:
      When the existing entry is a journal entry, whose body cannot change, the third line is
      `To read it: memex show <id>. A journal body is immutable; to add to it, capture a new entry.`
 4. Write and commit (§9.1). Standard output gets `created <path>`, then the outcome line.
+
+**Refusal order** (Planned). `new` and `capture` check in this order and report only the
+first failure, as `set` and `update` do (§11.7), so that one store and one command line give
+one result:
+
+1. **The command line alone**, before the store is read: a missing `--title`, `--summary` or
+   `--body` where the synopsis requires it, an unknown or repeated option, an
+   unknown type or status, an option not allowed on the type, a malformed `--verified` or
+   `--review-days`, a value that begins with `-` given without `=` (§10). Usage errors,
+   exit 2. Nothing else is read at this step: not the `--body` file, not standard input, not
+   the `--from` file.
+2. **The store and §9.1 steps 1–2**, as in §11.7 step 2: the store resolves (§3.1) and its
+   format is supported (§4), exit 2; `memex.toml` is in `HEAD`, exit 1; the lock, exit 4; no
+   rebase, merge or cherry-pick in progress, exit 1; then the freshen step.
+3. **For `capture --from`, the alias no-op** above, exit 0, before PATH is read.
+4. **The values**, in synopsis order: the body is read, from `--body` or from the `--from`
+   file; one that cannot be read is a usage error (exit 2), `cannot read --body <FILE>:
+   <reason>` or `cannot read --from <PATH>: <reason>`, printed with the usage and `Run:` lines
+   of §16.8; it is normalized and its content measure checked (§5.6, exit 1, behavior step 2).
+   Then `--parent` and each `--source`, in that order and in argument order, resolve as id
+   arguments (§10), exit 1 with the `no entry` diagnostic and its candidates.
+5. **The id** (behavior step 3): the `exists` no-op (exit 0) or the `exists` refusal (exit 1).
+6. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed as §9.1
+   step 5 describes.
+
+The store's entries are read right after step 2, so the `memex: skipped <path>: …` lines of
+§8.1 precede any diagnostic from step 3 on, as they do for `set` and `update`.
 
 ### 11.3 `search`
 
@@ -1355,6 +1397,27 @@ Both files go in one commit. Read-back (§9.1, step 5) covers both. Promoting a 
 status is already `promoted` is allowed. A source that is rewritten is refused, as in `set`,
 when it has uncommitted changes or fields that cannot be kept. Standard output is `created <path>`, then the outcome
 line; the id rules of §11.2 step 3 apply to the new entry.
+
+**Refusal order** (Planned). `promote` checks in this order and reports only the first
+failure:
+
+1. **The command line alone**: §11.2 refusal order step 1, and a missing `SOURCE-ID` or
+   `--to`. Usage errors, exit 2; nothing is read.
+2. **The store and §9.1 steps 1–2**, as in §11.2 refusal order step 2.
+3. **The source** `SOURCE-ID` (§10), exit 1 with the `no entry` diagnostic. It resolves as in
+   §11.7 step 3: a file that `HEAD` holds and the working tree has deleted or made something
+   other than a regular file, and one that cannot be parsed, still resolve by id or
+   store-relative path.
+4. **The source entry**, exit 1, when `promote` rewrites it (a journal entry whose status is
+   `raw` or `kept`), or when it is a file of step 3 that the working tree cannot supply as an
+   entry and so its status cannot be read: first uncommitted changes,
+   `memex: <path> has uncommitted changes; run memex save first`; then fields that cannot be
+   kept, `memex: <path> has fields that promote cannot keep (<problems>); edit the file, then memex save`,
+   with `<problems>` as in §11.7 step 4. A source that is not rewritten is only named in
+   `sources` and is not checked here.
+5. **The values** of the new entry, as in §11.2 refusal order step 4.
+6. **The new entry's id**, as in §11.2 refusal order step 5.
+7. **Validation** of both files, exit 1, every error finding printed.
 
 ### 11.9 `fmt`
 
