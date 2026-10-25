@@ -1,0 +1,9 @@
+symbolic-ref
+HEAD
+refs/heads/main
+
+log
+-1
+--format=format:not-an-object-id
+--output=.git/refs/heads/main
+origin/main

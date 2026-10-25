@@ -1,0 +1,2 @@
+memex: skipped plans/2026-01-10-backup-overhaul.md: missing opening +++ line; the file must begin with the line +++; run memex check
+memex: body content measure 8 is below 80: a body needs at least 80 non-whitespace characters outside headings, the knowledge itself and not only its outline; see memex help entries
