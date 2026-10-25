@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # next-block.sh: read and update the work ledger (WORK.md).
 #
-#   next-block.sh            print the current block, its owner and the handoff rule
+#   next-block.sh            print the current block, its roles and the handoff rule
 #   next-block.sh --hook     same, as Claude Code hook JSON (SessionStart)
 #   next-block.sh start ID   mark ID as doing
 #   next-block.sh done ID    mark ID as done at HEAD, commit WORK.md, print the handoff
@@ -44,10 +44,9 @@ describe() {
   r=$(row "$id")
   printf 'memex work ledger (WORK.md)\n'
   printf 'Current block: %s, %s\n' "$id" "$(field "$r" 3)"
-  printf 'Owner: %s. Reviewer: %s. Status: %s.\n' "$(field "$r" 4)" "$(field "$r" 5)" "$(field "$r" 7)"
+  printf 'Owner role: %s. Review role: %s. Status: %s.\n' "$(field "$r" 4)" "$(field "$r" 5)" "$(field "$r" 7)"
   printf 'Done when: %s\n' "$(field "$r" 6)"
-  printf 'Rule: if you are not %s, stop and tell the operator to switch with /model %s before working on this block.\n' \
-    "$(field "$r" 4)" "$(field "$r" 4)"
+  printf 'Rule: roles, not models: the operator chooses which model fills each role. The review is done by an independent session that did not do the work.\n'
   printf 'When the block is done: scripts/next-block.sh done %s, then memex capture (the store is the memory).\n' "$id"
 }
 
@@ -90,8 +89,8 @@ case "${1:-}" in
     else
       r=$(row "$next")
       printf 'HANDOFF: next is %s, %s.\n' "$next" "$(field "$r" 3)"
-      printf 'Owner: %s. Start a NEW session and run /model %s before any work on it.\n' \
-        "$(field "$r" 4)" "$(field "$r" 4)"
+      printf 'Owner role: %s. Review role: %s. Start a NEW session for it; the operator chooses the model.\n' \
+        "$(field "$r" 4)" "$(field "$r" 5)"
     fi
     printf '\nTell the operator the two lines above verbatim, then capture this session with memex capture.\n'
     ;;

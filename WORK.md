@@ -5,9 +5,13 @@ the agent which block is current and who owns it, and `scripts/next-block.sh don
 a block and prints the handoff to the next one. Edit the table only through the script, or keep
 its shape exactly: the status column is one of `todo`, `doing`, `done`.
 
-Owners name the model that does the work: `fable` (Claude Fable, judgment-heavy slices and
-reviews) or `opus` (Claude Opus, specified implementation). `review` names who checks the block
-against SPEC.md before it is closed. The operator decides at every gate.
+`owner` and `review` name a role, never a model or a tool: `implement` (specified work: a
+spec section with its cases), `judge` (design slices and reviews) or `operator`. Which model or
+tool fills a role is the operator's choice at the time, from what is available; it is recorded
+outside this repository. The reviewer is always an independent session that did not do the
+block's work, preferably a different model family than the one that did. Rows B0 to B9 predate
+this and name the models that did them (`opus`, `fable`, `sonnet`). The operator decides at
+every gate.
 
 | id | block | owner | review | done when | status | done at |
 |---|---|---|---|---|---|---|
@@ -21,16 +25,17 @@ against SPEC.md before it is closed. The operator decides at every gate.
 | B7 | Curation of the imported store: every rule carrying a `marker-*` tag reviewed in batches by a read-only Sonnet curator, operator-approved changes applied; Always tier given summaries | sonnet | operator | Marker backlog reviewed, at most 10 Always rules, preflight under 4,000 characters | done | 5186fbc |
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | c395ca3 |
 | B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
-| B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | opus | fable | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | doing |  |
+| B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | doing |  |
 
 Rules of the ledger:
 
 - One block per session where possible. A block is closed only when its "done when" holds and
   the reviewer has signed off in the closing commit message.
-- Closing a block: `scripts/next-block.sh done <id>`, then `brainctl capture --global` (until
-  cutover) with what was learned.
-- The next session starts with the model the next row names. The session-start hook says so;
-  an agent that is not that model stops and asks the operator to switch.
+- Closing a block: `scripts/next-block.sh done <id>`, then `memex capture` with what was
+  learned. The closing commit message names the review: who reviewed (role and the model or
+  tool that filled it) and the verdict.
+- The session-start hook names the current block's roles. A session working on a block says
+  which role it fills; the review is never done by the session that did the work.
 
 Open items for later blocks:
 
