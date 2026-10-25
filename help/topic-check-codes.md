@@ -40,7 +40,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `W-NO-TERMS` | Neither `tags` nor `keywords` | `memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | No `summary` | `memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Body content measure below 80 | Edit the file, then `memex save` |
-| `W-STALE-SUMMARY` | A task or plan whose summary did not change when a section was added or it was closed or reopened (read from first-parent history, the working tree or the index) | `memex set <id> summary=<sentence>` with where it stands now |
+| `W-STALE-SUMMARY` | A task or plan whose summary did not change when a section was added or it was closed or reopened (read from first-parent history, the working tree or the index) | `memex set <id> summary=<sentence>` with where it stands now; next time use `memex update` |
 | `W-NO-POINTER` | (`--workspace`) A git repository under the workspace with no `CLAUDE.md` and no `AGENTS.md` | `memex init --pointers <dir>` |
 | `W-LEAK` | (`--workspace`) A file in a coding tool's own memory (§12 leak scan) | `memex capture --from <path>`, review, then delete the file |
 | `W-SECRET` | A line looks like a credential (private-key header, `password=`/`token=`/`secret=` with a real value, or a long base64 run after a credential word) | Remove it; if it is not one, add the line `<!-- memex: allow-secret -->` to the body, or (a journal body cannot change) `memex set <id> allow_secret=true` |

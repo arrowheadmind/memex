@@ -30,6 +30,7 @@ they share.
 memex preflight "rotate the backup key on alpha"       # before work: sync, Always rules, search
 memex capture --title="Rotated the backup key on alpha" \
   --summary="The runbook works; restic wants the short key id." --body notes/body.md
+memex update <id> --summary="<where it stands now>" --body notes/progress.md   # task progress
 memex save                                              # after editing an entry by hand
 ```
 
@@ -54,6 +55,7 @@ memex save                                              # after editing an entry
 | `import` | Convert brain v3 stores into a new store, or add what is new to an existing one |
 | `help` | Print help |
 | `version` | Print the version |
+| `update` | Append a dated section to an entry and replace its summary, in one commit |
 
 ## Topics
 

@@ -66,7 +66,7 @@ check: 0 errors, 2 warnings
 
 - Fixing a warning by deleting the entry. Warnings name the command that fixes them.
 - Clearing `W-STALE-SUMMARY` with a reworded copy of the old summary: write where the entry
-  stands now.
+  stands now. Next time, record progress with `memex update`.
 - Running `check` with `--strict` in the hook before the imported store is curated: thousands
   of warnings would block every commit.
 

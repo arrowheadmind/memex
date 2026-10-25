@@ -9,15 +9,13 @@ Rules of engagement for a language-model agent, as imperatives.
   your four words matched, not that the entry is about your task. Short common words (`the`,
   `on`) count too, so query with content words. `weak results: …` after the results means even
   the top hit matched under half your words: assume nothing relevant exists, or retry with others.
-- Open an entry with `memex show <path>`. Paths are relative to the store root; to edit one
-  with other tools use `$MEMEX_STORE/<path>` (the root is also the `Store root:` line).
+- Open an entry with `memex show <path>`; to edit it with other tools, use `$MEMEX_STORE/<path>`.
 - In a session-start hook with no task text, run `memex preflight --max-chars 4000`.
 
 ## Searching
 
 - Words are OR-combined and ranked. Exit 3 means nothing visible matched; the output says why.
-- A word of 4 or more letters matches prefixes (`deploy` finds `deployments`); a shorter word
-  matches whole words only.
+- A word of 4 or more letters matches prefixes (`deploy` finds `deployments`); shorter ones don't.
 - Quote a phrase so the shell keeps the quotes: `memex search '"dirty tree"'`.
 - `N matches hidden by status (use --all)` means retired or done entries matched; add `--all`.
 - Filter with `--type`/`--tag`/`--repo`/`--host`; `tags` are for filtering, `keywords` for finding.
@@ -50,11 +48,13 @@ Rules of engagement for a language-model agent, as imperatives.
 
 ## Editing and history
 
-- To correct a current entry, edit its file directly, then run `memex save`.
-  `memex set <id> field=value` changes frontmatter; for many entries, `memex set --batch FILE`.
+- Record progress on a task or plan with `memex update <id> --summary="<where it stands now>"
+  --body - <<'EOF'` (`--status done` closes it): a dated section and the new summary, one commit.
+- To correct a current entry, edit its file, then run `memex save`. `memex set <id> field=value`
+  changes frontmatter (`memex set --batch FILE` for many); closing a task needs `summary=` too.
 - To replace a rule or decision, supersede it: create the new entry, then
-  `memex set <old> status=superseded superseded_by=<new>`. Do not rewrite it into another one.
-- Journal bodies are immutable: capture the correction, then supersede the old journal likewise.
+  `memex set <old> status=superseded superseded_by=<new>`. Journal bodies are immutable:
+  capture the correction, then supersede the old journal likewise.
 - Link entries as `[[<id>]]` (the filename without `.md`), not prose paths; `check` flags breaks.
 - Never write knowledge into a coding tool's own memory or rules files (`~/.claude/…`,
   `.cursorrules`, …). Knowledge lives in the store only.

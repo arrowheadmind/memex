@@ -1,0 +1,2 @@
+memex: unknown status "finished" for a task; valid: open, in-progress, blocked, done, dropped
+Run: memex help update

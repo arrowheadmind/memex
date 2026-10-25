@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -22,6 +23,17 @@ func TestSplitWords(t *testing.T) {
 		}
 		if got != c.want {
 			t.Errorf("splitWords(%q) = %s, want %s", c.line, got, c.want)
+		}
+	}
+}
+
+func TestCheckHeading(t *testing.T) {
+	for h, bad := range map[string]bool{
+		"Status": false, "": true, "Two\nlines": true,
+		strings.Repeat("é", 100): false, strings.Repeat("h", 101): true,
+	} {
+		if got := CheckHeading(h) != ""; got != bad {
+			t.Errorf("CheckHeading(%q) refused = %v, want %v", h, got, bad)
 		}
 	}
 }

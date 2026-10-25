@@ -204,7 +204,7 @@ func withDefault(opts []Option, name, def string) []Option {
 
 var writeExits = []int{ExitOK, ExitFailure, ExitUsage, ExitLock, ExitNotPushed, ExitConflict}
 
-// Commands is every command, in the order of SPEC §11, then version (SPEC §10).
+// Commands is every command, in the order of SPEC §11 (§11.1 init to §11.17 update).
 var Commands = []Command{
 	{
 		Name:    "init",
@@ -396,6 +396,20 @@ var Commands = []Command{
 		Summary:   "Print the version",
 		Usage:     "memex version",
 		ExitCodes: []int{ExitOK, ExitUsage},
+	},
+	{
+		Name:     "update",
+		Summary:  "Append a dated section to an entry and replace its summary, in one commit",
+		Usage:    "memex update ID --summary=S --body FILE|- [--heading=H] [--status S]",
+		Mutating: true,
+		Options: []Option{
+			{Name: "--summary", Value: "S", Required: true, Summary: "The summary as it stands after this section; must differ from the current one"},
+			optBody,
+			{Name: "--heading", Value: "H", Default: "Status", Summary: "Heading of the new section, 1 to 100 characters; the date is appended"},
+			{Name: "--status", Value: "S", Summary: "New status, set in the same commit"},
+		},
+		Positionals: []Positional{{Name: "ID", Required: true}},
+		ExitCodes:   writeExits,
 	},
 }
 

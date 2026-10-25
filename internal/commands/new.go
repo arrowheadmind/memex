@@ -213,10 +213,8 @@ func (e *Env) prepareBody(o *NewOptions, today time.Time) (title, summary, body 
 		body = b
 	}
 	body = entry.Normalize(body)
-	if n := entry.ContentMeasure(body); n < entry.MinContent {
-		return "", "", "", e.fail(spec.ExitFailure,
-			"body content measure %d is below %d: a body needs at least %d non-whitespace characters outside headings, "+
-				"the knowledge itself and not only its outline; see memex help entries", n, entry.MinContent, entry.MinContent), nil
+	if why := shortBody(body); why != "" {
+		return "", "", "", e.fail(spec.ExitFailure, "%s", why), nil
 	}
 	return title, summary, body, 0, nil
 }
@@ -325,10 +323,14 @@ func (w *writing) refuseExisting(f *store.File, en *store.Entry) int {
 	if en != nil {
 		title, summary = en.Fields.String("title"), en.Fields.String("summary")
 	}
+	add := fmt.Sprintf("To add to it: memex update %s --summary=<sentence> --body -.", f.ID)
+	if f.Type.Name == "journal" {
+		add = "A journal body is immutable; to add to it, capture a new entry."
+	}
 	w.end(nil)
 	fmt.Fprintf(w.e.Stderr, "memex: exists %s\n  title: %s\n  summary: %s\n"+
-		"To read it: memex show %s. To add to it: edit the file, then memex save.\n"+
-		"To create a different entry: choose a more specific --title.\n", f.Path, title, summary, f.ID)
+		"To read it: memex show %s. %s\n"+
+		"To create a different entry: choose a more specific --title.\n", f.Path, title, summary, f.ID, add)
 	return spec.ExitFailure
 }
 

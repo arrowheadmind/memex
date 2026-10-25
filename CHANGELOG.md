@@ -8,10 +8,34 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ### Added
 
-- A CI workflow (`.gitea/workflows/ci.yml`) runs `nix develop -c scripts/check.sh` on every push.
+- `memex update ID --summary=S --body FILE|- [--heading=H] [--status S]` (SPEC.md §11.17)
+  appends `## <heading> <today>` and the text to an entry's body and replaces its summary, with
+  an optional status, in one commit (`memex: update <id>[ status=<value>]`). A journal entry,
+  an unchanged summary and a section under 80 characters of content are refused.
+- `W-STALE-SUMMARY` (SPEC.md §7, summary currency): `check`, `check --staged` (and so the
+  pre-commit hook) and `doctor`'s check report a task or plan whose summary did not change when
+  a section was added to its body or when it was closed or reopened. It reads `HEAD`'s
+  first-parent history in one `git log` and one `git cat-file --batch`, plus the working tree
+  or the index; a shallow clone's oldest commit counts as the creation. (`.gitea/workflows/ci.yml`) runs `nix develop -c scripts/check.sh` on every push.
 - A release workflow (`.gitea/workflows/release.yml`): pushing a `v*` tag, or running it by hand
   with an existing tag, creates the release page from the tag's CHANGELOG section and attaches
   `memex-<tag>-linux-amd64` and its `.sha256` file, using only the run's own token.
+
+### Changed
+
+- `memex set` refuses a status change that closes or reopens a task or plan (crosses default
+  visibility) unless the same command gives a new, non-empty `summary=` (SPEC.md §11.7), also as
+  a `--batch` line. Scripts that close tasks with `status=done` alone must add `summary=`.
+
+### Changed output
+
+- The `exists` refusal of `new` and `capture` (SPEC.md §11.2) says
+  `To add to it: memex update <id> --summary=<sentence> --body -.` instead of
+  `To add to it: edit the file, then memex save.`; for a journal entry it says
+  `A journal body is immutable; to add to it, capture a new entry.`
+- `memex check` and `doctor` count `W-STALE-SUMMARY` warnings; a store whose tasks and plans
+  were closed with `set status=done` alone shows one per such entry.
+- `help --all`, `help topics` and the overview list `update` after `version` (§11 order).
 
 ### Fixed
 

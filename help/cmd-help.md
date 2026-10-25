@@ -56,6 +56,7 @@ doctor  Check the installation, the store and tool neutrality
 import  Convert brain v3 stores into a new store, or add what is new to an existing one
 help  Print help
 version  Print the version
+update  Append a dated section to an entry and replace its summary, in one commit
 agents  Rules of engagement for language-model agents
 concepts  The model and the reasoning behind it
 entries  Types, statuses, frontmatter fields and body outlines

@@ -16,7 +16,10 @@ byte, and commits. Assignments: `field=value` sets, `field=` removes an optional
 `field+=value` appends to an array, `field-=value` removes from one. Arrays in `field=` form
 are comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`. `created` and
 `body_sha256` cannot be set. `status=superseded` needs `superseded_by=<id>` in the same
-command; leaving `superseded` removes `superseded_by`. The result must validate.
+command; leaving `superseded` removes `superseded_by`. On a task or a plan, a `status=` that
+closes or reopens it (a status visible by default to one that is not, or back) is refused unless
+the same command gives a new `summary=`; `memex update` does both and records why. The result
+must validate.
 `--batch FILE` reads one `ID ASSIGNMENT…` line per entry, quoted as on a command line
 (`'title=A b'`); blank lines and `#` lines are skipped. Every line is checked before anything is
 written, and the whole batch is one commit: one bad line (`--batch line <n>: …`) writes nothing.
@@ -38,7 +41,7 @@ commit message lists the assignments with resolved ids. With `--batch`, the subj
 | code | when |
 |---|---|
 | 0 | Committed, or nothing to do |
-| 1 | Unknown ID; the entry has uncommitted edits (`run memex save first`); the result would not validate; a field that cannot be set; any invalid `--batch` line |
+| 1 | Unknown ID; the entry has uncommitted edits (`run memex save first`); the result would not validate; a field that cannot be set; a close or reopen without a new summary; any invalid `--batch` line |
 | 2 | Usage error: a malformed assignment or an unknown field; arguments given with `--batch` |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |
@@ -59,6 +62,12 @@ exit 1
 ```
 
 ```example
+$ memex set 2026-01-07-document-the-restore-test status=done
+! memex: 2026-01-07-document-the-restore-test changes status from "in-progress" to "done" but keeps its summary; add summary=<sentence> to the same command, saying where it stands now
+exit 1
+```
+
+```example
 $ memex set --batch notes/batch.txt
 pushed <SHA7>
 ```
@@ -74,4 +83,4 @@ pushed <SHA7>
 
 ## See also
 
-`memex save`, `memex show`, `memex help entries`.
+`memex update`, `memex save`, `memex show`, `memex help entries`.

@@ -295,3 +295,17 @@ Open items for later blocks:
   For the implementer: history reading must stay fast on a store of about 1,000 entries (one
   `git log --name-only` pass, not one `git log` per entry; record the time in this note); a
   shallow clone treats its oldest commit as the creation.
+- B10 implemented (2026-10-25): history is one `git log --first-parent --raw -z` over `tasks/`
+  and `plans/` plus one `git cat-file --batch` for the blobs it names. Measured on a scratch
+  copy of the operator's store (2,104 entries, 536 tasks and plans, 1,840 commits, 1,778 file
+  versions read): the history read alone takes 0.14 s, and a full `memex check` 1.57 s against
+  1.35 s before B10 (+0.22 s, history plus parsing every version). The write path's validation
+  reads no history. That copy gets 182 `W-STALE-SUMMARY` findings, all checked to be genuinely
+  stale: 105 plans and 77 tasks; 163 for a close (`active`→`done` 97, `open`→`done` 48,
+  `in-progress`→`done` 9, others 9) and 19 for a section added by hand (11 of them on entries
+  still open, blocked, in progress or draft). The cleanup is one reviewed `memex set --batch`
+  pass. Spec decisions made while implementing: history follows a path without renames and
+  ends at an add or a delete; an unreadable version is skipped; heading lines compare exactly;
+  removing the summary does not satisfy the close rule; an empty `--summary` is a usage error;
+  the `exists` refusal is type-aware; `expect/git-exit` may be 0 so that a case can check what
+  the pre-commit hook prints.

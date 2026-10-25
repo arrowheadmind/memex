@@ -1,7 +1,7 @@
 # memex help writing
 
-Every command that changes the store (`new`, `capture`, `promote`, `set`, `fmt`, `save`,
-`sync`) runs the same protocol, and ends with exactly one outcome line.
+Every command that changes the store (`new`, `capture`, `promote`, `set`, `update`, `fmt`,
+`save`, `sync`) runs the same protocol, and ends with exactly one outcome line.
 
 ## The write protocol
 
@@ -47,7 +47,8 @@ line; its exit code and standard error carry the reason, and nothing changed.
 ## Commit messages
 
 `memex: new <type> <id>`, `memex: promote <source-id> to <type> <new-id>`,
-`memex: set <id> field=value …`, `memex: fmt <n> entries`, `memex: save <n> files` (or your
+`memex: set <id> field=value …`, `memex: update <id>` (plus ` status=<value>` when it changes
+the status), `memex: fmt <n> entries`, `memex: save <n> files` (or your
 `-m` text). memex adds no trailers; author and committer come from your git configuration.
 
 ## Direct edits
@@ -62,6 +63,11 @@ rewrites the selected entries into canonical form first.
 edits (`run memex save first`), so its commit never carries someone else's unsaved work.
 `memex set --batch FILE` applies one `ID ASSIGNMENT…` line per entry as one commit; one bad
 line writes nothing.
+
+A status note on a task or plan goes through `memex update <id> --summary=S --body FILE|-`: it
+appends `## Status <today>` and the text, and replaces the summary, in one commit, because lists
+and search show the summary. A section added by hand, or a close by hand, without a new summary
+is reported by `memex check` as `W-STALE-SUMMARY`.
 
 ## Sync
 

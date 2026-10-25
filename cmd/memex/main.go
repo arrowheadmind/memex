@@ -153,6 +153,7 @@ var runners = map[string]func(*commands.Env, *args, func(string) *usageError) (i
 	"new":       runNew,
 	"capture":   runCapture,
 	"set":       runSet,
+	"update":    runUpdate,
 	"promote":   runPromote,
 	"fmt":       runFmt,
 	"save":      runSave,

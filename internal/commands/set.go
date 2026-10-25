@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/arrowheadmind/memex/internal/check"
 	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/spec"
@@ -95,11 +96,27 @@ func refused(format string, args ...any) *refusal {
 // planSet computes the new contents of en with the assignments applied (SPEC §11.7), and the
 // text of the assignments for the commit message, with ids as resolved. It writes nothing.
 func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]byte, string, *refusal) {
+	f, texts, r := planFields(w, res, en, asgs)
+	if r != nil {
+		return nil, "", r
+	}
+	return []byte(entry.Render(f, en.Body)), "memex: set " + en.ID + " " + strings.Join(texts, " "), nil
+}
+
+// crossesVisibility reports whether a status change from old to new closes or reopens an
+// entry of type typ: exactly one of the two is visible by default (SPEC §5.2).
+func crossesVisibility(typ *spec.Type, old, new string) bool {
+	return slices.Contains(typ.Visible, old) != slices.Contains(typ.Visible, new)
+}
+
+// planFields computes the fields of en with the assignments applied, and the text of each
+// assignment for the commit message (SPEC §11.7).
+func planFields(w *writing, res *resolver, en *store.Entry, asgs []Assignment) (entry.Fields, []string, *refusal) {
 	if why := rewritable(en); why != "" {
-		return nil, "", refused("%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why)
+		return nil, nil, refused("%s has fields that set cannot keep (%s); edit the file, then memex save", en.Path, why)
 	}
 	if w.s.Uncommitted(en.Path) {
-		return nil, "", refused("%s has uncommitted changes; run memex save first", en.Path)
+		return nil, nil, refused("%s has uncommitted changes; run memex save first", en.Path)
 	}
 	f := entry.Fields{}
 	for k, v := range en.Fields {
@@ -111,12 +128,12 @@ func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]b
 		def := a.field
 		switch {
 		case a.Field == "created" || a.Field == "body_sha256":
-			return nil, "", refused("%s cannot be set: created is fixed by the id, and body_sha256 by the immutable journal body", a.Field)
+			return nil, nil, refused("%s cannot be set: created is fixed by the id, and body_sha256 by the immutable journal body", a.Field)
 		case !def.AllowedOnType(en.Type.Name):
-			return nil, "", refused("field %s is not allowed on a %s; it is allowed on: %s",
+			return nil, nil, refused("field %s is not allowed on a %s; it is allowed on: %s",
 				entry.Quote(a.Field), en.Type.Name, strings.Join(def.AllowedOn, ", "))
 		case a.Field == "status" && a.Value != "" && !slices.Contains(en.Type.Statuses, a.Value):
-			return nil, "", &refusal{msg: unknownStatus(en.Type, a.Value), usage: true}
+			return nil, nil, &refusal{msg: unknownStatus(en.Type, a.Value), usage: true}
 		}
 		value := a.Value
 		if a.Field == "superseded_by" {
@@ -124,7 +141,7 @@ func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]b
 		}
 		if a.Op == "=" && value == "" {
 			if def.Required == "yes" {
-				return nil, "", refused("%s is required and cannot be removed", a.Field)
+				return nil, nil, refused("%s is required and cannot be removed", a.Field)
 			}
 			delete(f, a.Field)
 			texts = append(texts, a.Field+"=")
@@ -143,19 +160,19 @@ func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]b
 		case spec.KindString:
 			id, r := resolveID(value)
 			if r != nil {
-				return nil, "", r
+				return nil, nil, r
 			}
 			f[a.Field], value = id, id
 		case spec.KindDate:
 			d, ok := config.ParseDate(value)
 			if !ok {
-				return nil, "", refused("%s must be a date written YYYY-MM-DD, not %s", a.Field, entry.Quote(value))
+				return nil, nil, refused("%s must be a date written YYYY-MM-DD, not %s", a.Field, entry.Quote(value))
 			}
 			f[a.Field] = d
 		case spec.KindInteger:
 			n, err := strconv.ParseInt(value, 10, 64)
 			if err != nil || strings.HasPrefix(value, "+") {
-				return nil, "", refused("%s must be an integer, not %s", a.Field, entry.Quote(value))
+				return nil, nil, refused("%s must be an integer, not %s", a.Field, entry.Quote(value))
 			}
 			f[a.Field] = n
 		case spec.KindBoolean:
@@ -165,7 +182,7 @@ func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]b
 			case "false":
 				delete(f, a.Field)
 			default:
-				return nil, "", refused("%s must be true or false, not %s", a.Field, entry.Quote(value))
+				return nil, nil, refused("%s must be true or false, not %s", a.Field, entry.Quote(value))
 			}
 		case spec.KindArray:
 			items := []string{value}
@@ -175,7 +192,7 @@ func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]b
 			for i, it := range items {
 				id, r := resolveID(it)
 				if r != nil {
-					return nil, "", r
+					return nil, nil, r
 				}
 				items[i] = id
 			}
@@ -208,7 +225,13 @@ func planSet(w *writing, res *resolver, en *store.Entry, asgs []Assignment) ([]b
 	if en.Status() == "superseded" && f.String("status") != "superseded" && !explicitBy {
 		delete(f, "superseded_by")
 	}
-	return []byte(entry.Render(f, en.Body)), "memex: set " + en.ID + " " + strings.Join(texts, " "), nil
+	// A status change that closes or reopens a task or plan needs a new summary (SPEC §11.7).
+	if old, new := en.Status(), f.String("status"); old != new && slices.Contains(check.CurrencyTypes, en.Type.Name) &&
+		crossesVisibility(en.Type, old, new) && (f.String("summary") == "" || f.String("summary") == en.Fields.String("summary")) {
+		return nil, nil, refused("%s changes status from %s to %s but keeps its summary; add summary=<sentence> to the same command, "+
+			"saying where it stands now", en.ID, entry.Quote(old), entry.Quote(new))
+	}
+	return f, texts, nil
 }
 
 // Set runs `memex set ID ASSIGNMENT…` (SPEC §11.7).

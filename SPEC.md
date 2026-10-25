@@ -46,9 +46,6 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
 | 17 Agent-first requirements | Implemented |
-| 9.2 `update` commit message | Planned |
-| 11.7 A status change that crosses visibility needs a new summary | Planned |
-| 11.17 `update` | Planned |
 
 ---
 
@@ -769,8 +766,8 @@ each entry's path, size and modification time before every query and reindex wha
 
 ### 9.1 Write protocol
 
-Every mutating command (`new`, `capture`, `promote`, `set`, `fmt`, `save`, `sync`) runs as one
-unit:
+Every mutating command (`new`, `capture`, `promote`, `set`, `update`, `fmt`, `save`, `sync`)
+runs as one unit:
 
 1. **Lock.** Take an exclusive advisory lock on `.memex/write.lock`, creating `.memex/` if
    needed. Wait up to 60 s (10 s when the caller is `preflight`), then exit 4.
@@ -852,7 +849,7 @@ Exactly:
 | set --batch | `memex: set <n> entries`, where `<n>` counts the entries the batch changed, then an empty line and a body of one line per changed entry, in file order, each exactly the message the single form would give for that line |
 | fmt | `memex: fmt <n> entries` |
 | save | `memex: save <n> files`, or the `-m` text if given |
-| update (Planned) | `memex: update <id>`, followed by ` status=<value>` when `--status` changes the status |
+| update | `memex: update <id>`, followed by ` status=<value>` when `--status` changes the status |
 
 ### 9.3 Direct edits
 
@@ -1066,9 +1063,12 @@ Behavior:
      memex: exists <path>
        title: <existing title>
        summary: <existing summary>
-     To read it: memex show <id>. To add to it: edit the file, then memex save.
+     To read it: memex show <id>. To add to it: memex update <id> --summary=<sentence> --body -.
      To create a different entry: choose a more specific --title.
      ```
+
+     When the existing entry is a journal entry, whose body cannot change, the third line is
+     `To read it: memex show <id>. A journal body is immutable; to add to it, capture a new entry.`
 4. Write and commit (§9.1). Standard output gets `created <path>`, then the outcome line.
 
 ### 11.3 `search`
@@ -1228,11 +1228,13 @@ memex set --batch FILE|-
   because rewriting it would drop that field; fix it by hand, then `memex save`.
 - The values of `superseded_by`, `parent` and `sources` are resolved like every id argument
   (§10): an id, a store-relative path or an alias.
-- **A status change that crosses visibility needs a new summary** (Planned). On a task or a
+- **A status change that crosses visibility needs a new summary.** On a task or a
   plan, `status=<new>` where exactly one of the old and the new status is visible by default
   (§5.2) — closing it (`done`, `dropped`; `done`, `abandoned`, `superseded`) or reopening it —
-  is refused unless the same command also assigns `summary=` a value different from the
-  current summary. Exit 1, nothing changed, with
+  is refused unless the same command also assigns `summary=` a non-empty value different from
+  the current summary (removing the summary with `summary=` does not count). The old and new
+  statuses are those of the entry before and after the whole command. Exit 1, nothing changed,
+  with
   `memex: <id> changes status from "<old>" to "<new>" but keeps its summary; add summary=<sentence> to the same command, saying where it stands now`.
   In `--batch` the line rules below apply (`memex: --batch line <n>: …`). The summary is what
   lists and search show; a closed task whose summary still describes open work misleads every
@@ -1382,8 +1384,6 @@ release version, or `0.0.0-dev` for a build that is not a release.
 
 ### 11.17 `update`
 
-(Planned.)
-
 ```
 memex update ID --summary=S --body FILE|- [--heading=H] [--status S]
 ```
@@ -1395,9 +1395,11 @@ allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten
 
 1. `ID` resolves as every id argument (§10). A journal entry is refused, exit 1, with
    `memex: journal bodies are immutable; record the progress with memex capture, then memex set <id> status=superseded superseded_by=<new> if it replaces this one`.
-2. `--summary` and `--body` are required. The summary must differ from the entry's current
-   summary: otherwise exit 1, `memex: --summary is the current summary of <id>; write the
-   summary as it stands after this section`. It must satisfy §5.3 like any summary.
+2. `--summary` and `--body` are required; an empty `--summary` is a usage error (exit 2),
+   `empty value for --summary; write the summary as it stands after this section`. The summary
+   must differ from the entry's current summary: otherwise exit 1, `memex: --summary is the
+   current summary of <id>; write the summary as it stands after this section`. It must
+   satisfy §5.3 like any summary.
 3. The section text is the `--body` input, normalized (§5.1). Its content measure (§5.6) must
    be at least 80, as for `new`; the refusal names the rule and points to `memex help entries`.
 4. `--heading` is 1–100 characters on one line; a longer value or an LF is a usage error
@@ -1998,7 +2000,7 @@ from the behavior it describes.
 | `memex help COMMAND`, `memex COMMAND --help`, `memex COMMAND -h` | The command page (§16.5) |
 | `memex help TOPIC` | The topic page (§16.6) |
 | `memex help topics` | One line per command and topic: name, two spaces, one-line description |
-| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11 (§11.1 `init` through §11.16 `version`). Pages are separated by a line `---`. |
+| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11 (§11.1 `init` through §11.17 `update`). Pages are separated by a line `---`. |
 | `memex help --json` | The machine-readable interface (§16.7) |
 
 - An unknown name exits 2 and prints, on stderr:

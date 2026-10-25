@@ -128,6 +128,35 @@ func runSet(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *
 	return usage(commands.Set(env, o))(cmdErr)
 }
 
+func runUpdate(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	switch len(a.positionals) {
+	case 0:
+		return 0, cmdErr("missing ID")
+	case 1:
+	default:
+		return 0, cmdErr(unexpected(a.positionals[1], nil))
+	}
+	for _, name := range []string{"--summary", "--body"} {
+		if !a.has(name) {
+			return 0, cmdErr("missing " + name)
+		}
+	}
+	o := commands.UpdateOptions{ID: a.positionals[0]}
+	o.Summary, _ = a.value("--summary")
+	o.Body, _ = a.value("--body")
+	o.Status, _ = a.value("--status")
+	if o.Summary == "" {
+		return 0, cmdErr("empty value for --summary; write the summary as it stands after this section")
+	}
+	if h, ok := a.value("--heading"); ok {
+		if problem := commands.CheckHeading(h); problem != "" {
+			return 0, cmdErr(problem)
+		}
+		o.Heading = h
+	}
+	return usage(commands.Update(env, o))(cmdErr)
+}
+
 func runFmt(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
 	return commands.Fmt(env, commands.FmtOptions{Paths: a.positionals, Check: a.has("--check")}), nil
 }

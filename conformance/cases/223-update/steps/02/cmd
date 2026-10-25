@@ -1,0 +1,9 @@
+update
+--status
+done
+tasks/2026-01-10-rotate-the-backup-key.md
+--heading
+Closed
+--summary=Done 2026-01-15: key rotated on alpha and beta, old key revoked, restore re-tested.
+--body
+<HOME>/closing.md
