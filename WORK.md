@@ -325,3 +325,11 @@ Open items for later blocks:
   229-232. The store copy still gets 182 `W-STALE-SUMMARY` findings, the same set as before.
   Left as is: `new`, `capture` and `promote` still read `--body` before the lock (§11.2 does
   not order it), unlike `update` now.
+- B10 second fix round (2026-10-25, re-review "approve with fixes"): an unborn `HEAD` is "no
+  commits", any other `HEAD` that does not resolve is the §7 history failure (case 233); case
+  229 pins `update`'s value order (a short `--body` before an unknown `--status`) and targets
+  turned into a symbolic link or a directory. Every `stderr-contains` in the suite (119 files,
+  48 cases) is now an exact `expect/stderr`; none stays a substring check. Two of them hold
+  text that is not memex's own: 170 git's index-lock message, 171 the pre-commit hook's
+  output, both deterministic in the runner's sandbox. The `stderr-contains` form stays in §15
+  for a case whose standard error carries text that varies.

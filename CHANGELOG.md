@@ -52,6 +52,9 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 - `memex update --status=` (an empty status) is a usage error; it committed the update with the
   status unchanged. A CR in `--heading` is a usage error, as an LF is; it failed validation.
+- `check` and `doctor` treat a `HEAD` that does not resolve, other than an unborn branch, as a
+  history that cannot be read (exit 2; `doctor` FAILs `check`); they treated it as a store
+  with no commits and skipped `W-STALE-SUMMARY`.
 - `check --staged` checks an entry whose type changed in the index (a symbolic link replaced
   by a file); it skipped it.
 - `W-STALE-SUMMARY` leaves out a version whose summary is not valid (not a string, or not one

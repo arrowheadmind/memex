@@ -41,12 +41,23 @@ type History struct {
 }
 
 // ReadHistory reads the history of the files under dirs with one `git log` over HEAD's
-// first-parent history and one `git cat-file --batch` for the blobs it names. A store without
-// commits has an empty history.
+// first-parent history and one `git cat-file --batch` for the blobs it names. A store that is
+// not in a git repository, or has no commits (HEAD is an unborn branch), has an empty
+// history; a HEAD that does not resolve otherwise is an error (SPEC §7, summary currency).
 func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 	h := &History{Versions: map[string][][]byte{}}
-	if _, err := g.Run("rev-parse", "--verify", "-q", "HEAD"); err != nil {
+	if _, err := g.Run("rev-parse", "--git-dir"); err != nil {
 		return h, nil
+	}
+	if _, err := g.Run("rev-parse", "--verify", "-q", "HEAD"); err != nil {
+		if _, serr := g.Run("symbolic-ref", "-q", "HEAD"); serr == nil {
+			return h, nil // an unborn branch: no commits yet
+		}
+		_, err := g.Run("rev-parse", "--verify", "HEAD")
+		if err == nil {
+			err = fmt.Errorf("HEAD does not resolve")
+		}
+		return nil, err
 	}
 	args := []string{"log", "--first-parent", "--diff-merges=first-parent", "--root", "--raw",
 		"--no-abbrev", "--no-renames", "--relative", "-z", "--format=%x01%H", "HEAD", "--"}

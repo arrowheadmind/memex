@@ -541,7 +541,12 @@ the author knows what the new section changes; it checks that the summary was to
     `summary` is present but not valid (§5.3: not a string, or not one line of at most 500
     characters, the `E-FIELD-VALUE` of §7), is left out, as if that commit had not changed the
     file. Summaries are compared only as strings.
-  - A store with no commits, or that is not a git repository, has no committed versions.
+  - A store with no commits, or that is not a git repository, has no committed versions. It
+    has no commits when `HEAD` does not resolve (`git rev-parse --verify HEAD` fails) and is
+    an unborn branch (`git symbolic-ref HEAD` succeeds). A `HEAD` that does not resolve and
+    is not an unborn branch, such as a branch file that holds no object id, is a history that
+    cannot be read (below), with the first error line of `git rev-parse --verify HEAD` as the
+    reason.
 - A version **changes the summary** when its `summary` differs from the older version's (an
   absent summary counts as a value), and always when it is the oldest.
 - A version is **significant** when, compared with the older version:
