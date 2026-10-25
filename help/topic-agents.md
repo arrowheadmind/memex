@@ -50,8 +50,8 @@ Rules of engagement for a language-model agent, as imperatives.
 
 - Record progress on a task or plan with `memex update <id> --summary="<where it stands now>"
   --body - <<'EOF'` (`--status done` closes it): a dated section and the new summary, one commit.
-- To correct a current entry, edit its file, then run `memex save`. `memex set <id> field=value`
-  changes frontmatter (`memex set --batch FILE` for many); closing a task needs `summary=` too.
+- To correct a current entry, edit its file, then `memex save`. `memex set <id> field=value` sets
+  frontmatter (`--batch FILE` for many); closing or reopening a task or plan needs a new summary.
 - To replace a rule or decision, supersede it: create the new entry, then
   `memex set <old> status=superseded superseded_by=<new>`. Journal bodies are immutable:
   capture the correction, then supersede the old journal likewise.

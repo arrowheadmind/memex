@@ -38,7 +38,7 @@ With `--json`, the `LEAK` lines are the `details` of the `leaks` check.
 | code | when |
 |---|---|
 | 0 | No check failed (warnings allowed) |
-| 1 | At least one check failed: git missing or too old, a bad config file, no store, an unsupported format, `check` errors |
+| 1 | At least one check failed: git missing or too old, a bad config file, no store, an unsupported format, `check` errors or a git history `check` cannot read |
 | 2 | Usage error |
 
 ## Examples

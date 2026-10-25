@@ -16,7 +16,7 @@ plan, and to close one: `--status done` sets the status in the same commit. The 
 `## <heading> <today>`, a blank line and the `--body` text (at least 80 characters outside
 headings), after the current body; `--heading` defaults to `Status`. `--summary` must differ
 from the current summary: write the summary as it stands after this section. Journal entries
-are refused (their bodies are immutable), and so is an entry with uncommitted edits.
+are refused (immutable bodies), and so is an entry with uncommitted edits, a deleted file too.
 `status=superseded` also needs `superseded_by`, which only `memex set` sets.
 
 ```
@@ -32,8 +32,8 @@ EOF
 |---|---|---|---|
 | `--summary` | S | | The summary as it stands after this section; must differ from the current one (required) |
 | `--body` | FILE | | Text of the new section: a file, or `-` for standard input (required) |
-| `--heading` | H | Status | Heading of the new section, 1 to 100 characters; the date is appended |
-| `--status` | S | | New status, set in the same commit |
+| `--heading` | H | Status | Heading of the new section, 1 to 100 characters on one line (no LF or CR); the date is appended |
+| `--status` | S | | New status, set in the same commit; one of the type's statuses, never empty |
 
 ## Output
 
@@ -46,7 +46,7 @@ Only the outcome line (`pushed <sha7>`, …). The commit message is `memex: upda
 |---|---|
 | 0 | Committed |
 | 1 | Unknown ID; a journal entry; the same summary; a short section; uncommitted edits; the result would not validate |
-| 2 | Usage error: a missing `--summary` or `--body`, a bad `--heading`, an unknown `--status` |
+| 2 | Usage error: a missing `--summary` or `--body`, a bad `--heading`, an unreadable `--body`, an unknown or empty `--status` |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |
 | 6 | Committed, rebase conflict |

@@ -19,13 +19,14 @@ that are not the pointer (`E-POINTER`), repositories without one (`W-NO-POINTER`
 coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; `check` takes no lock.
 `W-STALE-SUMMARY` is the one finding that reads git history (first-parent, plus the working
 tree or, with `--staged`, the index): a task or plan whose summary was not rewritten when a
-section was added to its body or when it was closed or reopened.
+section was added to its body or when it was closed or reopened. A history git cannot read is
+exit 2, `memex: check needs the store's git history: <git's first error line>`.
 
 ## Options
 
 | option | value | default | meaning |
 |---|---|---|---|
-| `--staged` | | | Validate only entries added or modified in the git index, plus their link targets |
+| `--staged` | | | Validate only entries added, modified or changed in type in the git index, plus their link targets |
 | `--workspace` | | | Also check pointer files and scan for leaks in tool memory (`workspace` key) |
 | `--strict` | | | Count warnings as errors for the exit code |
 | `--errors-only` | | | Print only error lines (the summary still counts warnings) |
@@ -43,7 +44,7 @@ section was added to its body or when it was closed or reopened.
 |---|---|
 | 0 | No errors (no warnings either, with `--strict`) |
 | 1 | Errors found |
-| 2 | Usage error; with `--workspace`, no usable `workspace` in the config file |
+| 2 | Usage error; with `--workspace`, no usable `workspace` in the config file; a git history that cannot be read |
 
 ## Examples
 
