@@ -1,0 +1,3 @@
+plans/2026-01-10-backup-overhaul.md: W-STALE-SUMMARY summary was not updated when the section "Status 2026-01-15" was added; rewrite it to the current state: memex set 2026-01-10-backup-overhaul summary=<sentence>
+tasks/2026-01-10-rotate-the-backup-key.md: W-STALE-SUMMARY summary was not updated when status changed from "open" to "done"; rewrite it to the current state: memex set 2026-01-10-rotate-the-backup-key summary=<sentence>
+check: 0 errors, 2 warnings

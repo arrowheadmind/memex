@@ -1,0 +1,2 @@
+tasks/2026-01-10-rotate-the-backup-key.md: W-STALE-SUMMARY summary was not updated when status changed from "open" to "done"; rewrite it to the current state: memex set 2026-01-10-rotate-the-backup-key summary=<sentence>
+check: 0 errors, 1 warnings

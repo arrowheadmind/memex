@@ -17,6 +17,9 @@ a credential). The pre-commit hook runs `check --staged` on what is about to be 
 an error never lands. `--workspace` also scans the configured `workspace` (§12): pointer files
 that are not the pointer (`E-POINTER`), repositories without one (`W-NO-POINTER`) and files in
 coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; `check` takes no lock.
+`W-STALE-SUMMARY` is the one finding that reads git history (first-parent, plus the working
+tree or, with `--staged`, the index): a task or plan whose summary was not rewritten when a
+section was added to its body or when it was closed or reopened.
 
 ## Options
 
@@ -44,20 +47,26 @@ coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; `check` tak
 
 ## Examples
 
+The task `2026-01-11-replace-rsync-on-beta` was closed by hand in the working tree, its
+summary left as it was:
+
 ```example
 $ memex check
 reference/2026-01-12-nas-shares.md: W-NO-TERMS no tags or keywords; add the words a reader would search with: memex set 2026-01-12-nas-shares keywords=<word>,<word>
-check: 0 errors, 1 warnings
+tasks/2026-01-11-replace-rsync-on-beta.md: W-STALE-SUMMARY summary was not updated when status changed from "in-progress" to "done"; rewrite it to the current state: memex set 2026-01-11-replace-rsync-on-beta summary=<sentence>
+check: 0 errors, 2 warnings
 ```
 
 ```example
 $ memex check --errors-only
-check: 0 errors, 1 warnings
+check: 0 errors, 2 warnings
 ```
 
 ## Mistakes to avoid
 
 - Fixing a warning by deleting the entry. Warnings name the command that fixes them.
+- Clearing `W-STALE-SUMMARY` with a reworded copy of the old summary: write where the entry
+  stands now.
 - Running `check` with `--strict` in the hook before the imported store is curated: thousands
   of warnings would block every commit.
 

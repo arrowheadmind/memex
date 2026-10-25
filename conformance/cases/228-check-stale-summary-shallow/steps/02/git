@@ -1,0 +1,5 @@
+clone
+-q
+--depth=1
+file://<STORE>
+<HOME>/depth1

@@ -46,7 +46,6 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
 | 17 Agent-first requirements | Implemented |
-| 7 `W-STALE-SUMMARY` and summary currency | Planned |
 | 9.2 `update` commit message | Planned |
 | 11.7 A status change that crosses visibility needs a new summary | Planned |
 | 11.17 `update` | Planned |
@@ -522,10 +521,10 @@ Warnings:
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save` |
-| `W-STALE-SUMMARY` | (Planned.) A task or plan with a `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
+| `W-STALE-SUMMARY` | A task or plan with a `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body, or by `allow_secret = true` in the frontmatter (§5.3); a journal body cannot change (`E-HASH`), so the field is how a false positive there is cleared | One finding per line: `line <line> looks like a credential (<what>); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set <id> allow_secret=true`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
-**Summary currency** (Planned). Lists and search show an entry's summary, not its body (§8.5,
+**Summary currency.** Lists and search show an entry's summary, not its body (§8.5,
 §11.5), so a task or plan whose body has moved on while its summary has not misleads every
 reader who decides from the list. The usual cause is a status section appended by hand (or a
 status set) without the summary being rewritten. memex cannot write the summary, because only
@@ -536,13 +535,20 @@ the author knows what the new section changes; it checks that the summary was to
   file as it is in each commit on `HEAD`'s first-parent history that changes it, newest first.
   Each version is compared with the next older one. The oldest version (the entry's creation,
   or the oldest commit a shallow clone holds) is compared with nothing.
+  - History is followed by path, without rename detection. A commit that adds the path, or
+    that deletes it or makes it something other than a regular file, ends it: a file deleted
+    and added again starts over at the add, and a file that `HEAD` does not hold has only its
+    working-tree (or index) version.
+  - A version whose frontmatter cannot be read (§5.1 delimiters, invalid TOML) is left out, as
+    if that commit had not changed the file.
+  - A store with no commits, or that is not a git repository, has no committed versions.
 - A version **changes the summary** when its `summary` differs from the older version's (an
   absent summary counts as a value), and always when it is the oldest.
 - A version is **significant** when, compared with the older version:
   - its body contains some ATX heading line (§5.6), outside fenced code blocks, more times than
-    the older body does: a new section; the finding names the first such line in body order,
-    as `<heading>`, without its leading `#` characters, the space after them and trailing
-    whitespace; or
+    the older body does, lines compared exactly as written: a new section; the finding names
+    the first such line in body order, as `<heading>`, without its leading spaces and `#`
+    characters, the space after them and trailing whitespace; or
   - its status is visible by default (§5.2) and the older version's is not, or the reverse: the
     entry was closed or reopened; the finding names both statuses.
   When a version is significant for both reasons, the section is named. The oldest version is
@@ -552,7 +558,12 @@ the author knows what the new section changes; it checks that the summary was to
   adds a section and changes the summary is current. Rules, decisions, runbooks and references
   are not checked: their sections are rarely status notes, and references have `verified`.
 - Reading history is the only use `check` makes of commits; the current findings of every
-  other code come from the files alone.
+  other code come from the files alone. `check`, `check --staged` (and so the pre-commit hook)
+  and `doctor`'s `check` read it; the validation of a write (§9.1 steps 3 and 5) uses errors
+  only and does not. The history is read in one pass, so that `check` stays fast on a store of
+  thousands of entries: one `git log` of `HEAD`'s first-parent history over `tasks/` and
+  `plans/`, then one read of the file versions it names. A history that cannot be read in a
+  git repository with commits is exit 2, `memex: check needs the store's git history: <reason>`.
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
 `W-LEAK`). Their `<path>` is absolute, `<dir>` is the directory that holds the file, and
@@ -1917,8 +1928,8 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | `cmd` | The argument vector, one argument per line, without the program name. `<STORE>` and `<HOME>` are replaced as in `env`. |
 | `stdin` | Standard input (optional; empty if absent) |
 | `git` | Optional. git arguments, one per line, run as `git -C <store> <args>` with the runner's environment (the case's `env` included) after the previous step and before this step's `cmd`, so that a case can stage changes for `check --staged`, commit by hand or move `origin`. An empty line separates commands, which run in order; a command that starts with `-C <path>` runs elsewhere, as git applies successive `-C` options in turn. `<STORE>` and `<HOME>` are replaced as in `env`. A git command that fails fails the case, except the last one when `expect/git-exit` exists. |
-| `expect/git-exit` | Optional. The expected exit code of the step's last git command, for a git step that must fail (a commit the pre-commit hook refuses). |
-| `expect/git-stderr-contains` | Optional. Lines that must each appear in that last git command's standard error. |
+| `expect/git-exit` | Optional. The expected exit code of the step's last git command, for a git step that must fail (a commit the pre-commit hook refuses), or `0` for one that must succeed and whose standard error the case checks (a warning the hook prints). |
+| `expect/git-stderr-contains` | Optional. Lines that must each appear in that last git command's standard error; read only when `expect/git-exit` exists. |
 | `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
 | `expect/exit` | Expected exit code |
 | `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex`. Regular files are compared by relative path, bytes and executable bit. Directories are not compared: an empty directory is ignored on both sides, because a case directory kept in git cannot hold one |

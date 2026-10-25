@@ -1,0 +1,13 @@
+config
+core.hooksPath
+.githooks
+
+add
+tasks/2026-01-10-rotate-the-backup-key.md
+
+commit
+-q
+-m
+close by hand
+--
+tasks/2026-01-10-rotate-the-backup-key.md

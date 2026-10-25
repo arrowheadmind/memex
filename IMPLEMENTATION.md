@@ -99,6 +99,11 @@ conformance/cases/    §15 cases (data, language-neutral)
   `GIT_TERMINAL_PROMPT=0`, `GIT_EDITOR=true`, `GIT_SSH_COMMAND`, `LC_ALL=C`) and runs every
   network command under `context.WithTimeout(network_timeout)`. On timeout the process group is
   killed, so an ssh child doesn't linger.
+- **History (§7, summary currency):** `store.ReadHistory` runs one `git log --first-parent
+  --diff-merges=first-parent --root --raw --no-abbrev --no-renames --relative -z HEAD -- tasks
+  plans` and one `git cat-file --batch` for every blob it names; never a git call per entry.
+  `check.RunHistory` takes the result; `check.Run` (the write path, `fmt`, `import`) passes nil
+  and computes no `W-STALE-SUMMARY`, because those callers use errors only.
 - **Lock (§9.1):** `unix.Flock(fd, LOCK_EX|LOCK_NB)`, polled every 100 ms, up to 60 s (10 s
   from `preflight`). It is POSIX only, matching §14.
 - **Atomic write (§9.1 step 4):** use `os.CreateTemp` in the same directory, then `Write`,

@@ -108,7 +108,11 @@ func Doctor(e *Env, asJSON bool) int {
 		e.doctorGit(root, add)
 	}
 	if storeOK {
-		findings, err := check.Run(store.WorkTree{Root: root}, today, nil)
+		hist, err := store.ReadHistory(gitx.New(root, 10*time.Second, noLocks), check.CurrencyDirs())
+		var findings []check.Finding
+		if err == nil {
+			findings, err = check.RunHistory(store.WorkTree{Root: root}, today, nil, hist)
+		}
 		if err != nil {
 			add("check", fail, "%v", err)
 		} else {

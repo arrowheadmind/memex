@@ -64,6 +64,13 @@ func (c *checker) add(p, code, format string, args ...any) {
 // and the entries their links resolve to are returned (SPEC §7, --staged). A manifest format
 // this memex cannot read is a *store.FormatError.
 func Run(tree store.Tree, today time.Time, staged []string) ([]Finding, error) {
+	return RunHistory(tree, today, staged, nil)
+}
+
+// RunHistory is Run with W-STALE-SUMMARY, which needs the history of the task and plan
+// files (SPEC §7, summary currency). With hist nil, that finding is not computed: the write
+// path validates only errors, and reading history would cost it time for nothing.
+func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.History) ([]Finding, error) {
 	_, mf, err := store.ReadManifest(tree)
 	if err != nil {
 		return nil, err
@@ -102,6 +109,9 @@ func Run(tree store.Tree, today time.Time, staged []string) ([]Finding, error) {
 			continue
 		}
 		c.checkEntry(p, cited)
+		if hist != nil {
+			c.checkCurrency(p, hist.Versions[p.Path])
+		}
 	}
 	c.checkCanonical()
 	if staged != nil {

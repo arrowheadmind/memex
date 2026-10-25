@@ -434,6 +434,9 @@ func closesFence(line, fence string) bool {
 
 var atxHeading = regexp.MustCompile(`^ {0,3}#{1,6}( |$)`)
 
+// IsATXHeading reports whether line is an ATX heading line (SPEC §5.6).
+func IsATXHeading(line string) bool { return atxHeading.MatchString(line) }
+
 // ContentMeasure is the number of non-whitespace code points in body lines that are not ATX
 // headings; lines inside fenced code blocks always count (SPEC §5.6).
 func ContentMeasure(body string) int {

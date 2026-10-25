@@ -506,14 +506,16 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 	}
 	// A git step runs before the command, in the store, with the runner's environment
 	// (SPEC §15, git). An empty line separates commands. Every command must succeed, except
-	// that the last one's exit code is compared with expect/git-exit when that file exists.
+	// that the last one's exit code is compared with expect/git-exit when that file exists
+	// (0 included, for a command whose standard error the case checks).
 	if gitText, err := os.ReadFile(filepath.Join(dir, "git")); err == nil {
 		cmds := gitCommands(string(gitText))
-		wantGitExit := 0
+		wantGitExit, hasGitExit := 0, false
 		if b, err := os.ReadFile(filepath.Join(expect, "git-exit")); err == nil {
 			if wantGitExit, err = strconv.Atoi(strings.TrimSpace(string(b))); err != nil {
 				return nil, fmt.Errorf("expect/git-exit: %v", err)
 			}
+			hasGitExit = true
 		} else if !errors.Is(err, fs.ErrNotExist) {
 			return nil, err
 		}
@@ -521,7 +523,7 @@ func (s *sandbox) runStep(dir string, subst map[string]string) ([]string, error)
 			for j := range gitArgs {
 				gitArgs[j] = s.paths(gitArgs[j])
 			}
-			if i < len(cmds)-1 || wantGitExit == 0 {
+			if i < len(cmds)-1 || !hasGitExit {
 				if _, err := s.git(s.store, gitArgs...); err != nil {
 					return nil, err
 				}

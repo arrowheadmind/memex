@@ -42,8 +42,9 @@ func Check(e *Env, o CheckOptions) int {
 	}
 	var tree store.Tree = store.WorkTree{Root: root}
 	var staged []string
+	g := gitx.New(root, 0)
 	if o.Staged {
-		g := gitx.New(root, 0, gitx.Staged())
+		g = gitx.New(root, 0, gitx.Staged())
 		idx, changed, err := store.ReadIndex(root, g)
 		if err != nil {
 			return e.fail(spec.ExitUsage, "check --staged needs the store's git index: %v", err)
@@ -55,7 +56,11 @@ func Check(e *Env, o CheckOptions) int {
 	}
 	var findings []check.Finding
 	if !o.Staged || len(staged) > 0 { // nothing staged, an empty index included: nothing to check
-		findings, err = check.Run(tree, today, staged)
+		hist, herr := store.ReadHistory(g, check.CurrencyDirs())
+		if herr != nil {
+			return e.fail(spec.ExitUsage, "check needs the store's git history: %v", herr)
+		}
+		findings, err = check.RunHistory(tree, today, staged, hist)
 	}
 	var fe *store.FormatError
 	if errors.As(err, &fe) {
