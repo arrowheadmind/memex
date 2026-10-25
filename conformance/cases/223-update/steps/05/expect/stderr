@@ -1,0 +1,5 @@
+memex: exists tasks/2026-01-15-check-the-restore.md
+  title: Check the restore
+  summary: Check one restore by hand.
+To read it: memex show 2026-01-15-check-the-restore. To add to it: memex update 2026-01-15-check-the-restore --summary=<sentence> --body -.
+To create a different entry: choose a more specific --title.

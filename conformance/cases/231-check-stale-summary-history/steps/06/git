@@ -1,0 +1,9 @@
+checkout
+-q
+--
+.
+
+replace
+-f
+HEAD~1
+HEAD:memex.toml

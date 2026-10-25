@@ -1,0 +1,15 @@
+commit
+-q
+-am
+side: alpha section
+
+checkout
+-q
+main
+
+merge
+-q
+--no-ff
+-m
+merge side
+side

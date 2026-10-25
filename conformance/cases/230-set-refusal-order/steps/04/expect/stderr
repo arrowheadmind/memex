@@ -1,0 +1,4 @@
+memex: unknown status "finished" for a task; valid: open, in-progress, blocked, done, dropped
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

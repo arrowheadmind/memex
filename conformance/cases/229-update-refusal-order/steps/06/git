@@ -1,0 +1,7 @@
+checkout
+--
+tasks/2026-01-10-rotate-the-backup-key.md
+
+rm
+-q
+tasks/2026-01-10-rotate-the-backup-key.md

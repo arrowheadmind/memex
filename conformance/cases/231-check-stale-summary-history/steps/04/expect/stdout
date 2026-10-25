@@ -1,0 +1,2 @@
+tasks/2026-01-14-theta-link.md: E-FRONTMATTER missing opening +++ line; the file must begin with the line +++
+check: 1 errors, 0 warnings

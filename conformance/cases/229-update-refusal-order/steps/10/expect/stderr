@@ -1,0 +1,2 @@
+memex: skipped plans/2026-01-10-backup-overhaul.md: missing opening +++ line; the file must begin with the line +++; run memex check
+memex: plans/2026-01-10-backup-overhaul.md has fields that set cannot keep (missing opening +++ line; the file must begin with the line +++); edit the file, then memex save

@@ -1,0 +1,30 @@
+commit
+-q
+-m
+by hand: a section on beta
+--
+tasks/2026-01-10-readd-beta.md
+
+rm
+-q
+tasks/2026-01-10-readd-beta.md
+
+commit
+-q
+-m
+delete beta
+
+checkout
+HEAD~1
+--
+tasks/2026-01-10-readd-beta.md
+
+commit
+-q
+-m
+add beta again
+
+commit
+-q
+-am
+by hand: gamma breaks, delta, epsilon, zeta, eta

@@ -1,0 +1,3 @@
+memex: missing --summary
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S]
+Run: memex help update

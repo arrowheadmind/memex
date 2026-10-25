@@ -1,0 +1,5 @@
+set
+2026-01-10-rotate-the-backup-key
+status=done
+summary=Done.
+summary=Rotate the restic key on alpha and beta; not started.

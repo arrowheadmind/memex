@@ -1,0 +1,12 @@
+PASS git version 2.30 or later
+PASS config config file parses
+PASS store <STORE>, name "fixture"
+PASS format format 1
+PASS upstream main tracks origin/main
+PASS fetch-age last fetch <TIME>
+WARN clean 1 uncommitted change; run memex save
+WARN hooks core.hooksPath is not set, so the pre-commit check does not run; run memex init <STORE>
+FAIL check check needs the store's git history: error: Object <SHA> not a commit
+PASS path 1 memex on PATH
+PASS leaks no files in coding tools' own memory
+PASS tool-memory ~/.claude does not exist
