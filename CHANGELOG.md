@@ -4,6 +4,8 @@ Notable changes to memex, newest first. The version is the git tag (IMPLEMENTATI
 "Packaging"); a build that is not a release reports `0.0.0-dev`. A change to the shape of
 text output is an interface change and is listed under "Changed output" (SPEC.md §17.3).
 
+## Unreleased
+
 ## 0.2.0 (2026-10-25)
 
 ### Added
