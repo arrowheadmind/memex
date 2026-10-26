@@ -512,12 +512,14 @@ Open items for later blocks:
     a link that resolves through an alias, exit 1, nothing written, one line per such link in
     body order: `memex: [[<target>]] on line <line> of the body resolves through an alias; a
     journal body cannot change once it is committed, so link [[<target id>]] instead`. It sits
-    in §11.2 refusal order step 4, right after the content measure and before `--parent` and
-    `--source`, so before the id step. A short body is already refused there by the content
+    with validation, §11.2 refusal order step 6, after the id step (coordinator decision after
+    the second draft): a repeat whose existing entry matches stays the `exists` no-op, as B11
+    decided for `promote` (a result that only validation would refuse is the no-op), while a
+    fresh entry is still refused before anything is written. A short body is already refused there by the content
     measure, so these commands can create neither finding in a journal. The pre-commit hook's
     output is discarded by a successful commit (`gitx.RunInput`), so a warning after the
-    commit would come too late. Consequence: a repeat `capture` of a journal written before
-    B12 with an alias link is refused instead of the `exists` no-op. `import` is not affected.
+    commit would come too late. A repeat `capture` of a journal written before B12 with an
+    alias link is therefore still the no-op. `import` is not affected.
   Help changes, exact, made when B12 is implemented (none before, §0):
   - `help/cmd-check.md`: the Usage line and `internal/spec`'s usage become
     `memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--immutable] [--json]`.
@@ -629,13 +631,17 @@ Open items for later blocks:
     `W-ALIAS-LINK` (other types are not refused). 05 `capture --from <HOME>/note.md`, a file
     with the alias link: refused, exit 1 (fails). 06 a short body with an alias link: the
     content-measure refusal (content measure first; passes on 92e148c). 07 an alias link and
-    an unknown `--source`: the alias refusal, not `no entry` (fails). 08 a link to a missing id:
+    an unknown `--source`: `no entry`, not the alias refusal (values before validation; passes
+    on 92e148c). 08 a link to a missing id:
     not this refusal, the `E-LINK` validation refusal (passes on 92e148c). 09 a seeded journal
-    whose body has an alias link, captured again with the same title and body: the alias
-    refusal, not the `exists` no-op (fails; pins the step order).
+    (as written before B12) whose body has an alias link, captured again with the same title
+    and body: `exists <path>` and `nothing to commit`, exit 0, not the alias refusal (passes
+    on 92e148c; pins the step order against an implementation that checks earlier). 10 the
+    same title with a different body that has an alias link: the `exists` refusal (the id step
+    before validation; passes on 92e148c). 11 an alias link together with a 501-character
+    `--summary`: the alias line, then exit 1 with no `E-FIELD-VALUE` line (the alias check runs
+    before the error findings; fails).
   Open for the operator: (1) confirm the creation refusal (recommendation: refuse, as
-  drafted); (2) a repeat `capture` of a pre-B12 journal with an alias link is refused instead
-  of the `exists` no-op (recommendation: accept, it is rare and the message names the fix);
-  (3) a journal that is not locked keeps the ordinary `W-SHORT-BODY` message, `edit the file`,
+  drafted); (2) a journal that is not locked keeps the ordinary `W-SHORT-BODY` message, `edit the file`,
   which on an uncommitted journal also means rewriting `body_sha256`, and memex has no command
   for that (recommendation: leave it, `E-HASH` then names the fix; revisit if it bites).

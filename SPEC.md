@@ -52,7 +52,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 Findings on immutable journal bodies | Planned |
 | 11.12 `check --immutable` | Planned |
 | 11.13 `doctor` counts findings on immutable journal bodies | Planned |
-| 11.2 A journal body with an alias link is refused | Planned |
+| 11.2 A new journal body with an alias link is refused at validation | Planned |
 
 ---
 
@@ -1160,8 +1160,8 @@ Behavior:
    `parent` that is not a plan, an unresolved link) exits 1 with the findings, printed as
    §9.1 step 5 describes (for example `memex: <path>: E-FIELD-VALUE summary must be one line
    of at most 500 characters`, then the refusal line).
-2. Normalize the body (§5.1) and check its content measure (§5.6). (Planned.) For a journal
-   entry, refuse a link that resolves through an alias (refusal order step 4).
+2. Normalize the body (§5.1) and check its content measure (§5.6). (Planned.) A journal
+   entry's alias links are refused with validation, after step 3 (refusal order step 6).
 3. Compute the id (§5.4).
    - If the id already exists with the same type and an identical body: print
      `exists <path>` and `nothing to commit`, and exit 0. Only the body is compared; a repeat
@@ -1220,24 +1220,28 @@ one result:
    (standard input for `-`) or from the `--from` file; one that cannot be read is a usage
    error (exit 2), `cannot read --body <FILE>: <reason>` or `cannot read --from <PATH>:
    <reason>`, printed with the usage and `Run:` lines of §16.8; it is normalized and its content measure checked (§5.6, exit 1, behavior step 2).
-   (Planned, the operator to confirm.) For a journal entry (`new journal`, `capture`,
-   `capture --from`), the body is then checked for links that would resolve through an alias
-   (§6 resolution step 2, against the store's entries as read after step 2; links in fenced
-   code blocks and inline code spans are ignored, as in §6). Each such link, in body order,
-   prints one line on standard error,
-   `memex: [[<target>]] on line <line> of the body resolves through an alias; a journal body cannot change once it is committed, so link [[<target id>]] instead`,
-   where `<line>` counts the normalized body's lines from 1, and the command exits 1 with
-   nothing written. This is the one point where the link can still be corrected cheaply; a
-   short body is already refused here by the content measure, so neither `W-SHORT-BODY` nor
-   `W-ALIAS-LINK` can be created in a journal by these commands. A link that resolves to no
-   entry is not checked here: validation (step 6) reports it as `E-LINK`. Other types are not
-   checked (their bodies can be edited), nor is `import` (§13), whose journals keep what the
-   source held.
    Then `--parent` and each `--source`, in that order and in argument order, resolve as id
    arguments (§10), exit 1 with the `no entry` diagnostic and its candidates.
 5. **The id** (behavior step 3): the `exists` no-op (exit 0) or the `exists` refusal (exit 1).
 6. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed as §9.1
    step 5 describes.
+   (Planned, the operator to confirm.) For a journal entry (`new journal`, `capture`,
+   `capture --from`), validation also refuses a body with a link that resolves through an
+   alias (§6 resolution step 2, against the store's entries as read after step 2; links in
+   fenced code blocks and inline code spans are ignored, as in §6). It runs before the error
+   findings are computed, and each such link, in body order, prints one line on standard
+   error,
+   `memex: [[<target>]] on line <line> of the body resolves through an alias; a journal body cannot change once it is committed, so link [[<target id>]] instead`,
+   where `<line>` counts the normalized body's lines from 1; then the command exits 1 with
+   nothing written. Because it comes after step 5, a repeat whose id exists with the same type
+   and body is still the `exists` no-op (as in §11.8, a result that only validation would
+   refuse is the no-op), also for a journal written before this rule; a fresh entry is refused
+   before anything is written, the one point where the link can still be corrected cheaply. A
+   short body is already refused at step 4 by the content measure, so these commands can
+   create neither `W-SHORT-BODY` nor `W-ALIAS-LINK` in a new journal. A link that resolves to
+   no entry is not this refusal: it is the `E-LINK` finding. Other types are not checked
+   (their bodies can be edited), nor is `import` (§13), whose journals keep what the source
+   held.
 
 The store's entries are read right after step 2, so the `memex: skipped <path>: …` lines of
 §8.1 precede any diagnostic from step 3 on, as they do for `set` and `update`.
