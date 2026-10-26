@@ -27,7 +27,7 @@ every gate.
 | B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
 | B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | done | 8a0af7d |
 | B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | done | 9498155 |
-| B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–245 (each checked to fail on the binary at 92e148c, except 244, which guards the import counts), the eight `check --json` expectations that gain `"immutable":0` updated and nothing else in the suite changed; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | todo | |
+| B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), the eight `check --json` expectations that gain `"immutable":0` updated and nothing else in the suite changed; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | todo | |
 
 Rules of the ledger:
 
@@ -483,11 +483,14 @@ Open items for later blocks:
   under a heading (the output grows with every journal and breaks one line per finding); a
   new code prefix such as `N-` (every reader of codes would need a third kind for two codes).
   Decisions written into SPEC.md (§5.6, §6, §7, §11.2, §11.12, §11.13, all Planned):
-  - The lock boundary (operator decision after the judge's review): a body is locked when the
-    entry is a journal, `HEAD` holds a regular file at its path whose body equals the body of
-    the index's file and of the working tree's file (frontmatter may differ), and its
-    `body_sha256` is valid and matches. A journal not yet committed, one whose body differs
-    from `HEAD`'s and one with a broken or missing hash keep both codes as ordinary warnings
+  - The lock boundary (operator decision after the first review, made view-local after the
+    second): a body is locked when the entry is a journal, `HEAD` holds a regular file at its
+    path, the body in the view `check` reads (the index under `--staged`, the working tree
+    otherwise) equals `HEAD`'s body (frontmatter may differ; the other view is not consulted,
+    so the pre-commit hook never depends on an unstaged edit and `--staged` stays index-only),
+    and its `body_sha256` is present, well-formed and matches. A journal not yet committed, one
+    whose body differs from `HEAD`'s and one with a missing, malformed or mismatched hash keep
+    both codes as ordinary warnings
     with their ordinary messages: they can still be corrected, before the first commit or by
     restoring the body. Status does not matter (`superseded` included). Reading `HEAD`'s
     journal files joins summary currency as a use of commits; a `HEAD` that cannot be read is
@@ -509,9 +512,13 @@ Open items for later blocks:
     their code (cases 090 and 095 unchanged).
   - Creation (operator decision after the judge's review, to confirm at the go;
     recommendation: refuse): `new journal`, `capture` and `capture --from` refuse a body with
-    a link that resolves through an alias, exit 1, nothing written, one line per such link in
-    body order: `memex: [[<target>]] on line <line> of the body resolves through an alias; a
-    journal body cannot change once it is committed, so link [[<target id>]] instead`. It sits
+    a link that resolves through an alias, resolved against the store as it would be after the
+    write (so the new entry's own `--alias` counts), exit 1, nothing written, empty standard
+    output. It is a validation failure like any other: standard error gets one line per such
+    link in body order, `memex: [[<target>]] on line <line> of the body resolves through an
+    alias; a journal body cannot change once it is committed, so link [[<target id>]]
+    instead`, then the validation's error findings as §9.1 step 5 prints them, then §9.1's
+    `memex: refused: the result would not validate; nothing was changed`. It sits
     with validation, §11.2 refusal order step 6, after the id step (coordinator decision after
     the second draft): a repeat whose existing entry matches stays the `exists` no-op, as B11
     decided for `promote` (a result that only validation would refuse is the no-op), while a
@@ -550,7 +557,8 @@ Open items for later blocks:
     in a journal body (`[[notes/x.md]]`): it is refused, because the body cannot change once
     committed; link the id the message gives."
   - `help/cmd-doctor.md`: unchanged (its example's store has no journal finding).
-  Cases to add (the next free numbers; "fails" means it MUST be shown to fail on the binary at
+  Cases to add (the next free numbers; 246 is listed after 240, which it completes; "fails"
+  means it MUST be shown to fail on the binary at
   92e148c, the current main; seeds are committed by the runner, so a seeded journal with a
   valid hash is locked):
   - 238-check-immutable. Seed: a rule `target` with the alias `notes/target.md`; a rule with a
@@ -591,9 +599,24 @@ Open items for later blocks:
     extra keyword in the working tree: `check`, L = 2 again (frontmatter does not unlock;
     fails). 04 an overlay changes S's body and writes the matching `body_sha256`: S's
     `W-SHORT-BODY` is an ordinary warning, no `E-HASH` (a body that differs from `HEAD`'s is
-    not locked; fails through A's count). 05 the same change staged by a git step, the working
-    tree restored to `HEAD`: `check --staged` shows S's ordinary warning (index differs from
-    `HEAD`).
+    not locked; fails through A's count). 05 crossed state one: a git step stages that change
+    of S, an overlay restores S's working-tree file to `HEAD`'s bytes: plain `check` counts S
+    as immutable (working tree equals `HEAD`; fails), and `check --staged` shows S's ordinary
+    `W-SHORT-BODY` (index differs; passes on 92e148c). 06 crossed state two: a git step resets
+    the index to `HEAD` (`reset -q -- <S path>`) and stages a rule R2 whose body links
+    `[[<S id>]]`, the working tree keeping S's changed body: `check --staged` selects S through
+    R2 and counts it as immutable (index equals `HEAD`; fails), while plain `check` shows S's
+    ordinary warning. 07 the bodies restored, S's `body_sha256` removed: S has
+    `E-FIELD-MISSING` and an ordinary `W-SHORT-BODY` (missing hash: not locked; passes on
+    92e148c). 08 S's `body_sha256` set to `"ABC"`: `E-FIELD-VALUE` and an ordinary
+    `W-SHORT-BODY`, A still counted (malformed hash; fails through A's count).
+  - 246-check-immutable-no-commits. Seed: a locked short-body journal and a locked alias-link
+    journal. 01 a git step `update-ref -d HEAD` (an unborn branch, §7 "no commits"): `check`
+    lists both as ordinary warnings, `check: 0 errors, 2 warnings`, no immutable part (passes
+    on 92e148c; pins "no commits, nothing locked"). 02 `check --store <HOME>/plain`, a copy of
+    the same store under `home/` that is no git repository: the same output (nothing locked).
+    Both pass on 92e148c; the case guards an implementation that classifies by type alone,
+    and is the one besides 244 that may pass the old binary.
   - 241-check-immutable-staged. Seed: a rule with the alias `notes/target.md`; a locked
     journal J1 whose body links `[[notes/target.md]]`. 01 `check`: L = 1 (fails). 02 an
     overlay adds a journal J2 with a valid hash and a short body and a rule R whose body links
@@ -615,32 +638,41 @@ Open items for later blocks:
   - 243-check-immutable-none. Seed: one rule with a short body, no journal. 01 `check
     --immutable`: the rule's line and `check: 0 errors, 1 warnings` exactly, no `, 0 on` part
     (fails: unknown option). 02 `check --json --immutable`: `"immutable":0` (fails).
-  - 244-import-journal-warnings. 01 `import brain-v3 SRC --out <STORE>` whose source has a
-    short investigation and one whose link stays an alias: the report's `warnings` count both
-    journals under `W-SHORT-BODY` and `W-ALIAS-LINK`. 02 a delta import `--into` a seeded store
-    that holds a locked short journal: the report counts it under `W-SHORT-BODY`. Passes on
-    92e148c; it guards the import counts against an implementation that drops immutable
-    findings.
+  - 244-import-journal-warnings. `import brain-v3 SRC --out <STORE>` whose source has a short
+    investigation and one whose link stays an alias: the report's `warnings` and the output's
+    `warnings:` line count both journals under `W-SHORT-BODY` and `W-ALIAS-LINK` (a store
+    `--out` writes has no commits, so they are ordinary warnings). Passes on 92e148c; it
+    guards the import counts against an implementation that drops journal findings. Delta
+    import accounting (§13.7) is unchanged by B12 and not pinned here: its report is the fresh
+    import's, so a locked journal already in the store does not enter it.
   - 245-journal-alias-link-refused (decision 2). Seed: a rule with the alias
     `notes/target.md`. 01 `capture` with a full body that links `[[notes/target.md]]` on its
-    third line: exit 1, `expect/stderr` exactly the §11.2 line naming line 3 and the rule's id,
-    store and commits unchanged (fails: 92e148c creates it). 02 `new journal` with two such
-    links, on lines 2 and 5: two lines in body order (fails). 03 the same links inside a
+    third line: exit 1, empty `expect/stdout`, `expect/stderr` exactly the §11.2 line naming
+    line 3 and the rule's id followed by `memex: refused: the result would not validate;
+    nothing was changed`, `expect/store` and `expect/commits` unchanged (fails: 92e148c
+    creates it). 02 `new journal` with two such links, on lines 2 and 5: the two lines in body
+    order, then the refused line; empty stdout, exit 1, store and commits unchanged (fails). 03 the same links inside a
     fenced block and an inline code span: created (passes on 92e148c; pins the §6 exclusions).
     04 `new rule` with the alias link: created, and `check` then shows its ordinary
     `W-ALIAS-LINK` (other types are not refused). 05 `capture --from <HOME>/note.md`, a file
-    with the alias link: refused, exit 1 (fails). 06 a short body with an alias link: the
+    with the alias link: empty stdout, the alias line and the refused line exactly, exit 1,
+    store and commits unchanged, the file left in `home/` (fails). 06 a short body with an alias link: the
     content-measure refusal (content measure first; passes on 92e148c). 07 an alias link and
     an unknown `--source`: `no entry`, not the alias refusal (values before validation; passes
     on 92e148c). 08 a link to a missing id:
-    not this refusal, the `E-LINK` validation refusal (passes on 92e148c). 09 a seeded journal
+    not this refusal, the `E-LINK` validation refusal (passes on 92e148c). 12 a body with an alias link on line 2 and a link to a missing id on line 4: the
+    alias line, then `memex: journal/<id>.md: E-LINK [[<missing>]] on line <n> is not the id of
+    an entry` (`<n>` the file line, as §7 counts), then the refused line, exactly in that
+    order (fails). 09 a seeded journal
     (as written before B12) whose body has an alias link, captured again with the same title
     and body: `exists <path>` and `nothing to commit`, exit 0, not the alias refusal (passes
     on 92e148c; pins the step order against an implementation that checks earlier). 10 the
     same title with a different body that has an alias link: the `exists` refusal (the id step
     before validation; passes on 92e148c). 11 an alias link together with a 501-character
-    `--summary`: the alias line, then exit 1 with no `E-FIELD-VALUE` line (the alias check runs
-    before the error findings; fails).
+    `--summary`: the alias line, the `E-FIELD-VALUE` finding line, the refused line, exit 1
+    (fails). 13 `new journal --alias notes/self.md` whose body links `[[notes/self.md]]`: the
+    alias line naming the new entry's id as `<target id>`, the refused line, exit 1, nothing
+    written (the prospective store; fails).
   Open for the operator: (1) confirm the creation refusal (recommendation: refuse, as
   drafted); (2) a journal that is not locked keeps the ordinary `W-SHORT-BODY` message, `edit the file`,
   which on an uncommitted journal also means rewriting `body_sha256`, and memex has no command

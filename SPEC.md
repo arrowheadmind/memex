@@ -482,18 +482,24 @@ correction.) Once the body is locked no one can act on them, and a warning count
 them hides the next warning that can be acted on. They are therefore **immutable findings**,
 not warnings, on an entry whose body is **locked**, which is when all of these hold:
 - its type is journal (whatever its status, `superseded` included);
-- `HEAD` holds a regular file at its path, and the bodies (§5.1) of that file, of the index's
-  file and of the working tree's file are the same bytes. Frontmatter may differ, so an
+- `HEAD` holds a regular file at its path, and the body (§5.1) of the file `check` reads,
+  the index's file with `--staged` and the working tree's file otherwise, is the same bytes as
+  the body of `HEAD`'s file. The other view is not consulted. Frontmatter may differ, so an
   unsaved `memex set` on the entry does not unlock it;
-- its `body_sha256` is valid (§5.3) and equals the SHA-256 of that body: the entry has no
-  `E-HASH`, and no `E-FIELD-MISSING` or `E-FIELD-VALUE` for `body_sha256`.
+- its `body_sha256` is present, well-formed (§5.3: 64 lowercase hex digits) and equals the
+  SHA-256 of that body: the entry has no `E-HASH`, and no `E-FIELD-MISSING` or
+  `E-FIELD-VALUE` for `body_sha256`.
 
 A journal that is not locked keeps both codes as ordinary warnings, with their ordinary
 messages, because its body can still be corrected: a journal not yet in `HEAD` (only in the
-working tree or the index) before its first commit, and one whose body differs from `HEAD`'s,
-or whose hash does not match, by restoring the committed body. A store with no commits, or
-that is not a git repository, has no locked body. `--staged` applies the same rule: the
-index's file is the one checked, and all three files are still compared. Reading `HEAD`'s
+view checked) before its first commit, and one whose body differs from `HEAD`'s, or whose hash
+is missing, malformed or does not match, by restoring the committed body. A store with no
+commits, or that is not a git repository, has no locked body. So `check --staged` reads the
+index alone, as the paragraph on `--staged` below says, and an unstaged edit cannot change
+what the pre-commit hook sees: a journal whose index body equals `HEAD`'s is locked under
+`--staged` even when its working-tree body differs, and one whose index body differs is not
+locked under `--staged` even when its working-tree body equals `HEAD`'s (and the reverse for
+a plain `check`). Reading `HEAD`'s
 journal files is, with summary currency, the only use `check` makes of commits; a `HEAD` that
 cannot be read is the history failure of summary currency (exit 2, `doctor` FAIL).
 
@@ -1227,19 +1233,21 @@ one result:
    step 5 describes.
    (Planned, the operator to confirm.) For a journal entry (`new journal`, `capture`,
    `capture --from`), validation also refuses a body with a link that resolves through an
-   alias (§6 resolution step 2, against the store's entries as read after step 2; links in
-   fenced code blocks and inline code spans are ignored, as in §6). It runs before the error
-   findings are computed, and each such link, in body order, prints one line on standard
-   error,
+   alias (§6 resolution step 2). Links are resolved against the store as it would be after
+   the write: the store's entries as read after step 2 plus the new entry, its own `--alias`
+   values included, so a body that links the new entry's own alias is refused too; links in
+   fenced code blocks and inline code spans are ignored, as in §6. It is a validation failure
+   like any other (§9.1 step 5): standard error gets one line per such link, in body order,
    `memex: [[<target>]] on line <line> of the body resolves through an alias; a journal body cannot change once it is committed, so link [[<target id>]] instead`,
-   where `<line>` counts the normalized body's lines from 1; then the command exits 1 with
-   nothing written. Because it comes after step 5, a repeat whose id exists with the same type
+   where `<line>` counts the normalized body's lines from 1; then every error finding of the
+   validation, as §9.1 step 5 prints them (an unresolved `[[…]]` is its `E-LINK` line); then
+   the line `memex: refused: the result would not validate; nothing was changed`. Standard
+   output is empty, the exit code is 1 and nothing is written or committed. Because it comes after step 5, a repeat whose id exists with the same type
    and body is still the `exists` no-op (as in §11.8, a result that only validation would
    refuse is the no-op), also for a journal written before this rule; a fresh entry is refused
    before anything is written, the one point where the link can still be corrected cheaply. A
    short body is already refused at step 4 by the content measure, so these commands can
-   create neither `W-SHORT-BODY` nor `W-ALIAS-LINK` in a new journal. A link that resolves to
-   no entry is not this refusal: it is the `E-LINK` finding. Other types are not checked
+   create neither `W-SHORT-BODY` nor `W-ALIAS-LINK` in a new journal. Other types are not checked
    (their bodies can be edited), nor is `import` (§13), whose journals keep what the source
    held.
 
