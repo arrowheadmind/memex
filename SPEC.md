@@ -52,6 +52,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 Findings on immutable journal bodies | Planned |
 | 11.12 `check --immutable` | Planned |
 | 11.13 `doctor` counts findings on immutable journal bodies | Planned |
+| 11.2 A journal body with an alias link is refused | Planned |
 
 ---
 
@@ -402,7 +403,8 @@ This is the only use memex makes of the current directory.
   with the rule and a pointer to `memex help entries`. The predecessor accumulated captures
   that were only empty headings. An existing entry below 80 is a warning (`W-SHORT-BODY`),
   because imported units are often short and are still knowledge. (Planned.) In a journal
-  entry it is an immutable finding, counted apart from warnings (§7).
+  entry whose body is locked (committed and intact, §7) it is an immutable finding, counted
+  apart from warnings; at creation a short body is already refused, as above.
 - **Journal bodies are immutable.** `body_sha256` is set when the entry is created.
   To correct one, create a new entry and set the old one's status to `superseded`.
 - `memex help entries` prints a suggested body outline per type (Appendix B). It is never
@@ -428,7 +430,8 @@ run with no such closing run is literal text.
 **Resolution of TARGET, in order:**
 1. The id of an entry: resolved.
 2. Exactly one entry has TARGET in `aliases`: resolved, with a warning `W-ALIAS-LINK` that
-   suggests the id. (Planned.) In a journal entry's body it is an immutable finding (§7).
+   suggests the id. (Planned.) In a journal entry whose body is locked it is an immutable finding (§7); `new journal`
+   and `capture` refuse a body with such a link (§11.2).
 3. TARGET matches the id pattern but no entry has it: an error (`E-LINK`).
 
 A TARGET that is not an id but is an alias of more than one entry is unresolved: `E-LINK`.
@@ -460,7 +463,8 @@ point):
 The last line is `check: N errors, M warnings`. Exit 0 if there are no errors. With
 `--strict`, warnings count as errors.
 
-**Bounding the output.** `--errors-only` prints only errors. `--limit N` (default 200) prints
+**Bounding the output.** `--errors-only` prints only errors (Planned: it suppresses ordinary
+warning lines, and with `--immutable` the immutable findings are still printed). `--limit N` (default 200) prints
 the first N finding lines and then one line per remaining code, in code-point order of the
 code, `<CODE>: K more (raise --limit)`, so that a large imported store does not flood the
 caller. The summary line is always last. `--limit 0` means no limit.
@@ -469,30 +473,59 @@ The summary counts every finding whatever the options: `--errors-only` only hide
 lines, and `--strict` changes only the exit code. Messages compare as text, so within one
 path and code a finding on line 12 sorts before one on line 7.
 
-(Planned.) **Immutable findings.** A journal body is immutable (§5.6): changing it is
-`E-HASH`, so a finding that only an edit of the body could clear can never be acted on, and a
-warning count that keeps it hides the next warning that can. Two codes are such in an entry
-of type journal, whatever its status and whether or not its `body_sha256` matches:
-`W-SHORT-BODY` and `W-ALIAS-LINK`. There they are **immutable findings**, not warnings. Every
-other finding on a journal entry stays a warning or an error as the tables say, because a
-frontmatter change or a change to another entry clears it: `W-NO-TERMS`, `W-NO-SUMMARY` and
-`W-RAW-OLD` (`memex set`), `W-SECRET` (`allow_secret`), `W-CANONICAL` (`memex fmt`, which
-never touches a journal body), `W-PROMOTED-UNCITED` (`sources` in the derived entry). An error
-is never an immutable finding. An immutable finding keeps its code and has its own message
-(the warnings table). It:
-- is never counted as a warning, never makes `--strict` fail and never changes an exit code;
+(Planned.) **Immutable findings.** A committed journal body is immutable (§5.6): changing it
+is `E-HASH`, and the documented correction is a new entry that supersedes it. Two warnings are
+corrected, keeping what the entry says and what its links resolve to, only by an edit of the
+body: `W-SHORT-BODY` and `W-ALIAS-LINK`. (Removing the alias from the link's target also
+clears `W-ALIAS-LINK`, but it turns the link into plain text or an `E-LINK`, so it is not a
+correction.) Once the body is locked no one can act on them, and a warning count that keeps
+them hides the next warning that can be acted on. They are therefore **immutable findings**,
+not warnings, on an entry whose body is **locked**, which is when all of these hold:
+- its type is journal (whatever its status, `superseded` included);
+- `HEAD` holds a regular file at its path, and the bodies (§5.1) of that file, of the index's
+  file and of the working tree's file are the same bytes. Frontmatter may differ, so an
+  unsaved `memex set` on the entry does not unlock it;
+- its `body_sha256` is valid (§5.3) and equals the SHA-256 of that body: the entry has no
+  `E-HASH`, and no `E-FIELD-MISSING` or `E-FIELD-VALUE` for `body_sha256`.
+
+A journal that is not locked keeps both codes as ordinary warnings, with their ordinary
+messages, because its body can still be corrected: a journal not yet in `HEAD` (only in the
+working tree or the index) before its first commit, and one whose body differs from `HEAD`'s,
+or whose hash does not match, by restoring the committed body. A store with no commits, or
+that is not a git repository, has no locked body. `--staged` applies the same rule: the
+index's file is the one checked, and all three files are still compared. Reading `HEAD`'s
+journal files is, with summary currency, the only use `check` makes of commits; a `HEAD` that
+cannot be read is the history failure of summary currency (exit 2, `doctor` FAIL).
+
+Every other finding on a journal entry stays a warning or an error as the tables say, because
+a change outside the body clears it: `W-NO-TERMS`, `W-NO-SUMMARY` and `W-RAW-OLD`
+(`memex set`), `W-CANONICAL` (`memex fmt`, which never touches a journal body),
+`W-PROMOTED-UNCITED` (`sources` in the derived entry), and `W-SECRET`, whose false positive
+`allow_secret` clears (a real credential in a journal body is a matter for the store's
+history, not for `check`). An error is never an immutable finding: an `E-LINK` or an
+`E-FILE-LINK` in a locked body stays an error, even where only a body edit would clear it,
+because it means a link that does not resolve. An immutable finding keeps its code and has its
+own message (the warnings table). It:
+- is never counted as a warning. The exit code is 1 when `N` > 0, or with `--strict` when `M`
+  > 0; otherwise 0 (the exit-2 cases are unchanged). `L` never enters it, and `--immutable`
+  changes only what is listed, never the exit code. Because the two codes on locked journals
+  leave `M`, a store whose only warnings are those exits 0 under `--strict`, where before it
+  exited 1: a changed outcome, listed as such in the changelog;
 - is counted as `L` whatever the options, and is listed only with `--immutable` (§11.12):
-  then its line takes its place in the one sort order, `--errors-only` does not hide it, and
-  `--limit` counts it like any other line (in `truncated` and in a `<CODE>: K more` line when
-  it is cut). Without `--immutable` it is in no finding line, no `more` line and not in
-  `truncated`: the summary line counts it;
+  then its line takes its place in the one sort order and `--limit` counts it like any other
+  line (in `truncated` and in a `<CODE>: K more` line when it is cut). `--errors-only`
+  suppresses ordinary warning lines only, so with `--immutable` it prints the errors and the
+  immutable findings. Without `--immutable` an immutable finding is in no finding line, no
+  `more` line and not in `truncated`: the summary line counts it;
 - is never left out silently. With `L` > 0 the last line is
   `check: N errors, M warnings, L on immutable journal bodies`, followed, when `--immutable`
   is not given, by ` (memex check --immutable lists them)`. With `L` = 0 it is
   `check: N errors, M warnings`, with or without `--immutable`.
 
-`--staged` selects immutable findings as it selects every other finding. The import report
-(§13.6) counts them under their code with the warnings, as it did before they were set apart.
+`--staged` selects immutable findings as it selects every other finding: those of the staged
+entries and of the entries their links resolve to. The import report (§13.6) counts them under
+their code with the warnings, as it did before they were set apart (a store that `--out`
+writes has no commits, so its journals are not locked and these are ordinary warnings there).
 
 **`--staged`** reads the store as the git index holds it: the entries, their contents, the
 layout and the existence of `files/` paths all come from the index, not the working tree.
@@ -544,13 +577,13 @@ Warnings:
 | Code | Condition | Message |
 |---|---|---|
 | `W-CANONICAL` | Entry valid but not in canonical form (`memex fmt` fixes it) | `not in canonical form; run memex fmt <path>` |
-| `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead`. (Planned.) In a journal entry, an immutable finding: `[[<target>]] on line <line> resolves through an alias to [[<target id>]]; a journal body is immutable, so this is not counted as a warning` |
+| `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead`. (Planned.) In a locked journal body, an immutable finding (above): `[[<target>]] on line <line> resolves through an alias to [[<target id>]]; a journal body is immutable, so this is not counted as a warning` |
 | `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` | `verified <date> is more than review_days (<n>) ago; check the facts, then: memex set <id> verified=<today>` |
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
-| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save`. (Planned.) In a journal entry, an immutable finding: `body content measure <n> is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set <id> status=superseded superseded_by=<new>` |
+| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save`. (Planned.) In a locked journal body, an immutable finding (above): `body content measure <n> is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `W-STALE-SUMMARY` | A task or plan with a valid `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body, or by `allow_secret = true` in the frontmatter (§5.3); a journal body cannot change (`E-HASH`), so the field is how a false positive there is cleared | One finding per line: `line <line> looks like a credential (<what>); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set <id> allow_secret=true`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
@@ -598,7 +631,8 @@ the author knows what the new section changes; it checks that the summary was to
   significant version is newer than its newest summary-changing version. A version that both
   adds a section and changes the summary is current. Rules, decisions, runbooks and references
   are not checked: their sections are rarely status notes, and references have `verified`.
-- Reading history is the only use `check` makes of commits; the current findings of every
+- Reading history is the only use `check` makes of commits (Planned: with the `HEAD` journal
+  files that decide a locked body, immutable findings above); the current findings of every
   other code come from the files alone. `check`, `check --staged` (and so the pre-commit hook)
   and `doctor`'s `check` read it; the validation of a write (§9.1 steps 3 and 5) uses errors
   only and does not. The history is read in one pass, so that `check` stays fast on a store of
@@ -1126,7 +1160,8 @@ Behavior:
    `parent` that is not a plan, an unresolved link) exits 1 with the findings, printed as
    §9.1 step 5 describes (for example `memex: <path>: E-FIELD-VALUE summary must be one line
    of at most 500 characters`, then the refusal line).
-2. Normalize the body (§5.1) and check its content measure (§5.6).
+2. Normalize the body (§5.1) and check its content measure (§5.6). (Planned.) For a journal
+   entry, refuse a link that resolves through an alias (refusal order step 4).
 3. Compute the id (§5.4).
    - If the id already exists with the same type and an identical body: print
      `exists <path>` and `nothing to commit`, and exit 0. Only the body is compared; a repeat
@@ -1185,6 +1220,19 @@ one result:
    (standard input for `-`) or from the `--from` file; one that cannot be read is a usage
    error (exit 2), `cannot read --body <FILE>: <reason>` or `cannot read --from <PATH>:
    <reason>`, printed with the usage and `Run:` lines of §16.8; it is normalized and its content measure checked (§5.6, exit 1, behavior step 2).
+   (Planned, the operator to confirm.) For a journal entry (`new journal`, `capture`,
+   `capture --from`), the body is then checked for links that would resolve through an alias
+   (§6 resolution step 2, against the store's entries as read after step 2; links in fenced
+   code blocks and inline code spans are ignored, as in §6). Each such link, in body order,
+   prints one line on standard error,
+   `memex: [[<target>]] on line <line> of the body resolves through an alias; a journal body cannot change once it is committed, so link [[<target id>]] instead`,
+   where `<line>` counts the normalized body's lines from 1, and the command exits 1 with
+   nothing written. This is the one point where the link can still be corrected cheaply; a
+   short body is already refused here by the content measure, so neither `W-SHORT-BODY` nor
+   `W-ALIAS-LINK` can be created in a journal by these commands. A link that resolves to no
+   entry is not checked here: validation (step 6) reports it as `E-LINK`. Other types are not
+   checked (their bodies can be edited), nor is `import` (§13), whose journals keep what the
+   source held.
    Then `--parent` and each `--source`, in that order and in argument order, resolve as id
    arguments (§10), exit 1 with the `no entry` diagnostic and its candidates.
 5. **The id** (behavior step 3): the `exists` no-op (exit 0) or the `exists` refusal (exit 1).
@@ -1541,8 +1589,9 @@ where `truncated` is the number of findings not listed because of `--limit`.
 `--immutable` is a flag and combines with every other option. The `--json` object becomes
 `{"findings":[…],"errors":N,"warnings":M,"immutable":L,"truncated":K}` in that key order,
 `immutable` always present (0 when there are none); a listed immutable finding has
-`"severity":"immutable"`, and without `--immutable` none is in `findings`. The exit codes do
-not change.
+`"severity":"immutable"`, and without `--immutable` none is in `findings`. With `--json
+--errors-only --immutable`, `findings` holds the errors and the immutable findings.
+`--immutable` never changes the exit code; the exit-code rule is §7's (immutable findings).
 
 ### 11.13 `doctor`
 
