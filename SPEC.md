@@ -805,16 +805,25 @@ runs as one unit:
 3. **Validate inputs** and compute the full new contents of every file to write. Nothing has
    been written yet; any error here exits 1 (or 2 for a usage error) with the reason on
    standard error and no outcome line, because no state changed.
-   Every mutating command except `save` (and `init`, which is not one) first refuses, exit 1,
+   Every mutating command except `save` (and `init`, which is not one) refuses, exit 1,
    with `memex: store has no commits yet; run memex save` when `memex.toml` is not in `HEAD`:
-   the store's pre-commit hook could not validate the commit.
-   (Planned.) **Inputs are read under the lock.** Only what the command line shows by itself
-   is checked before step 1: the usage errors of step 1 of the command's refusal order (§11.2,
-   §11.7, §11.8), which for `set --batch` includes reading `FILE`. Every other input, a
-   `--body` file or standard input and a `capture --from` file included, is read after step 2,
-   in the refusal order the command's section gives, so that one store and one command line
-   give one result whatever the inputs hold. The lock is held while standard input is read; a
-   caller that produces a body slowly writes it to a file first.
+   the store's pre-commit hook could not validate the commit. This check, like the store's
+   resolution (§3.1) and format (§4) before it, needs no lock and is made before step 1.
+   (Planned.) **Inputs are read under the lock.** A mutating command checks in four phases,
+   in this order, and reports only the first failure:
+   - **Phase 1**, the command line alone: the usage errors of step 1 of the command's
+     refusal order (§11.2, §11.7, §11.8), which read no file and not standard input;
+   - **Phase 2**, the store checks that need no lock: the store resolves (§3.1) and its
+     format is supported (§4), exit 2; `memex.toml` is in `HEAD`, exit 1;
+   - **Phase 3**, step 1, the lock, then step 2, the refusal of an operation in progress and
+     the freshen;
+   - **Phase 4**, every other input, read only now and in the refusal order the command's
+     section gives: a `--body` file, standard input for `--body -` and for `set --batch -`,
+     the `FILE` of `set --batch FILE`, and the `capture --from` file.
+
+   So one store and one command line give one result whatever the inputs hold, and no input
+   is read when an earlier phase refuses. The lock is held while standard input is read; a
+   caller that produces its input slowly writes it to a file first.
 4. **Write** each file via a temporary file in the same directory, then rename it into place.
    A file that cannot be written (permission denied, disk full) restores what was written and
    exits 1 with `memex: cannot write <path>: <reason>; nothing was changed`, where `<path>` is
@@ -1111,20 +1120,35 @@ Behavior:
 first failure, as `set` and `update` do (§11.7), so that one store and one command line give
 one result:
 
-1. **The command line alone**, before the store is read: a missing `--title`, `--summary` or
-   `--body` where the synopsis requires it, an unknown or repeated option, an
-   unknown type or status, an option not allowed on the type, a malformed `--verified` or
-   `--review-days`, a value that begins with `-` given without `=` (§10). Usage errors,
-   exit 2. Nothing else is read at this step: not the `--body` file, not standard input, not
-   the `--from` file.
-2. **The store and §9.1 steps 1–2**, as in §11.7 step 2: the store resolves (§3.1) and its
-   format is supported (§4), exit 2; `memex.toml` is in `HEAD`, exit 1; the lock, exit 4; no
-   rebase, merge or cherry-pick in progress, exit 1; then the freshen step.
+1. **The command line alone**, before the store is read (§9.1 phase 1). Its checks run in
+   this fixed order, and the first that fails is the one usage error printed, exit 2, with the
+   usage and `Run:` lines of §16.8:
+   1. The arguments, from left to right (§10): an unknown option; an option that is not
+      repeatable given again (`option <name> given more than once`); a value given to an option
+      that takes none; a missing value; a value that begins with `-` given without `=`; an
+      empty `--store`. Then a positional argument beyond those the synopsis allows
+      (`unexpected argument "<argument>"`).
+   2. For `new`, a missing `TYPE` (`missing TYPE`), then an unknown `TYPE`. For
+      `capture --from`, a `--body` given too (`--from and --body cannot be combined; --from
+      PATH supplies the body`).
+   3. Except for `capture --from`, a missing `--title`, `--summary` or `--body`, checked in
+      that order (`missing --title`, `missing --summary`, `missing --body`).
+   4. The values that need no store, in this order: a `--status` that is not one of the
+      type's statuses; an option not allowed on the type, checked in the order `--always`,
+      `--kind`, `--parent`, `--verified`, `--review-days`; a malformed `--verified`; a
+      malformed `--review-days`.
+
+   Nothing else is read at this step: not the `--body` file, not standard input, not the
+   `--from` file.
+2. **The store and §9.1 steps 1–2** (§9.1 phases 2 and 3), as in §11.7 step 2: the store
+   resolves (§3.1) and its format is supported (§4), exit 2; `memex.toml` is in `HEAD`, exit
+   1; the lock, exit 4; no rebase, merge or cherry-pick in progress, exit 1; then the freshen
+   step.
 3. **For `capture --from`, the alias no-op** above, exit 0, before PATH is read.
-4. **The values**, in synopsis order: the body is read, from `--body` or from the `--from`
-   file; one that cannot be read is a usage error (exit 2), `cannot read --body <FILE>:
-   <reason>` or `cannot read --from <PATH>: <reason>`, printed with the usage and `Run:` lines
-   of §16.8; it is normalized and its content measure checked (§5.6, exit 1, behavior step 2).
+4. **The values**, in synopsis order (§9.1 phase 4): first the body is read, from `--body`
+   (standard input for `-`) or from the `--from` file; one that cannot be read is a usage
+   error (exit 2), `cannot read --body <FILE>: <reason>` or `cannot read --from <PATH>:
+   <reason>`, printed with the usage and `Run:` lines of §16.8; it is normalized and its content measure checked (§5.6, exit 1, behavior step 2).
    Then `--parent` and each `--source`, in that order and in argument order, resolve as id
    arguments (§10), exit 1 with the `no entry` diagnostic and its candidates.
 5. **The id** (behavior step 3): the `exists` no-op (exit 0) or the `exists` refusal (exit 1).
@@ -1316,7 +1340,8 @@ failure, so that one store and one command line give one result:
    repeated option, a malformed assignment, an unknown field name, `+=` or `-=` on a field that
    is not an array; for `update`, a missing or empty `--summary`, a missing `--body` and a
    `--heading` that is not 1–100 characters on one line; for `--batch`, a positional argument
-   and a `FILE` that cannot be read. Usage errors, exit 2.
+   and a `FILE` that cannot be read (Planned: `FILE` is read after step 2 instead, as the
+   paragraph after this list says). Usage errors, exit 2.
 2. **The store and §9.1 steps 1–2**: the store resolves (§3.1) and its format is supported
    (§4), exit 2; `memex.toml` is in `HEAD`, exit 1; the lock, exit 4; no rebase, merge or
    cherry-pick in progress, exit 1; then the freshen step.
@@ -1330,6 +1355,10 @@ failure, so that one store and one command line give one result:
    entry has them); then fields that cannot be kept, where a file that cannot be parsed is
    named by its §8.1 problem:
    `memex: <path> has fields that set cannot keep (<problems>); edit the file, then memex save`.
+   `<problems>` is, for a file that cannot be parsed, the `<problem>` of its §8.1 `skipped`
+   line; otherwise one text per field that has an `E-FIELD-UNKNOWN` or `E-FIELD-VALUE`
+   finding (§7), the finding's message without its path and code, in byte order of the field
+   names, joined by `; `.
 5. **The values.** For `set`, each assignment in argument order: `created` or `body_sha256`, a
    field not allowed on the type, an unknown status (a usage error, exit 2), removing a
    required field, a value of the wrong form, an id value that does not resolve; exit 1
@@ -1341,6 +1370,10 @@ failure, so that one store and one command line give one result:
    satisfies it.
 7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
 
+(Planned.) In `--batch`, `FILE` (standard input for `-`) is read after step 2, as §9.1
+requires, and before the first line is split; one that cannot be read is the usage error
+`cannot read --batch <FILE>: <reason>`, exit 2, printed with the usage and `Run:` lines of
+§16.8.
 In `--batch`, steps 3 to 6 run for each line in file order, after the line's own forms of step
 1 (it splits, it has an assignment, each assignment parses), with the refusal of an entry
 named on two lines right after step 3; step 7 runs once for the whole batch. In the single
@@ -1401,8 +1434,11 @@ line; the id rules of §11.2 step 3 apply to the new entry.
 **Refusal order** (Planned). `promote` checks in this order and reports only the first
 failure:
 
-1. **The command line alone**: §11.2 refusal order step 1, and a missing `SOURCE-ID` or
-   `--to`. Usage errors, exit 2; nothing is read.
+1. **The command line alone**, as in §11.2 refusal order step 1, with its second check
+   replaced: a missing `SOURCE-ID` (`missing SOURCE-ID`), then a missing `--to`
+   (`missing --to`), then an unknown `--to` type. So the order is the arguments, those three,
+   a missing `--title`, `--summary` or `--body`, then the values that need no store. Usage
+   errors, exit 2; nothing is read.
 2. **The store and §9.1 steps 1–2**, as in §11.2 refusal order step 2.
 3. **The source** `SOURCE-ID` (§10), exit 1 with the `no entry` diagnostic. It resolves as in
    §11.7 step 3: a file that `HEAD` holds and the working tree has deleted or made something
@@ -1413,11 +1449,16 @@ failure:
    entry and so its status cannot be read: first uncommitted changes,
    `memex: <path> has uncommitted changes; run memex save first`; then fields that cannot be
    kept, `memex: <path> has fields that promote cannot keep (<problems>); edit the file, then memex save`,
-   with `<problems>` as in §11.7 step 4. A source that is not rewritten is only named in
+   with `<problems>` defined as in §11.7 step 4. A source that is not rewritten is only named in
    `sources` and is not checked here.
 5. **The values** of the new entry, as in §11.2 refusal order step 4.
 6. **The new entry's id**, as in §11.2 refusal order step 5.
 7. **Validation** of both files, exit 1, every error finding printed.
+
+As in §11.2, the store's entries are read right after step 2, so the `memex: skipped` lines of
+§8.1 precede any diagnostic from step 3 on. For a repeat of a successful `promote`, a value
+that step 5 refuses (an unknown `--source`) is refused, while a result that only step 7 would
+refuse (a summary of 501 characters) is the `exists` no-op of step 6.
 
 ### 11.9 `fmt`
 
