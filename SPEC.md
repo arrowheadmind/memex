@@ -1464,7 +1464,8 @@ failure:
    `sources` and is not checked here.
 5. **The values** of the new entry, as in §11.2 refusal order step 4.
 6. **The new entry's id**, as in §11.2 refusal order step 5.
-7. **Validation** of both files, exit 1, every error finding printed.
+7. **Validation** of the new entry, and of the source only when step 4 rewrites it (a source
+   that is only cited is not validated), exit 1, every error finding printed.
 
 As in §11.2, the store's entries are read right after step 2, so the `memex: skipped` lines of
 §8.1 precede any diagnostic from step 3 on. For a repeat of a successful `promote`, a value

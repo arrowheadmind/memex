@@ -390,8 +390,8 @@ Open items for later blocks:
     `new` with no `TYPE` and no `--title`: `missing TYPE`. 12 `new rule
     --verified=2026-13-01` with a good title, summary and body: the option not allowed on a
     rule, not the malformed date (not-allowed before form). 13 `new bogus --body -` (no
-    `--title`): the unknown TYPE, not `missing --title`. 14 `memex --store <STORE> new rule
-    --store <STORE> --bogus`: the unknown option `--bogus`, not `option --store given more
+    `--title`): the unknown TYPE, not `missing --title`. 14 argv `--store <STORE> new rule
+    --store <STORE> --bogus` (the runner supplies the executable): the unknown option `--bogus`, not `option --store given more
     than once` (the cross-position `--store` check follows the command's parse).
     `expect/store` unchanged after every step, `expect/stderr` exact.
   - 235-capture-from-refusal-order. 01 missing `--from` file against `<HOME>/nostore`: exit 2,
@@ -428,8 +428,9 @@ Open items for later blocks:
     `promote` with no `SOURCE-ID` and no `--to`: `missing SOURCE-ID`. 17 a SOURCE-ID and
     neither `--to` nor `--title`: `missing --to`. 18 a SOURCE-ID, `--to bogus` and no
     `--title`: the unknown `--to` type, not `missing --title`. 19 a journal source already
-    `promoted`, with an uncommitted edit (overlay): created, one commit holding only the new
-    entry, the source untouched and still uncommitted (it is only cited).
+    `promoted`, with an uncommitted edit (overlay) that adds an unknown field and keeps
+    `status = "promoted"`: created, one commit holding only the new entry, the source untouched
+    and still uncommitted (it is only cited, so neither checked nor validated).
   - Unit tests beside `preflight_lock_test.go` (the runner cannot hold a lock): with the lock
     held by another process, `new`, `capture` and `promote` with an unreadable `--body`, and
     `capture --from` with a missing file, wait and exit 4 (a short wait in the test), not the
