@@ -15,7 +15,8 @@ memex capture --from PATH [--title=T] [--summary=S] [same options]
 
 ```
 memex capture --title="Result" --summary="What the next reader needs." --body - <<'EOF'
-What was attempted, what worked, what failed, and what is reusable.
+What was attempted and what worked; what failed, and why it failed;
+what is reusable next time, with the exact commands that worked.
 EOF
 ```
 
