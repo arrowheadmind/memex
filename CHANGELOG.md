@@ -11,16 +11,18 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 - Mutating commands read file and standard-input values only after the store checks, write
   lock and freshen phase. In particular, `set --batch FILE` reads entries (and reports their
   `skipped` lines) before it reads `FILE`.
-- A repeat `capture --from PATH` is decided from the stored alias before PATH is read. It is
-  still a no-op after PATH has been removed, and omits `remove PATH after review` then.
+- A repeat `capture --from PATH` is decided from the stored alias before PATH is read, without
+  trying to read PATH.
 
 ### Changed output
 
-- `new`, `capture` and `promote` use the refusal order specified in §11.2 and §11.8: command
-  line, store and lock, entries and command-specific targets, values, id, then validation.
-- `promote` resolves a deleted, replaced or unparseable source as `set` does. A rewritten
-  source's uncommitted changes are refused before fields that cannot be kept; the latter now
-  says `has fields that promote cannot keep (<problems>); edit the file, then memex save`.
+- `new` and `capture` use the refusal order specified in §11.2: command line, store and lock,
+  entries and command-specific targets, values, id, then validation.
+- A repeat `capture --from PATH` after PATH has been removed exits 0 as a no-op and drops the
+  `remove <PATH> after review` line.
+- `promote` uses the §11.8 refusal order, and source checking now reaches deleted, replaced
+  and unparseable sources as `set` does. For a rewritten source, uncommitted changes are
+  refused before fields that promote cannot keep.
 
 ## 0.2.0 (2026-10-25)
 

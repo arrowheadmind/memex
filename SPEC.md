@@ -978,7 +978,7 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   (`rules/2026-….md`) or an alias, because search and list print paths. The value is resolved
   to the id before anything that concerns the entry happens; for `set` and `update`, §11.7
   (refusal order) gives the whole order, and for `new`, `capture` and `promote` §11.2 and
-  §11.8 (Planned).
+  §11.8.
 - **JSON.** Every `--json` output is one compact JSON text (no spaces outside strings) followed
   by one LF, with keys in the order this specification lists. Strings escape exactly these
   characters: `"` as `\"`, `\` as `\\`, U+000A as `\n`, U+000D as `\r`, U+0009 as `\t`, and every

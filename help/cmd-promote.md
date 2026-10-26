@@ -52,7 +52,7 @@ summary, and the three correct moves.
 | code | when |
 |---|---|
 | 0 | Created |
-| 1 | Unknown source; the source has uncommitted edits; the new entry refused as in `new`, or its id taken by a different body |
+| 1 | Unknown source; the source has uncommitted edits or fields that promote cannot keep; the new entry refused as in `new`, or its id taken by a different body |
 | 2 | Usage error |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |

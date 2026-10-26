@@ -11,16 +11,18 @@ memex capture --from PATH [--title=T] [--summary=S] [same options]
 
 ## Description
 
-`capture` is `memex new journal`: the end-of-task record of what was attempted, worked, failed
-and is reusable; its body is immutable.
+`capture` is `memex new journal`: an immutable end-of-task record. To capture in one shell call:
 
-`--from PATH` imports a file that leaked into a coding tool's memory: title from its first
-heading (else YAML `name:`, else the filename), summary from YAML `description:` or `Imported
-from PATH`, body after `Imported from PATH (date)`; alias PATH, absolute, home as `~/`. PATH is
-never deleted (`remove PATH after review`); a file already an alias in any form is a no-op.
-A repeat is still that no-op after PATH has been removed; then the remove line is omitted.
-memex resolves and checks the store, takes the write lock, freshens, and reads its entries
-before it reads the `--body` file, standard input or the `--from` file.
+```
+memex capture --title="Result" --summary="What the next reader needs." --body - <<'EOF'
+What was attempted, what worked, what failed, and what is reusable.
+EOF
+```
+
+`--from PATH` imports a leaked tool-memory file and records its path as an alias. PATH is never
+deleted (`remove PATH after review`); an alias repeat is a no-op, even after PATH is removed.
+memex checks the store, locks and freshens it, and reads its entries before reading `--body`,
+standard input or `--from`.
 
 ## Options
 
