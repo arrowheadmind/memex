@@ -26,7 +26,7 @@ every gate.
 | B8 | Cutover: deployments hook, Nix package, pointer files, auto-memory fold-in, retire app .brain dirs | opus | fable | SessionStart runs `memex preflight`; old brain renamed; brainctl no longer on PATH | done | c395ca3 |
 | B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
 | B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | done | 8a0af7d |
-| B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–236 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | todo | |
+| B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | todo | |
 
 Rules of the ledger:
 
@@ -355,12 +355,18 @@ Open items for later blocks:
   lock is held while standard input is read; step 1 of §11.2 and §11.8 has a total order (the
   arguments left to right, `TYPE` or `SOURCE-ID` and `--to` or the `--from`/`--body`
   conflict, the missing `--title`/`--summary`/`--body`, the values that need no store), which
-  is the order the 0.2.0 parser already uses; `<problems>` is defined in §11.7 step 4 as the
+  is the order the 0.2.0 parser already uses: `cmd/memex/main.go` takes the global options
+  before the command first, `parseArgs` (`cmd/memex/args.go`) then parses the command's
+  arguments left to right and checks the positional count last, and `parseCommand`
+  (`main.go`) detects a `--store` given before and after the command only after that parse;
+  `set --batch` reads the store's entries (their `skipped` lines) before FILE; a journal
+  already `promoted` is only cited, never rewritten or checked, as `promote.go` does (the
+  §11.8 behavior list said otherwise and is corrected); `<problems>` is defined in §11.7 step 4 as the
   code builds it (the §8.1 problem, or the `E-FIELD-UNKNOWN`/`E-FIELD-VALUE` messages in byte
   order of field name joined by `; `); the alias no-op is decided before PATH is read and
   drops the `remove` line when PATH no longer exists; `promote`'s source is checked between
   the store and the values, only when it is rewritten or its file cannot be read as an
-  entry. The judge's review (2026-10-26, request changes) found the lock boundary
+  entry. The judges' reviews (2026-10-26, two rounds, request changes) found the lock boundary
   contradictory, step 1 unordered, `<problems>` unspecified and the cases short; this note
   and the cases below are the fixed draft.
   Cases to add (numbers are the next free ones; "fails on 0.2.0" means it must be shown to):
@@ -381,8 +387,12 @@ Open items for later blocks:
     <HOME>/nostore` (no `--summary`): `missing --summary` with usage and `Run:` lines, not the
     store message (command line before store). 10 `new rule --status=bogus --body -` with
     neither `--title` nor `--summary`: `missing --title` (missing options before values). 11
-    `new` with no `TYPE` and no `--title`: `missing TYPE`. 12 `new rule --verified=2026-13-01` with
-    a good title, summary and body: the option not allowed on a rule, not the malformed date (not-allowed before form).
+    `new` with no `TYPE` and no `--title`: `missing TYPE`. 12 `new rule
+    --verified=2026-13-01` with a good title, summary and body: the option not allowed on a
+    rule, not the malformed date (not-allowed before form). 13 `new bogus --body -` (no
+    `--title`): the unknown TYPE, not `missing --title`. 14 `memex --store <STORE> new rule
+    --store <STORE> --bogus`: the unknown option `--bogus`, not `option --store given more
+    than once` (the cross-position `--store` check follows the command's parse).
     `expect/store` unchanged after every step, `expect/stderr` exact.
   - 235-capture-from-refusal-order. 01 missing `--from` file against `<HOME>/nostore`: exit 2,
     the store message, not `cannot read --from` (fails on 0.2.0). 02 seeded entry whose alias
@@ -413,13 +423,20 @@ Open items for later blocks:
     lists it in `.remove` and carries the link, as 229 step 12 does): uncommitted changes
     (fails on 0.2.0). 13 one replaced by a directory, as 229 step 13: uncommitted changes
     (fails on 0.2.0). 14 the deleted source of 05 named by its
-    store-relative path `journal/<id>.md`: uncommitted changes (fails on 0.2.0); by an alias
-    it had: `no entry`, because an alias is read from the file. 15 `promote` with no
-    `SOURCE-ID` and no `--to`: `missing SOURCE-ID`; with a SOURCE-ID and neither `--to` nor
-    `--title`: `missing --to`.
+    store-relative path `journal/<id>.md`: uncommitted changes (fails on 0.2.0). 15 the same
+    source named by an alias it had: `no entry`, because an alias is read from the file. 16
+    `promote` with no `SOURCE-ID` and no `--to`: `missing SOURCE-ID`. 17 a SOURCE-ID and
+    neither `--to` nor `--title`: `missing --to`. 18 a SOURCE-ID, `--to bogus` and no
+    `--title`: the unknown `--to` type, not `missing --title`. 19 a journal source already
+    `promoted`, with an uncommitted edit (overlay): created, one commit holding only the new
+    entry, the source untouched and still uncommitted (it is only cited).
   - Unit tests beside `preflight_lock_test.go` (the runner cannot hold a lock): with the lock
     held by another process, `new`, `capture` and `promote` with an unreadable `--body`, and
     `capture --from` with a missing file, wait and exit 4 (a short wait in the test), not the
     usage error; `new --body -` and `set --batch -` with the lock held leave standard input
     unread (a pipe whose writer is still open, so a read would block); `set --batch` with a
     missing FILE and the lock held exits 4.
+  - 237-set-batch-file-order. 01 an overlay adds an unrelated unparseable plan; `set --batch
+    <HOME>/missing.txt`: the `memex: skipped …` line, then the usage error `cannot read
+    --batch <HOME>/missing.txt: no such file or directory` with usage and `Run:` lines, exit
+    2 (fails on 0.2.0, which reads FILE first and prints no `skipped` line).

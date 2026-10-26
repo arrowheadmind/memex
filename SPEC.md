@@ -819,7 +819,9 @@ runs as one unit:
      the freshen;
    - **Phase 4**, every other input, read only now and in the refusal order the command's
      section gives: a `--body` file, standard input for `--body -` and for `set --batch -`,
-     the `FILE` of `set --batch FILE`, and the `capture --from` file.
+     the `FILE` of `set --batch FILE`, and the `capture --from` file. The store's entries
+     are read first, right after step 2, so the `memex: skipped` lines of §8.1 precede any
+     diagnostic about an input.
 
    So one store and one command line give one result whatever the inputs hold, and no input
    is read when an earlier phase refuses. The lock is held while standard input is read; a
@@ -1123,11 +1125,16 @@ one result:
 1. **The command line alone**, before the store is read (§9.1 phase 1). Its checks run in
    this fixed order, and the first that fails is the one usage error printed, exit 2, with the
    usage and `Run:` lines of §16.8:
-   1. The arguments, from left to right (§10): an unknown option; an option that is not
-      repeatable given again (`option <name> given more than once`); a value given to an option
-      that takes none; a missing value; a value that begins with `-` given without `=`; an
-      empty `--store`. Then a positional argument beyond those the synopsis allows
-      (`unexpected argument "<argument>"`).
+   1. The arguments. The global options before the command come first, from left to right,
+      their errors printed with the usage line of §10's form and `Run: memex help`. Then the command's arguments,
+      from left to right (§10): an unknown option; an option that is not repeatable given
+      again (`option <name> given more than once`); a value given to an option that takes
+      none; a missing value; a value that begins with `-` given without `=`; an empty
+      `--store`. Then a positional argument beyond those the synopsis allows
+      (`unexpected argument "<argument>"`). Then a `--store` given both before and after the
+      command (`option --store given more than once`), which is detected only once the
+      command's arguments are parsed: `memex --store S new rule --store S --bogus` reports
+      the unknown option.
    2. For `new`, a missing `TYPE` (`missing TYPE`), then an unknown `TYPE`. For
       `capture --from`, a `--body` given too (`--from and --body cannot be combined; --from
       PATH supplies the body`).
@@ -1370,8 +1377,9 @@ failure, so that one store and one command line give one result:
    satisfies it.
 7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
 
-(Planned.) In `--batch`, `FILE` (standard input for `-`) is read after step 2, as §9.1
-requires, and before the first line is split; one that cannot be read is the usage error
+(Planned.) In `--batch`, the store's entries are read right after step 2, their
+`memex: skipped` lines (§8.1) printed first; then `FILE` (standard input for `-`) is read, as
+§9.1 phase 4 requires; then its lines are split; one that cannot be read is the usage error
 `cannot read --batch <FILE>: <reason>`, exit 2, printed with the usage and `Run:` lines of
 §16.8.
 In `--batch`, steps 3 to 6 run for each line in file order, after the line's own forms of step
@@ -1423,11 +1431,14 @@ memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new optio
 ```
 
 1. Creates a new entry, as `new`, with `sources` containing SOURCE-ID plus any `--source` values.
-2. If the source is a journal entry whose status is `raw`, `kept` or `promoted`, sets its
-   status to `promoted`. A `superseded` source and sources of other types are unchanged.
+2. If the source is a journal entry whose status is `raw` or `kept`, sets its status to
+   `promoted`. A journal source already `promoted`, a `superseded` one and sources of other
+   types are only cited in `sources`: never rewritten, and not checked for uncommitted changes
+   or fields that cannot be kept.
 
-Both files go in one commit. Read-back (§9.1, step 5) covers both. Promoting a source whose
-status is already `promoted` is allowed. A source that is rewritten is refused, as in `set`,
+When the source is rewritten, both files go in one commit and read-back (§9.1, step 5) covers
+both; otherwise the commit holds the new entry only. Promoting a source whose status is
+already `promoted` is allowed. A source that is rewritten is refused, as in `set`,
 when it has uncommitted changes or fields that cannot be kept. Standard output is `created <path>`, then the outcome
 line; the id rules of §11.2 step 3 apply to the new entry.
 
