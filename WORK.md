@@ -334,7 +334,12 @@ Open items for later blocks:
   text that is not memex's own: 170 git's index-lock message, 171 the pre-commit hook's
   output, both deterministic in the runner's sandbox. The `stderr-contains` form stays in §15
   for a case whose standard error carries text that varies.
-- B11 refusal order (spec drafted 2026-10-25, for the operator's go): closes the gap the B10
+- B11 refusal order (spec drafted 2026-10-25, judged in three rounds; the operator's go
+  2026-10-26, with the four open questions decided as drafted: a repeat `capture --from` of a
+  removed file omits `remove <PATH> after review`; `promote` refuses a deleted, unparseable or
+  replaced source as `set` does; holding the lock while standard input is read is accepted;
+  the unfixable warnings on hash-locked journals are a separate block, B12, not part of
+  B11): closes the gap the B10
   fix round left open. `new`, `capture` and `promote` read `--body` (and `capture --from` its
   file) and check the content measure before §9.1 step 1, while §9.1 orders the lock first
   and `update` reads `--body` only after resolving its id. Seen on the 0.2.0 binary: a short
