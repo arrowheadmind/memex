@@ -510,8 +510,8 @@ Open items for later blocks:
     074 steps 01–03, 075, 077 step 03, 208 step 02, 226 step 04). `doctor`'s check row appends
     the count and never FAILs or WARNs for it. The import report keeps counting them under
     their code (cases 090 and 095 unchanged).
-  - Creation (operator decision after the judge's review, to confirm at the go;
-    recommendation: refuse): `new journal`, `capture` and `capture --from` refuse a body with
+  - Creation (proposed after the judge's review; confirmed by the operator 2026-10-26, as
+    drafted): `new journal`, `capture` and `capture --from` refuse a body with
     a link that resolves through an alias, resolved against the store as it would be after the
     write (so the new entry's own `--alias` counts), exit 1, nothing written, empty standard
     output. It is a validation failure like any other: standard error gets one line per such
@@ -673,7 +673,6 @@ Open items for later blocks:
     (fails). 13 `new journal --alias notes/self.md` whose body links `[[notes/self.md]]`: the
     alias line naming the new entry's id as `<target id>`, the refused line, exit 1, nothing
     written (the prospective store; fails).
-  Open for the operator: (1) confirm the creation refusal (recommendation: refuse, as
-  drafted); (2) a journal that is not locked keeps the ordinary `W-SHORT-BODY` message, `edit the file`,
+  Open for the operator: a journal that is not locked keeps the ordinary `W-SHORT-BODY` message, `edit the file`,
   which on an uncommitted journal also means rewriting `body_sha256`, and memex has no command
   for that (recommendation: leave it, `E-HASH` then names the fix; revisit if it bites).

@@ -1231,7 +1231,7 @@ one result:
 5. **The id** (behavior step 3): the `exists` no-op (exit 0) or the `exists` refusal (exit 1).
 6. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed as §9.1
    step 5 describes.
-   (Planned, the operator to confirm.) For a journal entry (`new journal`, `capture`,
+   (Planned.) For a journal entry (`new journal`, `capture`,
    `capture --from`), validation also refuses a body with a link that resolves through an
    alias (§6 resolution step 2). Links are resolved against the store as it would be after
    the write: the store's entries as read after step 2 plus the new entry, its own `--alias`
