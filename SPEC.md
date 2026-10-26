@@ -49,6 +49,9 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 9.1 Inputs are read under the lock | Implemented |
 | 11.2 Refusal order of `new` and `capture` | Implemented |
 | 11.8 Refusal order of `promote` | Implemented |
+| 7 Findings on immutable journal bodies | Planned |
+| 11.12 `check --immutable` | Planned |
+| 11.13 `doctor` counts findings on immutable journal bodies | Planned |
 
 ---
 
@@ -398,7 +401,8 @@ This is the only use memex makes of the current directory.
   `promote` MUST have a content measure of at least **80**; the command refuses it (exit 1)
   with the rule and a pointer to `memex help entries`. The predecessor accumulated captures
   that were only empty headings. An existing entry below 80 is a warning (`W-SHORT-BODY`),
-  because imported units are often short and are still knowledge.
+  because imported units are often short and are still knowledge. (Planned.) In a journal
+  entry it is an immutable finding, counted apart from warnings (§7).
 - **Journal bodies are immutable.** `body_sha256` is set when the entry is created.
   To correct one, create a new entry and set the old one's status to `superseded`.
 - `memex help entries` prints a suggested body outline per type (Appendix B). It is never
@@ -424,7 +428,7 @@ run with no such closing run is literal text.
 **Resolution of TARGET, in order:**
 1. The id of an entry: resolved.
 2. Exactly one entry has TARGET in `aliases`: resolved, with a warning `W-ALIAS-LINK` that
-   suggests the id.
+   suggests the id. (Planned.) In a journal entry's body it is an immutable finding (§7).
 3. TARGET matches the id pattern but no entry has it: an error (`E-LINK`).
 
 A TARGET that is not an id but is an alias of more than one entry is unresolved: `E-LINK`.
@@ -464,6 +468,31 @@ caller. The summary line is always last. `--limit 0` means no limit.
 The summary counts every finding whatever the options: `--errors-only` only hides warning
 lines, and `--strict` changes only the exit code. Messages compare as text, so within one
 path and code a finding on line 12 sorts before one on line 7.
+
+(Planned.) **Immutable findings.** A journal body is immutable (§5.6): changing it is
+`E-HASH`, so a finding that only an edit of the body could clear can never be acted on, and a
+warning count that keeps it hides the next warning that can. Two codes are such in an entry
+of type journal, whatever its status and whether or not its `body_sha256` matches:
+`W-SHORT-BODY` and `W-ALIAS-LINK`. There they are **immutable findings**, not warnings. Every
+other finding on a journal entry stays a warning or an error as the tables say, because a
+frontmatter change or a change to another entry clears it: `W-NO-TERMS`, `W-NO-SUMMARY` and
+`W-RAW-OLD` (`memex set`), `W-SECRET` (`allow_secret`), `W-CANONICAL` (`memex fmt`, which
+never touches a journal body), `W-PROMOTED-UNCITED` (`sources` in the derived entry). An error
+is never an immutable finding. An immutable finding keeps its code and has its own message
+(the warnings table). It:
+- is never counted as a warning, never makes `--strict` fail and never changes an exit code;
+- is counted as `L` whatever the options, and is listed only with `--immutable` (§11.12):
+  then its line takes its place in the one sort order, `--errors-only` does not hide it, and
+  `--limit` counts it like any other line (in `truncated` and in a `<CODE>: K more` line when
+  it is cut). Without `--immutable` it is in no finding line, no `more` line and not in
+  `truncated`: the summary line counts it;
+- is never left out silently. With `L` > 0 the last line is
+  `check: N errors, M warnings, L on immutable journal bodies`, followed, when `--immutable`
+  is not given, by ` (memex check --immutable lists them)`. With `L` = 0 it is
+  `check: N errors, M warnings`, with or without `--immutable`.
+
+`--staged` selects immutable findings as it selects every other finding. The import report
+(§13.6) counts them under their code with the warnings, as it did before they were set apart.
 
 **`--staged`** reads the store as the git index holds it: the entries, their contents, the
 layout and the existence of `files/` paths all come from the index, not the working tree.
@@ -515,13 +544,13 @@ Warnings:
 | Code | Condition | Message |
 |---|---|---|
 | `W-CANONICAL` | Entry valid but not in canonical form (`memex fmt` fixes it) | `not in canonical form; run memex fmt <path>` |
-| `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead` |
+| `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead`. (Planned.) In a journal entry, an immutable finding: `[[<target>]] on line <line> resolves through an alias to [[<target id>]]; a journal body is immutable, so this is not counted as a warning` |
 | `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` | `verified <date> is more than review_days (<n>) ago; check the facts, then: memex set <id> verified=<today>` |
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
-| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save` |
+| `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save`. (Planned.) In a journal entry, an immutable finding: `body content measure <n> is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `W-STALE-SUMMARY` | A task or plan with a valid `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
 | `W-SECRET` | A body line, fenced code included, looks like a credential: a PEM private-key header (`-----BEGIN `, then any of `A`–`Z`, `0`–`9` and space, then `PRIVATE KEY-----`); `password=`, `token=` or `secret=`, matched case-sensitively as written, followed by a non-placeholder value; or a run of 40 or more characters from `A`–`Z`, `a`–`z`, `0`–`9`, `+` and `/` that contains at least one uppercase letter, one lowercase letter and one digit (so hex digests such as git SHAs and nix store hashes never match), and that is preceded on the same line by one of the words `token`, `secret`, `password`, `passwd`, `bearer`, `authorization`, `api_key`, `api-key`, `apikey` or `private`, matched case-insensitively (without such a word the run is a public key or a content hash). The value is what follows `=` up to the next whitespace, or a whole `"…"` or `'…'` string, with its quotes removed; it is a placeholder when it is empty, starts with `$`, `<`, `{` or `%`, or consists only of `*`, `x`, `X`, `.` and `…`. Suppressed by a line `<!-- memex: allow-secret -->` anywhere in the body, or by `allow_secret = true` in the frontmatter (§5.3); a journal body cannot change (`E-HASH`), so the field is how a false positive there is cleared | One finding per line: `line <line> looks like a credential (<what>); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set <id> allow_secret=true`, where `<what>` is `a private key header`, `a password, token or secret assignment` or `a run of 40 or more base64 characters`, the first that applies in that order |
 
@@ -1507,6 +1536,14 @@ memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--j
 "severity":"error","message":"…"}],"errors":N,"warnings":M,"truncated":K}` in that key order,
 where `truncated` is the number of findings not listed because of `--limit`.
 
+(Planned.) **`--immutable`** lists the immutable findings of §7 as well. The synopsis becomes
+`memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--immutable] [--json]`;
+`--immutable` is a flag and combines with every other option. The `--json` object becomes
+`{"findings":[…],"errors":N,"warnings":M,"immutable":L,"truncated":K}` in that key order,
+`immutable` always present (0 when there are none); a listed immutable finding has
+`"severity":"immutable"`, and without `--immutable` none is in `findings`. The exit codes do
+not change.
+
 ### 11.13 `doctor`
 
 ```
@@ -1532,6 +1569,17 @@ where `details` holds the `LEAK <path>` lines of the `leaks` check and is otherw
 | `path` | Every `memex` executable on `PATH` resolves to the same file, symbolic links resolved. Relative and empty `PATH` elements are skipped | PASS `1 memex on PATH`, or `<n> memex on PATH, all the same file`; WARN `memex on PATH resolves to different files: <paths>; the first one runs` (the paths as found on `PATH`, separated by `, `), or `no memex on PATH; hooks run memex by name` |
 | `leaks` | §12 leak scan, over the home locations and, when `workspace` is configured, the workspace | PASS `no files in coding tools' own memory`; WARN `<n> files in coding tools' own memory; move each into the store with memex capture --from PATH, then delete it` (`file` when 1), followed by one `LEAK <path>` line per finding, absolute paths in code-point order. A configured workspace that does not resolve (§12 rule 2: absent, relative, unreadable, not a directory, or inside the store) appends `; the workspace was not scanned: <message>` and makes the check WARN even with no finding |
 | `tool-memory` | §12 rule 5 | PASS `~/.claude does not exist`, `HOME is not set; no ~/.claude to check`, `Claude Code auto memory is disabled by CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, or `Claude Code auto memory is disabled in <file>` (the first of the rule 5 files that disables it, `~/.claude/settings.json` written so); WARN `Claude Code auto memory is not disabled; set "autoMemoryEnabled": false in ~/.claude/settings.json` |
+
+(Planned.) The `check` row counts immutable findings (§7) apart: `<n> errors, <m> warnings`
+is followed by `, <l> on immutable journal bodies` when `l` > 0, before `; run memex check` in
+the FAIL form. For example:
+
+```
+PASS check 0 errors, 4 warnings, 7 on immutable journal bodies
+FAIL check 1 errors, 4 warnings, 7 on immutable journal bodies; run memex check
+```
+
+They never make the row FAIL or WARN, and the `--json` message is the same text.
 
 The `store`-dependent checks (`format` to `check`) run only when `store` PASSes, and `upstream`
 to `hooks` only when `git` PASSes too. `path`, `leaks` and `tool-memory` always run. Each git

@@ -27,6 +27,7 @@ every gate.
 | B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
 | B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | done | 8a0af7d |
 | B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | done | 9498155 |
+| B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal entry, whose body is immutable, are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable` (SPEC §5.6, §6, §7, §11.12, §11.13) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 238–241 (each checked to fail on the binary at 92e148c), the eight `check --json` expectations that gain `"immutable":0` updated and nothing else in the suite changed; the `check` page and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | todo | |
 
 Rules of the ledger:
 
@@ -446,3 +447,120 @@ Open items for later blocks:
     <HOME>/missing.txt`: the `memex: skipped …` line, then the usage error `cannot read
     --batch <HOME>/missing.txt: no such file or directory` with usage and `Run:` lines, exit
     2 (fails on 0.2.0, which reads FILE first and prints no `skipped` line).
+- B12 actionable check warnings (spec drafted 2026-10-26, operator decision of the same day to
+  make it its own block, split out of B11): `memex check` on the operator's store keeps
+  reporting 4 `W-ALIAS-LINK` and 3 `W-SHORT-BODY`, all in journal entries, whose bodies are
+  immutable (§5.6; an edit is `E-HASH`). No one can act on them, and a warning count that
+  never reaches 0 hides the next warning that can be acted on. Worse, `W-SHORT-BODY` tells the
+  reader to `edit the file`, the one change that is an error on a journal. Which findings only
+  a body edit clears, read from `internal/check/check.go`: `W-SHORT-BODY` and `W-ALIAS-LINK`.
+  Every other warning on a journal has a fix outside the body: `W-NO-TERMS`, `W-NO-SUMMARY`,
+  `W-RAW-OLD` (`set`), `W-SECRET` (`allow_secret`, since 2026-10-17), `W-CANONICAL` (`fmt`
+  keeps journal bodies), `W-PROMOTED-UNCITED` (another entry's `sources`). Errors are out of
+  scope: an `E-LINK` or `E-FILE-LINK` in a journal can still be fixed by creating the target.
+  Designs weighed:
+  (a) skip the two findings on journals. Simplest, but silent: nothing would ever show that a
+  journal is a one-liner or links an alias, a later curation pass (supersede a thin journal
+  with a fuller entry) has no list to start from, and a mistake in the class would go unseen.
+  (c) a per-entry acknowledgement field (say `ack = ["W-SHORT-BODY"]`). Explicit, but it costs
+  one reviewed write per entry for something no one can change, the count stays wrong until
+  someone writes it, every new journal with an alias link raises it again, it adds a §5.3
+  field holding codes that every implementation must validate, and it would also mute a later
+  finding of the same code on that entry.
+  (b) chosen: keep them, but as a third class, **immutable findings**, with the same codes,
+  counted apart on the summary line (`check: 0 errors, 0 warnings, 7 on immutable journal
+  bodies (memex check --immutable lists them)`) and listed with `--immutable`. The warning
+  count is then only what can be acted on, `--strict` and the exit code see only it, and
+  nothing is hidden: the line says how many there are and the command that lists them. The
+  rule needs no new field and no writes, follows from §5.6 alone (type journal, so a mismatched
+  hash, already `E-HASH`, changes nothing), and the two journal messages stop giving the
+  harmful advice. Rejected variants of (b): printing them by default under a heading (the
+  output would keep growing with every journal and break the one-line-per-finding format);
+  a new code prefix such as `N-` (every reader of `E-`/`W-` codes, `help check-codes` and §15's
+  "each code has a case" would need a third kind for two findings).
+  Decisions written into SPEC.md (§5.6, §6, §7, §11.12, §11.13, all Planned): the class is
+  fixed by the code and the entry's type, nothing else; with `L` = 0 every output is as
+  today except `--json`, which always carries `"immutable":L` (a stable shape, §17.3), so the
+  eight existing `check --json` expectations gain `"immutable":0` (cases 027 step 01, 074 steps
+  01–03, 075, 077 step 03, 208 step 02, 226 step 04); `--errors-only` does not hide an immutable line that
+  `--immutable` asked for; without `--immutable` an immutable finding is in no `more` line and
+  not in `truncated`; `doctor`'s check row appends the count and never FAILs or WARNs for it;
+  the import report keeps counting them under their code (cases 090 and 095 unchanged).
+  Help changes, exact, made when B12 is implemented (none before, §0):
+  - `help/cmd-check.md`: the Usage line and `internal/spec`'s usage become
+    `memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--immutable] [--json]`.
+    Description gains, as its last two lines: "A short body or an alias link in a journal
+    entry cannot be fixed, because the body is immutable: it is an immutable finding, counted
+    on the summary line and listed only with `--immutable`." (the Description stays within 15
+    lines). A row after `--limit`: `| `--immutable` | | | Also list the findings on immutable
+    journal bodies; they never count as warnings |`, the same summary in `internal/spec`. The
+    `--json` row's meaning becomes `Print one JSON object: findings, errors, warnings,
+    immutable, truncated` with the names in backticks as now. Output gains, after
+    `check: N errors, M warnings`: "followed by `, L on immutable journal bodies` when there
+    are any, and ` (memex check --immutable lists them)` without `--immutable`". Exit code 0
+    becomes `No errors (no warnings either, with --strict); immutable findings never count`.
+    Mistakes to avoid gains: "- Editing a journal body to clear `W-SHORT-BODY` or
+    `W-ALIAS-LINK`: the body is immutable (`E-HASH`). If knowledge is missing, capture a
+    fuller entry and supersede the old one." Examples unchanged (the help fixture's journals
+    have no immutable finding, so every executed example keeps its output).
+  - `help/topic-check-codes.md`: the first paragraph's summary-line sentence becomes "then
+    `check: N errors, M warnings`, and `, L on immutable journal bodies` when there are any."
+    The `W-ALIAS-LINK` and `W-SHORT-BODY` rows' usual fix gains "; in a journal entry, none:
+    an immutable finding, counted apart". The Options list gains "- `--immutable` also lists
+    the immutable findings: `W-SHORT-BODY` and `W-ALIAS-LINK` in a journal entry, whose body
+    cannot change; they never count as warnings, for `--strict` or the exit code." and the
+    `--json` bullet names `immutable` between `warnings` and `truncated`.
+  - `help/cmd-doctor.md`: unchanged (its example's store has no journal finding).
+  Cases to add (numbers are the next free ones; each MUST be shown to fail on the binary at
+  92e148c, the current main, and pass after):
+  - 238-check-immutable. Seed: a rule `target` with the alias `notes/target.md`; a rule with
+    a short body; a rule whose full body links `[[notes/target.md]]`; a `kept` journal with
+    summary, keywords, a valid `body_sha256` and a short body; a `kept` journal likewise whose
+    full body links `[[notes/target.md]]`. 01 `check`: the two rule lines only, then `check: 0
+    errors, 2 warnings, 2 on immutable journal bodies (memex check --immutable lists them)`,
+    exit 0 (pins the count apart and the hint; fails: 4 warnings, journal lines listed). 02
+    `check --immutable`: four lines in path order, the journal ones with the §7 immutable
+    messages, then `check: 0 errors, 2 warnings, 2 on immutable journal bodies` (pins the
+    option, both messages and the hint's absence; fails: unknown option, exit 2). 03 `check
+    --strict`: exit 1, 01's output (real warnings still count). 04 `check --errors-only`: only
+    01's summary line. 05 `check --errors-only --immutable`: the two journal lines, 02's
+    summary. 06 `check --immutable --limit 3`: the two journal lines and the rule's
+    `W-ALIAS-LINK`, `W-SHORT-BODY: 1 more (raise --limit)`, 02's summary (immutable lines count
+    for the limit). 07 `check --limit 1`: the rule's `W-ALIAS-LINK`, `W-SHORT-BODY: 1 more
+    (raise --limit)`, 01's summary (unlisted immutable findings are in no `more` line). 08
+    `check --json`: the two rule findings, `"errors":0,"warnings":2,"immutable":2,
+    "truncated":0`. 09 `check --json --immutable --limit 3`: three findings, the journal ones
+    with `"severity":"immutable"`, `"truncated":1`. Steps 03–09 fail on 92e148c through the
+    summary line, the option or the JSON key.
+  - 239-check-immutable-only. Seed: a clean store whose one finding is a journal's short body.
+    01 `check --strict`: exit 0, `check: 0 errors, 0 warnings, 1 on immutable journal bodies
+    (memex check --immutable lists them)` (pins that `--strict` ignores them; fails: exit 1).
+    02 `doctor`, set up as case 200's all-PASS step: its `check` row is `PASS check 0 errors,
+    0 warnings, 1 on immutable journal bodies` (fails: `1 warnings`). 03 an overlay changes
+    one character of that journal's body, still short: `check` lists the `E-HASH` line and
+    ends `check: 1 errors, 0 warnings, 1 on immutable journal bodies (memex check --immutable
+    lists them)`, exit 1 (pins "whether or not `body_sha256` matches"). 04 `doctor` there:
+    `FAIL check 1 errors, 0 warnings, 1 on immutable journal bodies; run memex check`, exit 1.
+  - 240-check-immutable-scope. Seed: a `raw` journal created more than 90 days before
+    `MEMEX_TODAY`, with no summary, no tags or keywords, a line `token=abc123def` and a short
+    body that links an alias; a `promoted` journal that no entry cites; a `superseded` journal
+    (with `superseded_by`) whose body is short; a valid journal whose frontmatter is out of
+    canonical order. 01 `check`: `W-RAW-OLD`, `W-NO-SUMMARY`, `W-NO-TERMS`, `W-SECRET`,
+    `W-PROMOTED-UNCITED` and `W-CANONICAL` listed as warnings with today's messages, no
+    `W-SHORT-BODY` or `W-ALIAS-LINK` line, the summary counting 3 immutable (pins which codes
+    are in the class and that status does not matter; fails: they are warnings). 02 `check
+    --immutable`: the three immutable lines added.
+  - 241-check-immutable-staged. Seed: a rule with the alias `notes/target.md`. 01 `capture`
+    of a journal whose full body links `[[notes/target.md]]`: created and committed, the
+    pre-commit hook's `check --staged` passes (setup). 02 `check`: `check: 0 errors, 0
+    warnings, 1 on immutable journal bodies (memex check --immutable lists them)` (fails: `1
+    warnings` and the old line). 03 an overlay adds a second journal with a valid hash and a
+    short body, a git step stages it: `check --staged` counts 1, that journal's, not the
+    committed one (pins the `--staged` selection). 04 `check --staged --immutable`: its one
+    line.
+  Open for the operator: (1) the word: "immutable" (§5.6's own) rather than "locked", which
+  §9.1 already uses for the write lock; (2) whether `new journal` and `capture` should print
+  the `W-ALIAS-LINK` a body would get while it can still be changed (today nothing warns
+  before the body is locked); drafted as out of scope, a later block; (3) whether the
+  `--json` key may be left out when 0, so that the eight JSON cases stay as they are; drafted
+  as always present.
