@@ -12,20 +12,15 @@ memex capture --from PATH [--title=T] [--summary=S] [same options]
 ## Description
 
 `capture` is `memex new journal`: the end-of-task record of what was attempted, worked, failed
-and is reusable; its body is immutable. One shell call suffices, body on standard input:
-
-```
-memex capture --title="Rotated the backup key on alpha" --summary="restic wants the short key id." \
-  --tag backup --keyword restic --keyword rotation --body - <<'EOF'
-## What was attempted
-...
-EOF
-```
+and is reusable; its body is immutable.
 
 `--from PATH` imports a file that leaked into a coding tool's memory: title from its first
 heading (else YAML `name:`, else the filename), summary from YAML `description:` or `Imported
 from PATH`, body after `Imported from PATH (date)`; alias PATH, absolute, home as `~/`. PATH is
 never deleted (`remove PATH after review`); a file already an alias in any form is a no-op.
+A repeat is still that no-op after PATH has been removed; then the remove line is omitted.
+memex resolves and checks the store, takes the write lock, freshens, and reads its entries
+before it reads the `--body` file, standard input or the `--from` file.
 
 ## Options
 
@@ -53,7 +48,7 @@ never deleted (`remove PATH after review`); a file already an alias in any form 
 
 `created <path>`, then the outcome line (`pushed <sha7>`, …). A repeat with the same body
 prints `exists <path>` and `nothing to commit`. With `--from`, `remove <PATH> after review`
-follows the `created` or `exists` line.
+follows the `created` line, or the `exists` line when PATH still exists.
 
 ## Exit codes
 

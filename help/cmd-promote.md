@@ -12,9 +12,11 @@ memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new optio
 
 Turns what a journal entry taught into durable knowledge: creates a new entry of `TYPE` as
 `memex new` would, with `sources` set to `SOURCE-ID` (plus any `--source`), and, when the
-source is a journal entry in `raw`, `kept` or `promoted`, sets its status to `promoted`. Both
-files go in one commit. A source of another type, or a superseded one, is cited but not
-changed. The source may be given as an id, a path or an alias.
+source is a journal entry in `raw` or `kept`, sets its status to `promoted`. Both files go in
+one commit. An already promoted or superseded journal, or a source of another type, is cited
+but not changed. The source may be given as an id, a path or an alias. memex resolves and
+checks the store, takes the write lock, freshens, reads its entries, resolves and checks the
+source, and only then reads the `--body` file or standard input.
 
 ## Options
 

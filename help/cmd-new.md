@@ -19,7 +19,8 @@ required because lists and search results show it: it is what lets the next read
 whether to open the entry. Give `--keyword` whenever the body's vocabulary differs from how
 someone would ask about it. The body must hold at least 80 characters of text outside
 headings. Unless `--repo` or `--no-repo` says otherwise, the entry is attributed to the git
-repository of the current directory.
+repository of the current directory. memex resolves and checks the store, takes the write
+lock, freshens, and reads its entries before it reads the `--body` file or standard input.
 
 ## Options
 

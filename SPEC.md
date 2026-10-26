@@ -46,9 +46,9 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 15 Conformance suite | Implemented |
 | 16 Help | Implemented |
 | 17 Agent-first requirements | Implemented |
-| 9.1 Inputs are read under the lock | Planned |
-| 11.2 Refusal order of `new` and `capture` | Planned |
-| 11.8 Refusal order of `promote` | Planned |
+| 9.1 Inputs are read under the lock | Implemented |
+| 11.2 Refusal order of `new` and `capture` | Implemented |
+| 11.8 Refusal order of `promote` | Implemented |
 
 ---
 
@@ -809,7 +809,7 @@ runs as one unit:
    with `memex: store has no commits yet; run memex save` when `memex.toml` is not in `HEAD`:
    the store's pre-commit hook could not validate the commit. This check, like the store's
    resolution (§3.1) and format (§4) before it, needs no lock and is made before step 1.
-   (Planned.) **Inputs are read under the lock.** A mutating command checks in four phases,
+   **Inputs are read under the lock.** A mutating command checks in four phases,
    in this order, and reports only the first failure:
    - **Phase 1**, the command line alone: the usage errors of step 1 of the command's
      refusal order (§11.2, §11.7, §11.8), which read no file and not standard input;
@@ -1080,7 +1080,7 @@ given, or that is a file path (absolute, or beginning with `~/`, `$HOME` or `${H
 the same alias form as PATH, the file is already in the store: `capture --from` prints
 `exists <path>` of that entry, `remove <PATH> after review` and `nothing to commit`, and exits
 0, before any id is computed.
-(Planned.) This **alias no-op** is decided from the store alone, before PATH is read (refusal
+This **alias no-op** is decided from the store alone, before PATH is read (refusal
 order, below), so that a repeat after the file was removed, as the first run told, is still
 the no-op. `remove <PATH> after review` is printed only when PATH, expanded as in §3.1,
 exists (`lstat` succeeds); otherwise the output is `exists <path>` and `nothing to commit`.
@@ -1118,7 +1118,7 @@ Behavior:
      `To read it: memex show <id>. A journal body is immutable; to add to it, capture a new entry.`
 4. Write and commit (§9.1). Standard output gets `created <path>`, then the outcome line.
 
-**Refusal order** (Planned). `new` and `capture` check in this order and report only the
+**Refusal order.** `new` and `capture` check in this order and report only the
 first failure, as `set` and `update` do (§11.7), so that one store and one command line give
 one result:
 
@@ -1347,7 +1347,7 @@ failure, so that one store and one command line give one result:
    repeated option, a malformed assignment, an unknown field name, `+=` or `-=` on a field that
    is not an array; for `update`, a missing or empty `--summary`, a missing `--body` and a
    `--heading` that is not 1–100 characters on one line; for `--batch`, a positional argument
-   and a `FILE` that cannot be read (Planned: `FILE` is read after step 2 instead, as the
+   and a `FILE` that cannot be read (`FILE` is read after step 2 instead, as the
    paragraph after this list says). Usage errors, exit 2.
 2. **The store and §9.1 steps 1–2**: the store resolves (§3.1) and its format is supported
    (§4), exit 2; `memex.toml` is in `HEAD`, exit 1; the lock, exit 4; no rebase, merge or
@@ -1377,7 +1377,7 @@ failure, so that one store and one command line give one result:
    satisfies it.
 7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
 
-(Planned.) In `--batch`, the store's entries are read right after step 2, their
+In `--batch`, the store's entries are read right after step 2, their
 `memex: skipped` lines (§8.1) printed first; then `FILE` (standard input for `-`) is read, as
 §9.1 phase 4 requires; then its lines are split; one that cannot be read is the usage error
 `cannot read --batch <FILE>: <reason>`, exit 2, printed with the usage and `Run:` lines of
@@ -1442,7 +1442,7 @@ already `promoted` is allowed. A source that is rewritten is refused, as in `set
 when it has uncommitted changes or fields that cannot be kept. Standard output is `created <path>`, then the outcome
 line; the id rules of §11.2 step 3 apply to the new entry.
 
-**Refusal order** (Planned). `promote` checks in this order and reports only the first
+**Refusal order.** `promote` checks in this order and reports only the first
 failure:
 
 1. **The command line alone**, as in §11.2 refusal order step 1, with its second check
