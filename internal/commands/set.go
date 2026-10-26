@@ -271,15 +271,16 @@ func Set(e *Env, o SetOptions) (int, *UsageError) {
 // SetBatch runs `memex set --batch FILE` (SPEC §11.7): every line of FILE is one set, and the
 // whole batch is one §9.1 unit with one commit. File is a path, or "-" for standard input.
 func SetBatch(e *Env, file string) (int, *UsageError) {
-	text, err := e.readBody(file)
-	if err != nil {
-		return 0, &UsageError{fmt.Sprintf("cannot read --batch %s: %v", file, unwrap(err))}
-	}
 	w, code, ok := e.beginWrite(true)
 	if !ok {
 		return code, nil
 	}
 	res := newResolver(w.entries())
+	text, err := e.readBody(file)
+	if err != nil {
+		w.end(nil)
+		return 0, &UsageError{fmt.Sprintf("cannot read --batch %s: %v", file, unwrap(err))}
+	}
 	lineOf := map[string]int{} // entry path -> the line that names it
 	var files []write.File
 	var body []string

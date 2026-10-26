@@ -339,35 +339,36 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 	if uerr := o.checkUsage(); uerr != nil {
 		return 0, uerr
 	}
-	today, err := config.Today(e.Getenv, e.Now())
-	if err != nil {
-		return e.failErr(err), nil
-	}
-	title, summary, body, code, uerr := e.prepareBody(&o, today)
-	if uerr != nil || code != 0 {
-		return code, uerr
-	}
 	w, code, ok := e.beginWrite(true)
 	if !ok {
 		return code, nil
+	}
+	entries := w.entries()
+	home := e.Getenv("HOME")
+	if o.From != "" {
+		// The alias no-op is decided from the store before PATH is read. PATH is only
+		// inspected here to decide whether the advisory remove line is useful.
+		if en := fromAlias(entries, o.From, home); en != nil {
+			lines := []string{"exists " + en.Path}
+			if captureSourceExists(o.From, home) {
+				lines = append(lines, "remove "+o.From+" after review")
+			}
+			return w.nothing(lines...), nil
+		}
+	}
+	title, summary, body, code, uerr := e.prepareBody(&o, w.today)
+	if uerr != nil || code != 0 {
+		w.end(nil)
+		return code, uerr
 	}
 	var repos []string
 	if len(o.Repos) == 0 && !o.NoRepo {
 		repos = attribution(w.root)
 	}
-	home := e.Getenv("HOME")
 	if o.From != "" {
 		// The imported file's path resolves to the entry, in its alias form (SPEC §11.2).
 		if a := config.PathAlias(o.From, home); !slices.Contains(o.Alias, a) {
 			o.Alias = append(o.Alias, a)
-		}
-	}
-	entries := w.entries()
-	if o.From != "" {
-		// A file already brought in, by capture --from or by the importer's --leak (SPEC
-		// §13.6), is an alias of its entry; capturing it again is the §11.2 no-op.
-		if en := fromAlias(entries, o.From, home); en != nil {
-			return w.nothing("exists "+en.Path, "remove "+o.From+" after review"), nil
 		}
 	}
 	p := o.build(w, newResolver(entries), title, summary, body, repos)
@@ -392,6 +393,18 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 	}
 	msg := fmt.Sprintf("memex: new %s %s", p.typ.Name, p.id)
 	return w.commit(files, msg, append([]string{"created " + p.path}, removeLine...)...), nil
+}
+
+// captureSourceExists reports whether PATH still exists for the optional remove-after-review
+// line. It uses the same expansion as the later --from read, and deliberately follows no
+// symbolic links beyond what lstat itself needs (SPEC §11.2).
+func captureSourceExists(name, home string) bool {
+	expanded, err := config.Expand(name, home)
+	if err != nil {
+		return false
+	}
+	_, err = os.Lstat(expanded)
+	return err == nil
 }
 
 // failedValidation reports a step 3 refusal.

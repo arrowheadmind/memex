@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/write"
@@ -23,28 +22,38 @@ func Promote(e *Env, o PromoteOptions) (int, *UsageError) {
 	if uerr := n.checkUsage(); uerr != nil {
 		return 0, uerr
 	}
-	today, err := config.Today(e.Getenv, e.Now())
-	if err != nil {
-		return e.failErr(err), nil
-	}
-	title, summary, body, code, uerr := e.prepareBody(n, today)
-	if uerr != nil || code != 0 {
-		return code, uerr
-	}
 	w, code, ok := e.beginWrite(true)
 	if !ok {
 		return code, nil
 	}
+	entries := w.entries()
+	res := newResolver(entries)
+	src, r := w.target(res, o.Source)
+	if r != nil {
+		return w.refuse(spec.ExitFailure, "%s", r.msg), nil
+	}
+	rewrite := src.Type.Name == "journal" && slices.Contains([]string{"raw", "kept"}, src.Status())
+	_, unusable := w.unusable[src.Path]
+	if rewrite || unusable {
+		if code, refused := w.refuseUncommitted(src.Path); refused {
+			return code, nil
+		}
+		why := w.unusable[src.Path]
+		if why == "" {
+			why = rewritable(src)
+		}
+		if why != "" {
+			return w.refuse(spec.ExitFailure, "%s has fields that promote cannot keep (%s); edit the file, then memex save", src.Path, why), nil
+		}
+	}
+	title, summary, body, code, uerr := e.prepareBody(n, w.today)
+	if uerr != nil || code != 0 {
+		w.end(nil)
+		return code, uerr
+	}
 	var repos []string
 	if len(n.Repos) == 0 && !n.NoRepo {
 		repos = attribution(w.root)
-	}
-	entries := w.entries()
-	res := newResolver(entries)
-	src := res.resolve(e, o.Source)
-	if src == nil {
-		w.end(nil)
-		return spec.ExitFailure, nil
 	}
 	n.Sources = append([]string{src.ID}, n.Sources...)
 	p := n.build(w, res, title, summary, body, repos)
@@ -59,13 +68,7 @@ func Promote(e *Env, o PromoteOptions) (int, *UsageError) {
 		return w.refuseExisting(f, en), nil
 	}
 	files := []write.File{{Path: p.path, Data: p.data(), Check: true}}
-	if src.Type.Name == "journal" && slices.Contains([]string{"raw", "kept"}, src.Status()) {
-		if why := rewritable(src); why != "" {
-			return w.refuse(spec.ExitFailure, "%s has fields that promote cannot keep (%s); edit the file, then memex save", src.Path, why), nil
-		}
-		if code, refused := w.refuseUncommitted(src.Path); refused {
-			return code, nil
-		}
+	if rewrite {
 		f := entry.Fields{}
 		for k, v := range src.Fields {
 			f[k] = v
