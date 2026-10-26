@@ -1,0 +1,9 @@
+add
+journal/2026-01-10-session-notes.md
+
+commit
+-q
+-m
+restore parseable journal
+--
+journal/2026-01-10-session-notes.md

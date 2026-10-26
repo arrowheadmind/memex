@@ -1,0 +1,5 @@
+memex: skipped plans/2026-01-10-backup-overhaul.md: missing opening +++ line; the file must begin with the line +++; run memex check
+memex: cannot read --batch <HOME>/missing.txt: no such file or directory
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

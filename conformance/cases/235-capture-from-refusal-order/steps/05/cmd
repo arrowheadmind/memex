@@ -1,0 +1,7 @@
+capture
+--from
+<HOME>/x.md
+--body
+-
+--store
+<HOME>/nostore

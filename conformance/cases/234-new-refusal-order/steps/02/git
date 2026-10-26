@@ -1,0 +1,9 @@
+rm
+--cached
+memex.toml
+
+commit
+-q
+--no-verify
+-m
+remove manifest

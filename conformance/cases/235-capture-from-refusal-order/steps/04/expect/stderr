@@ -1,0 +1,4 @@
+memex: cannot read --from <HOME>/unreadable.md: no such file or directory
+memex capture --title=T --summary=S --body FILE|- [same options]
+memex capture --from PATH [--title=T] [--summary=S] [same options]
+Run: memex help capture

@@ -1,0 +1,10 @@
+promote
+2026-01-10-warm-the-cache
+--to
+rule
+--title=Rule source lesson
+--summary=A rule source is cited without being rewritten.
+--source
+does-not-exist-at-all
+--body
+-

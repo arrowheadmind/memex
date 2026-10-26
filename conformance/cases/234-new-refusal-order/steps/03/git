@@ -1,0 +1,10 @@
+checkout
+HEAD^
+--
+memex.toml
+
+commit
+-q
+--no-verify
+-m
+restore manifest

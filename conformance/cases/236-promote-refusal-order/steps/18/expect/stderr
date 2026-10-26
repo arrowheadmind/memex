@@ -1,0 +1,3 @@
+memex: unknown type "bogus"; valid: rule, decision, runbook, reference, task, plan, journal, rules, decisions, runbooks, tasks, plans
+memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new options]
+Run: memex help promote

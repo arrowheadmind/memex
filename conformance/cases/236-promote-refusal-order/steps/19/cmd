@@ -1,0 +1,8 @@
+promote
+2026-01-11-promoted-notes
+--to
+rule
+--title=Promoted source lesson
+--summary=An already promoted source is cited without being rewritten.
+--body
+-

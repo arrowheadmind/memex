@@ -1,0 +1,8 @@
+new
+plan
+--title=T
+--summary=S
+--body
+<HOME>/missing.md
+--parent
+missing-plan

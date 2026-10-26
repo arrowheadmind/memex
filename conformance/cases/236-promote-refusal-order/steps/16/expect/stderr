@@ -1,0 +1,3 @@
+memex: missing SOURCE-ID
+memex promote SOURCE-ID --to TYPE --title=T --summary=S --body FILE|- [new options]
+Run: memex help promote

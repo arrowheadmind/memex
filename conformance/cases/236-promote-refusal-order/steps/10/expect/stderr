@@ -1,0 +1,2 @@
+memex: skipped journal/2026-01-10-session-notes.md: missing opening +++ line; the file must begin with the line +++; run memex check
+memex: journal/2026-01-10-session-notes.md has uncommitted changes; run memex save first

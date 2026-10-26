@@ -1,0 +1,8 @@
+new
+rule
+--title=T
+--summary=S
+--body
+-
+--store
+<HOME>/nostore

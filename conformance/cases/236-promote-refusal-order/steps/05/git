@@ -1,0 +1,8 @@
+commit
+-q
+-am
+restore source
+
+rm
+-q
+journal/2026-01-10-session-notes.md
