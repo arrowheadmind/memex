@@ -1,0 +1,5 @@
+memex: exists journal/2026-01-15-legacy-alias-journal.md
+  title: Legacy alias journal
+  summary: A journal written before alias-link refusal.
+To read it: memex show 2026-01-15-legacy-alias-journal. A journal body is immutable; to add to it, capture a new entry.
+To create a different entry: choose a more specific --title.

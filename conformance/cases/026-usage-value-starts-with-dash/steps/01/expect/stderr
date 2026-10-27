@@ -1,3 +1,3 @@
 memex: value for --limit starts with "-"; write --limit=-1
-memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--immutable] [--json]
 Run: memex help check

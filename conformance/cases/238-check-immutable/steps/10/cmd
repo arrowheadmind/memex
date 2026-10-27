@@ -1,0 +1,4 @@
+check
+--json
+--errors-only
+--immutable

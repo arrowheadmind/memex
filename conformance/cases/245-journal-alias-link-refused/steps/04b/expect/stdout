@@ -1,0 +1,2 @@
+rules/2026-01-15-rule-alias-link.md: W-ALIAS-LINK [[notes/target.md]] on line 9 resolves through an alias; link [[2026-01-10-target]] instead
+check: 0 errors, 1 warnings, 1 on immutable journal bodies (memex check --immutable lists them)

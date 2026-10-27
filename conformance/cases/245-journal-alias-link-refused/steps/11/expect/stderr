@@ -1,0 +1,3 @@
+memex: [[notes/target.md]] on line 1 of the body resolves through an alias; a journal body cannot change once it is committed, so link [[2026-01-10-target]] instead
+memex: journal/2026-01-15-bad-summary-and-alias.md: E-FIELD-VALUE summary must be one line of at most 500 characters
+memex: refused: the result would not validate; nothing was changed

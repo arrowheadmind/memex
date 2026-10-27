@@ -1,0 +1,11 @@
+journal/2025-01-01-old-raw.md: W-ALIAS-LINK [[notes/target.md]] on line 8 resolves through an alias to [[2026-01-10-target]]; a journal body is immutable, so this is not counted as a warning
+journal/2025-01-01-old-raw.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry: memex set 2025-01-01-old-raw summary=<sentence>
+journal/2025-01-01-old-raw.md: W-NO-TERMS no tags or keywords; add the words a reader would search with: memex set 2025-01-01-old-raw keywords=<word>,<word>
+journal/2025-01-01-old-raw.md: W-RAW-OLD raw since 2025-01-01, more than 90 days ago; review it, then: memex set 2025-01-01-old-raw status=kept, or memex promote 2025-01-01-old-raw
+journal/2025-01-01-old-raw.md: W-SECRET line 8 looks like a credential (a password, token or secret assignment); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set 2025-01-01-old-raw allow_secret=true
+journal/2025-01-01-old-raw.md: W-SHORT-BODY body content measure 34 is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set 2025-01-01-old-raw status=superseded superseded_by=<new>
+journal/2026-01-11-promoted.md: W-PROMOTED-UNCITED promoted, but no entry lists "2026-01-11-promoted" in sources
+journal/2026-01-12-superseded.md: W-ALIAS-LINK [[notes/target.md]] on line 11 resolves through an alias to [[2026-01-10-target]]; a journal body is immutable, so this is not counted as a warning
+journal/2026-01-12-superseded.md: W-SHORT-BODY body content measure 19 is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set 2026-01-12-superseded status=superseded superseded_by=<new>
+journal/2026-01-13-noncanonical.md: W-CANONICAL not in canonical form; run memex fmt journal/2026-01-13-noncanonical.md
+check: 0 errors, 6 warnings, 4 on immutable journal bodies

@@ -1,0 +1,5 @@
+check
+--json
+--immutable
+--limit
+3

@@ -1,0 +1,7 @@
+reset
+-q
+--
+journal/2026-01-13-short-journal.md
+
+add
+rules/2026-01-15-link-short.md

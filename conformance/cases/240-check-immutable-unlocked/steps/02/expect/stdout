@@ -1,0 +1,5 @@
+journal/2026-01-13-short-journal.md: E-HASH body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set 2026-01-13-short-journal status=superseded superseded_by=<new>
+journal/2026-01-13-short-journal.md: W-SHORT-BODY body content measure 4 is below 80; edit the file, then memex save
+journal/2026-01-14-alias-journal.md: E-HASH body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set 2026-01-14-alias-journal status=superseded superseded_by=<new>
+journal/2026-01-14-alias-journal.md: W-ALIAS-LINK [[notes/target.md]] on line 10 resolves through an alias; link [[2026-01-10-target]] instead
+check: 2 errors, 2 warnings

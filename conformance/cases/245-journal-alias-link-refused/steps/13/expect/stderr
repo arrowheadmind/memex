@@ -1,0 +1,2 @@
+memex: [[notes/self.md]] on line 1 of the body resolves through an alias; a journal body cannot change once it is committed, so link [[2026-01-15-self-alias]] instead
+memex: refused: the result would not validate; nothing was changed

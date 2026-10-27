@@ -1,0 +1,3 @@
+rules/2026-01-11-short-rule.md: W-SHORT-BODY body content measure 4 is below 80; edit the file, then memex save
+W-ALIAS-LINK: 1 more (raise --limit)
+check: 0 errors, 2 warnings, 2 on immutable journal bodies (memex check --immutable lists them)

@@ -1,0 +1,10 @@
+new
+rule
+--title
+Rule alias link
+--summary
+Rules may link aliases.
+--body
+-
+--tag
+test

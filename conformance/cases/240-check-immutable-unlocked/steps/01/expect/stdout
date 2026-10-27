@@ -1,0 +1,1 @@
+check: 0 errors, 0 warnings, 2 on immutable journal bodies (memex check --immutable lists them)

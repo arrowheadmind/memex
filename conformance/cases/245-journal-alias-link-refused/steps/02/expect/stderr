@@ -1,0 +1,3 @@
+memex: [[notes/target.md]] on line 2 of the body resolves through an alias; a journal body cannot change once it is committed, so link [[2026-01-10-target]] instead
+memex: [[notes/target.md]] on line 5 of the body resolves through an alias; a journal body cannot change once it is committed, so link [[2026-01-10-target]] instead
+memex: refused: the result would not validate; nothing was changed

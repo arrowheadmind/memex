@@ -1,0 +1,7 @@
+imported 3 entries from 1 sources into <STORE>
+  entries: journal 3
+  attachments 0, not-knowledge 0 files, leaks 0
+  index rows 0: matched 0, orphan 0, duplicate 0, conflict 0, placeholders 0
+  links rewritten 0, unresolved targets 0; duplicates dropped 0; short bodies 1
+  warnings: W-ALIAS-LINK 1, W-NO-SUMMARY 3, W-NO-TERMS 3, W-SHORT-BODY 1
+report: <STORE>/import-report.json

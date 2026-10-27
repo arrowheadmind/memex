@@ -1,0 +1,7 @@
+add
+journal/2026-01-13-short-journal.md
+
+restore
+--worktree
+--source=HEAD
+journal/2026-01-13-short-journal.md

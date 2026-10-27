@@ -1,0 +1,1 @@
+{"findings":[{"path":"rules/2026-01-10-short.md","code":"W-SHORT-BODY","severity":"warning","message":"body content measure 4 is below 80; edit the file, then memex save"}],"errors":0,"warnings":1,"immutable":0,"truncated":0}

@@ -1,0 +1,2 @@
+rules/2026-01-10-short.md: W-SHORT-BODY body content measure 4 is below 80; edit the file, then memex save
+check: 0 errors, 1 warnings

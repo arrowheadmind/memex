@@ -1,0 +1,3 @@
+journal/2026-01-13-short-journal.md: W-SHORT-BODY body content measure 4 is below 80; edit the file, then memex save
+journal/2026-01-14-alias-journal.md: W-ALIAS-LINK [[notes/target.md]] on line 10 resolves through an alias; link [[2026-01-10-target]] instead
+check: 0 errors, 2 warnings

@@ -1,0 +1,7 @@
+journal/2025-01-01-old-raw.md: W-NO-SUMMARY no summary; add one sentence that tells a reader whether to open the entry: memex set 2025-01-01-old-raw summary=<sentence>
+journal/2025-01-01-old-raw.md: W-NO-TERMS no tags or keywords; add the words a reader would search with: memex set 2025-01-01-old-raw keywords=<word>,<word>
+journal/2025-01-01-old-raw.md: W-RAW-OLD raw since 2025-01-01, more than 90 days ago; review it, then: memex set 2025-01-01-old-raw status=kept, or memex promote 2025-01-01-old-raw
+journal/2025-01-01-old-raw.md: W-SECRET line 8 looks like a credential (a password, token or secret assignment); remove it; if it is not one, add the line <!-- memex: allow-secret -->, or for a journal entry: memex set 2025-01-01-old-raw allow_secret=true
+journal/2026-01-11-promoted.md: W-PROMOTED-UNCITED promoted, but no entry lists "2026-01-11-promoted" in sources
+journal/2026-01-13-noncanonical.md: W-CANONICAL not in canonical form; run memex fmt journal/2026-01-13-noncanonical.md
+check: 0 errors, 6 warnings, 4 on immutable journal bodies (memex check --immutable lists them)
