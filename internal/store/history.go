@@ -38,6 +38,7 @@ func HistoryReason(err error, timeout time.Duration) string {
 // is where every path starts.
 type History struct {
 	Versions map[string][][]byte
+	HasHEAD  bool
 }
 
 // ReadHistory reads the history of the files under dirs with one `git log` over HEAD's
@@ -59,6 +60,7 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 		}
 		return nil, err
 	}
+	h.HasHEAD = true
 	args := []string{"log", "--first-parent", "--diff-merges=first-parent", "--root", "--raw",
 		"--no-abbrev", "--no-renames", "--relative", "-z", "--format=%x01%H", "HEAD", "--"}
 	out, err := g.Run(append(args, dirs...)...)
@@ -114,4 +116,39 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 		}
 	}
 	return h, nil
+}
+
+// ReadHeadFiles reads, in one ls-tree and one cat-file batch, only the wanted regular files
+// that HEAD holds under dir. The caller has already established that HEAD resolves.
+func ReadHeadFiles(g *gitx.Git, dir string, wanted map[string]bool) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	if len(wanted) == 0 {
+		return out, nil
+	}
+	raw, err := g.Run("ls-tree", "-r", "-z", "HEAD", "--", dir)
+	if err != nil {
+		return nil, err
+	}
+	objects := map[string]string{}
+	var order []string
+	for _, rec := range strings.Split(raw, "\x00") {
+		meta, p, ok := strings.Cut(rec, "\t")
+		fields := strings.Fields(meta)
+		if !ok || len(fields) != 3 || fields[1] != "blob" || !wanted[p] {
+			continue
+		}
+		if fields[0] != "100644" && fields[0] != "100755" {
+			continue
+		}
+		objects[p] = fields[2]
+		order = append(order, fields[2])
+	}
+	blobs, err := catBlobs(g, order)
+	if err != nil {
+		return nil, err
+	}
+	for p, oid := range objects {
+		out[p] = blobs[oid]
+	}
+	return out, nil
 }

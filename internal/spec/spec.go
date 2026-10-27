@@ -346,13 +346,14 @@ var Commands = []Command{
 	{
 		Name:    "check",
 		Summary: "Validate the store",
-		Usage:   "memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]",
+		Usage:   "memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--immutable] [--json]",
 		Options: []Option{
 			{Name: "--staged", Summary: "Validate only entries added or modified in the git index"},
 			{Name: "--workspace", Summary: "Also check pointer files and scan for leaks in tool memory (§12)"},
 			{Name: "--strict", Summary: "Count warnings as errors"},
-			{Name: "--errors-only", Summary: "Print only errors"},
+			{Name: "--errors-only", Summary: "Suppress ordinary warning lines"},
 			{Name: "--limit", Value: "N", Default: "200", Summary: "Maximum number of finding lines; 0 means no limit"},
+			{Name: "--immutable", Summary: "Also list the findings on immutable journal bodies; they never count as warnings"},
 			optJSON,
 		},
 		ExitCodes: []int{ExitOK, ExitFailure, ExitUsage},

@@ -18,9 +18,9 @@ import (
 
 // CheckOptions are the options of `memex check` (SPEC §11.12).
 type CheckOptions struct {
-	Staged, Strict, ErrorsOnly, JSON bool
-	Workspace                        bool // add the §12 pointer and leak findings
-	Limit                            int  // 0 means no limit
+	Staged, Strict, ErrorsOnly, Immutable, JSON bool
+	Workspace                                   bool // add the §12 pointer and leak findings
+	Limit                                       int  // 0 means no limit
 }
 
 // DefaultCheckLimit is the default --limit of check (SPEC §7).
@@ -61,6 +61,16 @@ func Check(e *Env, o CheckOptions) int {
 			return e.fail(spec.ExitUsage, "check needs the store's git history: %s", store.HistoryReason(herr, 0))
 		}
 		findings, err = check.RunHistory(tree, today, staged, hist)
+		if err == nil && hist.HasHEAD {
+			heads, herr := store.ReadHeadFiles(g, "journal", check.ImmutableCandidates(findings))
+			if herr != nil {
+				return e.fail(spec.ExitUsage, "check needs the store's git history: %s", store.HistoryReason(herr, 0))
+			}
+			for p, data := range heads {
+				hist.Versions[p] = [][]byte{data}
+			}
+			findings, err = check.RunHistory(tree, today, staged, hist)
+		}
 	}
 	var fe *store.FormatError
 	if errors.As(err, &fe) {
@@ -75,18 +85,20 @@ func Check(e *Env, o CheckOptions) int {
 		check.Sort(findings)
 	}
 
-	errs, warns := 0, 0
+	errs, warns, immutable := 0, 0, 0
 	for _, f := range findings {
-		if check.IsError(f) {
+		if f.Immutable {
+			immutable++
+		} else if check.IsError(f) {
 			errs++
 		} else {
 			warns++
 		}
 	}
 	shown := findings
-	if o.ErrorsOnly {
-		shown = slices.DeleteFunc(slices.Clone(findings), func(f check.Finding) bool { return !check.IsError(f) })
-	}
+	shown = slices.DeleteFunc(slices.Clone(shown), func(f check.Finding) bool {
+		return (f.Immutable && !o.Immutable) || (o.ErrorsOnly && !check.IsError(f) && !f.Immutable)
+	})
 	listed, rest := shown, []check.Finding(nil)
 	if o.Limit > 0 && len(shown) > o.Limit {
 		listed, rest = shown[:o.Limit], shown[o.Limit:]
@@ -96,7 +108,9 @@ func Check(e *Env, o CheckOptions) int {
 		items := make(jsonx.Array, len(listed))
 		for i, f := range listed {
 			sev := "warning"
-			if check.IsError(f) {
+			if f.Immutable {
+				sev = "immutable"
+			} else if check.IsError(f) {
 				sev = "error"
 			}
 			items[i] = jsonx.Object{
@@ -110,6 +124,7 @@ func Check(e *Env, o CheckOptions) int {
 			{Key: "findings", Value: items},
 			{Key: "errors", Value: jsonx.Int(errs)},
 			{Key: "warnings", Value: jsonx.Int(warns)},
+			{Key: "immutable", Value: jsonx.Int(immutable)},
 			{Key: "truncated", Value: jsonx.Int(len(rest))},
 		}))
 	} else {
@@ -129,7 +144,14 @@ func Check(e *Env, o CheckOptions) int {
 		for _, c := range codes {
 			fmt.Fprintf(&b, "%s: %d more (raise --limit)\n", c, more[c])
 		}
-		fmt.Fprintf(&b, "check: %d errors, %d warnings\n", errs, warns)
+		fmt.Fprintf(&b, "check: %d errors, %d warnings", errs, warns)
+		if immutable > 0 {
+			fmt.Fprintf(&b, ", %d on immutable journal bodies", immutable)
+			if !o.Immutable {
+				b.WriteString(" (memex check --immutable lists them)")
+			}
+		}
+		b.WriteByte('\n')
 		io.WriteString(e.Stdout, b.String())
 	}
 	if errs > 0 || (o.Strict && warns > 0) {

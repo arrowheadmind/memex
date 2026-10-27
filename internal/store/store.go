@@ -20,6 +20,9 @@ type Finding struct {
 	Path    string
 	Code    string
 	Message string
+	// Immutable marks W-SHORT-BODY and W-ALIAS-LINK on a locked journal body.
+	// The code remains W- so import accounting and the public code vocabulary do not change.
+	Immutable bool
 }
 
 // FormatError is a manifest whose format this memex cannot read (exit 2, SPEC §4).
@@ -44,7 +47,7 @@ func ReadManifest(t Tree) (*Manifest, []Finding, error) {
 		return nil, nil, err
 	}
 	bad := func(format string, args ...any) Finding {
-		return Finding{ManifestFile, "E-MANIFEST", fmt.Sprintf(format, args...)}
+		return Finding{Path: ManifestFile, Code: "E-MANIFEST", Message: fmt.Sprintf(format, args...)}
 	}
 	var raw map[string]any
 	if _, err := toml.Decode(string(data), &raw); err != nil {
@@ -138,7 +141,7 @@ func Enumerate(t Tree) (*Layout, error) {
 	}
 	l := &Layout{}
 	notEntry := func(p, msg string) {
-		l.Findings = append(l.Findings, Finding{p, "E-NOT-ENTRY", msg})
+		l.Findings = append(l.Findings, Finding{Path: p, Code: "E-NOT-ENTRY", Message: msg})
 	}
 	for _, it := range top {
 		name := it.Name
@@ -162,8 +165,8 @@ func Enumerate(t Tree) (*Layout, error) {
 					continue // dot-files and dot-directories are ignored, as at the top level
 				}
 				if !o.Dir {
-					l.Findings = append(l.Findings, Finding{"files/" + o.Name, "E-FILES-OWNER",
-						"not a directory; attachments go in files/<id>/"})
+					l.Findings = append(l.Findings, Finding{Path: "files/" + o.Name, Code: "E-FILES-OWNER",
+						Message: "not a directory; attachments go in files/<id>/"})
 					continue
 				}
 				l.Owners = append(l.Owners, o.Name)

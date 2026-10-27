@@ -13,13 +13,27 @@ import (
 // currency).
 var CurrencyTypes = []string{"task", "plan"}
 
-// CurrencyDirs are the directories of CurrencyTypes, the paths whose history check reads.
+// CurrencyDirs are the directories whose versions summary currency reads.
 func CurrencyDirs() []string {
 	var dirs []string
 	for _, t := range CurrencyTypes {
 		dirs = append(dirs, spec.LookupType(t).Directory)
 	}
 	return dirs
+}
+
+// ImmutableCandidates returns journal paths with a finding whose classification needs the
+// HEAD body. The first validation pass treats them as ordinary warnings; only these blobs
+// need to be read before the final pass (SPEC §7).
+func ImmutableCandidates(findings []Finding) map[string]bool {
+	wanted := map[string]bool{}
+	journal := spec.LookupType("journal").Directory + "/"
+	for _, f := range findings {
+		if strings.HasPrefix(f.Path, journal) && (f.Code == "W-SHORT-BODY" || f.Code == "W-ALIAS-LINK") {
+			wanted[f.Path] = true
+		}
+	}
+	return wanted
 }
 
 // version is one version of an entry, as summary currency compares them.

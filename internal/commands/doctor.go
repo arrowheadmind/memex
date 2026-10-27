@@ -111,11 +111,23 @@ func Doctor(e *Env, asJSON bool) int {
 		e.doctorGit(root, add)
 	}
 	if storeOK {
-		hist, herr := store.ReadHistory(gitx.New(root, doctorGitTimeout, noLocks), check.CurrencyDirs())
+		checkGit := gitx.New(root, doctorGitTimeout, noLocks)
+		hist, herr := store.ReadHistory(checkGit, check.CurrencyDirs())
 		var findings []check.Finding
 		var err error
 		if herr == nil {
 			findings, err = check.RunHistory(store.WorkTree{Root: root}, today, nil, hist)
+			if err == nil && hist.HasHEAD {
+				heads, headErr := store.ReadHeadFiles(checkGit, "journal", check.ImmutableCandidates(findings))
+				if headErr != nil {
+					herr = headErr
+				} else {
+					for p, data := range heads {
+						hist.Versions[p] = [][]byte{data}
+					}
+					findings, err = check.RunHistory(store.WorkTree{Root: root}, today, nil, hist)
+				}
+			}
 		}
 		switch {
 		case herr != nil:
@@ -123,18 +135,24 @@ func Doctor(e *Env, asJSON bool) int {
 		case err != nil:
 			add("check", fail, "%v", err)
 		default:
-			errs, warns := 0, 0
+			errs, warns, immutable := 0, 0, 0
 			for _, f := range findings {
-				if check.IsError(f) {
+				if f.Immutable {
+					immutable++
+				} else if check.IsError(f) {
 					errs++
 				} else {
 					warns++
 				}
 			}
+			suffix := ""
+			if immutable > 0 {
+				suffix = fmt.Sprintf(", %d on immutable journal bodies", immutable)
+			}
 			if errs > 0 {
-				add("check", fail, "%d errors, %d warnings; run memex check", errs, warns)
+				add("check", fail, "%d errors, %d warnings%s; run memex check", errs, warns, suffix)
 			} else {
-				add("check", pass, "%d errors, %d warnings", errs, warns)
+				add("check", pass, "%d errors, %d warnings%s", errs, warns, suffix)
 			}
 		}
 	}

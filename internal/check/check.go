@@ -52,12 +52,17 @@ type checker struct {
 	files    []*parsed
 	byID     map[string][]*parsed
 	byAlias  map[string][]*parsed
+	locked   map[string]bool
 	// targets records, for each entry path, the paths its links resolve to (for --staged).
 	targets map[string][]string
 }
 
 func (c *checker) add(p, code, format string, args ...any) {
 	c.findings = append(c.findings, Finding{Path: p, Code: code, Message: fmt.Sprintf(format, args...)})
+}
+
+func (c *checker) addImmutable(p, code, format string, args ...any) {
+	c.findings = append(c.findings, Finding{Path: p, Code: code, Message: fmt.Sprintf(format, args...), Immutable: true})
 }
 
 // Run validates the store in tree. With staged non-nil, only findings about the staged paths
@@ -80,7 +85,7 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 		return nil, err
 	}
 	c := &checker{tree: tree, today: today, byID: map[string][]*parsed{},
-		byAlias: map[string][]*parsed{}, targets: map[string][]string{}}
+		byAlias: map[string][]*parsed{}, locked: map[string]bool{}, targets: map[string][]string{}}
 	c.findings = append(c.findings, mf...)
 	c.findings = append(c.findings, layout.Findings...)
 	for _, f := range layout.Files {
@@ -108,6 +113,9 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 		if p.fields == nil {
 			continue
 		}
+		if hist != nil {
+			c.locked[p.Path] = lockedJournalBody(p, firstVersion(hist.Versions[p.Path]))
+		}
 		c.checkEntry(p, cited)
 		if hist != nil {
 			c.checkCurrency(p, hist.Versions[p.Path])
@@ -119,6 +127,35 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 	}
 	Sort(c.findings)
 	return c.findings, nil
+}
+
+func firstVersion(vs [][]byte) []byte {
+	if len(vs) == 0 {
+		return nil
+	}
+	return vs[0]
+}
+
+// lockedJournalBody is the locked-body predicate of SPEC §7. head is nil unless HEAD
+// holds a regular file at this path; p is the checked view (working tree or index).
+func lockedJournalBody(p *parsed, head []byte) bool {
+	if p.Type.Name != "journal" || head == nil || p.fields == nil {
+		return false
+	}
+	sum := p.fields.String("body_sha256")
+	if len(sum) != 64 {
+		return false
+	}
+	for _, r := range sum {
+		if !(r >= '0' && r <= '9') && !(r >= 'a' && r <= 'f') {
+			return false
+		}
+	}
+	if sum != entry.BodySHA256(p.body) {
+		return false
+	}
+	split, problem := entry.SplitFile(string(head))
+	return problem == nil && split.Body == p.body
 }
 
 // parse reads one entry and records the encoding, frontmatter and field problems.
@@ -235,7 +272,11 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 		switch {
 		case len(owners) == 1:
 			c.targets[p.Path] = append(c.targets[p.Path], owners[0].Path)
-			c.add(p.Path, "W-ALIAS-LINK", "[[%s]] on line %d resolves through an alias; link [[%s]] instead", r.Target, line, owners[0].ID)
+			if c.locked[p.Path] {
+				c.addImmutable(p.Path, "W-ALIAS-LINK", "[[%s]] on line %d resolves through an alias to [[%s]]; a journal body is immutable, so this is not counted as a warning", r.Target, line, owners[0].ID)
+			} else {
+				c.add(p.Path, "W-ALIAS-LINK", "[[%s]] on line %d resolves through an alias; link [[%s]] instead", r.Target, line, owners[0].ID)
+			}
 		case len(owners) > 1:
 			c.add(p.Path, "E-LINK", "[[%s]] on line %d is an alias of several entries (%s); link an id", r.Target, line, paths(owners, nil))
 		case slug.ValidID(r.Target):
@@ -279,7 +320,11 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 		c.add(p.Path, "W-NO-SUMMARY", "no summary; add one sentence that tells a reader whether to open the entry: memex set %s summary=<sentence>", p.ID)
 	}
 	if n := entry.ContentMeasure(p.body); n < entry.MinContent {
-		c.add(p.Path, "W-SHORT-BODY", "body content measure %d is below %d; edit the file, then memex save", n, entry.MinContent)
+		if c.locked[p.Path] {
+			c.addImmutable(p.Path, "W-SHORT-BODY", "body content measure %d is below %d; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set %s status=superseded superseded_by=<new>", n, entry.MinContent, p.ID)
+		} else {
+			c.add(p.Path, "W-SHORT-BODY", "body content measure %d is below %d; edit the file, then memex save", n, entry.MinContent)
+		}
 	}
 	if p.Type.Name == "reference" {
 		verified, ok := f.Date("verified")
