@@ -14,6 +14,7 @@ import (
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/importv3"
+	"github.com/arrowheadmind/memex/internal/links"
 	"github.com/arrowheadmind/memex/internal/slug"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
@@ -183,6 +184,40 @@ type prepared struct {
 }
 
 func (p *prepared) data() []byte { return []byte(entry.Render(p.fields, p.body)) }
+
+type aliasLinkRefusal struct {
+	target string
+	line   int
+	id     string
+}
+
+// journalAliasLinks returns the links that would resolve through exactly one alias in the
+// prospective store. ID resolution wins, and links.Extract supplies the fenced-code and
+// inline-code exclusions and body order of SPEC §6 and §11.2.
+func journalAliasLinks(p *prepared, entries []*store.Entry) []aliasLinkRefusal {
+	if p.typ.Name != "journal" {
+		return nil
+	}
+	ids := map[string]bool{p.id: true}
+	aliases := map[string][]string{}
+	for _, en := range entries {
+		ids[en.ID] = true
+		for _, a := range entry.SortedSet(en.Fields.Strings("aliases")) {
+			aliases[a] = append(aliases[a], en.ID)
+		}
+	}
+	for _, a := range entry.SortedSet(p.fields.Strings("aliases")) {
+		aliases[a] = append(aliases[a], p.id)
+	}
+	refs, _ := links.Extract(p.body)
+	var out []aliasLinkRefusal
+	for _, r := range refs {
+		if !ids[r.Target] && len(aliases[r.Target]) == 1 {
+			out = append(out, aliasLinkRefusal{target: r.Target, line: r.Line, id: aliases[r.Target][0]})
+		}
+	}
+	return out
+}
 
 // prepareBody reads and normalizes the body and checks its content measure (SPEC §11.2
 // step 2). It returns the title and summary too, which --from may supply.
@@ -387,9 +422,22 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 		return w.refuseExisting(f, en), nil
 	}
 	files := []write.File{{Path: p.path, Data: p.data(), Check: true}}
-	if err := write.Validate(w.root, w.today, files); err != nil {
+	aliasLinks := journalAliasLinks(p, entries)
+	if err := write.Validate(w.root, w.today, files); err != nil || len(aliasLinks) > 0 {
 		w.end(nil)
-		return w.e.failedValidation(err), nil
+		for _, a := range aliasLinks {
+			fmt.Fprintf(w.e.Stderr, "memex: [[%s]] on line %d of the body resolves through an alias; a journal body cannot change once it is committed, so link [[%s]] instead\n", a.target, a.line, a.id)
+		}
+		if err != nil {
+			ve, ok := err.(*write.ValidationError)
+			if !ok {
+				panic(err)
+			}
+			for _, f := range ve.Findings {
+				fmt.Fprintf(w.e.Stderr, "memex: %s: %s %s\n", f.Path, f.Code, f.Message)
+			}
+		}
+		return w.e.fail(spec.ExitFailure, "refused: the result would not validate; nothing was changed"), nil
 	}
 	msg := fmt.Sprintf("memex: new %s %s", p.typ.Name, p.id)
 	return w.commit(files, msg, append([]string{"created " + p.path}, removeLine...)...), nil
