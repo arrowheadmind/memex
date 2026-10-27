@@ -6,6 +6,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/arrowheadmind/memex/internal/check"
 	"github.com/arrowheadmind/memex/internal/config"
@@ -25,6 +26,28 @@ type CheckOptions struct {
 
 // DefaultCheckLimit is the default --limit of check (SPEC §7).
 const DefaultCheckLimit = 200
+
+// runHistoryCheck runs the history-dependent checks and, only when the first pass finds
+// immutable candidates, supplies their HEAD bodies for a final classification pass.
+func runHistoryCheck(tree store.Tree, today time.Time, staged []string, hist *store.History, g *gitx.Git) ([]check.Finding, error, error) {
+	findings, err := check.RunHistory(tree, today, staged, hist)
+	if err != nil || !hist.HasHEAD {
+		return findings, err, nil
+	}
+	wanted := check.ImmutableCandidates(findings)
+	if len(wanted) == 0 {
+		return findings, nil, nil
+	}
+	heads, historyErr := store.ReadHeadFiles(g, spec.LookupType("journal").Directory, wanted)
+	if historyErr != nil {
+		return nil, nil, historyErr
+	}
+	for p, data := range heads {
+		hist.Versions[p] = [][]byte{data}
+	}
+	findings, err = check.RunHistory(tree, today, staged, hist)
+	return findings, err, nil
+}
 
 // Check runs `memex check` (SPEC §7, §11.12).
 func Check(e *Env, o CheckOptions) int {
@@ -60,16 +83,9 @@ func Check(e *Env, o CheckOptions) int {
 		if herr != nil {
 			return e.fail(spec.ExitUsage, "check needs the store's git history: %s", store.HistoryReason(herr, 0))
 		}
-		findings, err = check.RunHistory(tree, today, staged, hist)
-		if err == nil && hist.HasHEAD {
-			heads, herr := store.ReadHeadFiles(g, "journal", check.ImmutableCandidates(findings))
-			if herr != nil {
-				return e.fail(spec.ExitUsage, "check needs the store's git history: %s", store.HistoryReason(herr, 0))
-			}
-			for p, data := range heads {
-				hist.Versions[p] = [][]byte{data}
-			}
-			findings, err = check.RunHistory(tree, today, staged, hist)
+		findings, err, herr = runHistoryCheck(tree, today, staged, hist, g)
+		if herr != nil {
+			return e.fail(spec.ExitUsage, "check needs the store's git history: %s", store.HistoryReason(herr, 0))
 		}
 	}
 	var fe *store.FormatError

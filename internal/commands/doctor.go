@@ -116,18 +116,7 @@ func Doctor(e *Env, asJSON bool) int {
 		var findings []check.Finding
 		var err error
 		if herr == nil {
-			findings, err = check.RunHistory(store.WorkTree{Root: root}, today, nil, hist)
-			if err == nil && hist.HasHEAD {
-				heads, headErr := store.ReadHeadFiles(checkGit, "journal", check.ImmutableCandidates(findings))
-				if headErr != nil {
-					herr = headErr
-				} else {
-					for p, data := range heads {
-						hist.Versions[p] = [][]byte{data}
-					}
-					findings, err = check.RunHistory(store.WorkTree{Root: root}, today, nil, hist)
-				}
-			}
+			findings, err, herr = runHistoryCheck(store.WorkTree{Root: root}, today, nil, hist, checkGit)
 		}
 		switch {
 		case herr != nil:
