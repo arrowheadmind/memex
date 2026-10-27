@@ -5,7 +5,7 @@ Validate the store.
 ## Usage
 
 ```
-memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--json]
+memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--immutable] [--json]
 ```
 
 ## Description
@@ -21,6 +21,9 @@ coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; `check` tak
 tree or, with `--staged`, the index): a task or plan whose summary was not rewritten when a
 section was added to its body or when it was closed or reopened. A history git cannot read is
 exit 2, `memex: check needs the store's git history: <git's first error line>`.
+A short body or an alias link in a committed journal cannot be fixed, because the body is
+immutable: it is an immutable finding, counted on the summary line and listed only with
+`--immutable`.
 
 ## Options
 
@@ -29,20 +32,23 @@ exit 2, `memex: check needs the store's git history: <git's first error line>`.
 | `--staged` | | | Validate only entries added, modified or changed in type in the git index, plus their link targets |
 | `--workspace` | | | Also check pointer files and scan for leaks in tool memory (`workspace` key) |
 | `--strict` | | | Count warnings as errors for the exit code |
-| `--errors-only` | | | Print only error lines (the summary still counts warnings) |
+| `--errors-only` | | | Suppress ordinary warning lines (the summary still counts them) |
 | `--limit` | N | 200 | Maximum number of finding lines; 0 means no limit |
-| `--json` | | | Print one JSON object: `findings`, `errors`, `warnings`, `truncated` |
+| `--immutable` | | | Also list the findings on immutable journal bodies; they never count as warnings |
+| `--json` | | | Print one JSON object: `findings`, `errors`, `warnings`, `immutable`, `truncated` |
 
 ## Output
 
 `<path>: <CODE> <message>` per finding, sorted by path, code and message; when cut,
-`<CODE>: K more (raise --limit)` per remaining code; last, `check: N errors, M warnings`.
+`<CODE>: K more (raise --limit)` per remaining code; last, `check: N errors, M warnings`,
+followed by `, L on immutable journal bodies` when there are any, and
+` (memex check --immutable lists them)` without `--immutable`.
 
 ## Exit codes
 
 | code | when |
 |---|---|
-| 0 | No errors (no warnings either, with `--strict`) |
+| 0 | No errors (no warnings either, with `--strict`); immutable findings never count |
 | 1 | Errors found |
 | 2 | Usage error; with `--workspace`, no usable `workspace` in the config file; a git history that cannot be read |
 
@@ -70,6 +76,8 @@ check: 0 errors, 2 warnings
   stands now. Next time, record progress with `memex update`.
 - Running `check` with `--strict` in the hook before the imported store is curated: thousands
   of warnings would block every commit.
+- Editing a committed journal body to clear `W-SHORT-BODY` or `W-ALIAS-LINK`: the body is
+  immutable (`E-HASH`). If knowledge is missing, capture a fuller entry and supersede the old one.
 
 ## See also
 

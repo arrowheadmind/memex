@@ -88,6 +88,8 @@ nothing to commit
   refusal line. Shorten it and retry; nothing was created.
 - Do not write the lesson into a tool's own memory file instead; capture it here, where every
   tool and the next session find it.
+- Linking an alias in a journal body (`[[notes/x.md]]`): it is refused, because the body cannot
+  change once committed; link the id the message gives.
 
 ## See also
 

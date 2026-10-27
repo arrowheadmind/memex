@@ -1,7 +1,8 @@
 # memex help check-codes
 
 `memex check` prints one line per finding, `<path>: <CODE> <message>`, sorted by path, code
-and message, then `check: N errors, M warnings`. Errors exit 1; `--strict` makes warnings count.
+and message, then `check: N errors, M warnings`, and `, L on immutable journal bodies` when
+there are any. Errors exit 1; `--strict` makes warnings count.
 Every message starts with what is wrong and ends with the fix when the fix is a command.
 
 ## Errors
@@ -33,13 +34,13 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | code | condition | usual fix |
 |---|---|---|
 | `W-CANONICAL` | Valid but not in canonical form | `memex fmt <path>` |
-| `W-ALIAS-LINK` | A link resolved through an alias | Link the id the message gives |
+| `W-ALIAS-LINK` | A link resolved through an alias | Link the id the message gives; in a committed journal, none: an immutable finding, counted apart |
 | `W-STALE-REFERENCE` | `verified + review_days` is in the past | Re-check the facts, then `memex set <id> verified=<today>` |
 | `W-RAW-OLD` | A `raw` journal entry older than 90 days | `memex set <id> status=kept`, or `memex promote <id>` |
 | `W-PROMOTED-UNCITED` | A `promoted` journal entry no entry cites in `sources` | Add it to the derived entry's `sources`, or set `kept` |
 | `W-NO-TERMS` | Neither `tags` nor `keywords` | `memex set <id> keywords=<word>,<word>` |
 | `W-NO-SUMMARY` | No `summary` | `memex set <id> summary=<sentence>` |
-| `W-SHORT-BODY` | Body content measure below 80 | Edit the file, then `memex save` |
+| `W-SHORT-BODY` | Body content measure below 80 | Edit the file, then `memex save`; in a committed journal, none: an immutable finding, counted apart |
 | `W-STALE-SUMMARY` | A task or plan whose summary did not change when a section was added or it was closed or reopened (read from first-parent history, the working tree or the index) | `memex set <id> summary=<sentence>` with where it stands now; next time use `memex update` |
 | `W-NO-POINTER` | (`--workspace`) A git repository under the workspace with no `CLAUDE.md` and no `AGENTS.md` | `memex init --pointers <dir>` |
 | `W-LEAK` | (`--workspace`) A file in a coding tool's own memory (§12 leak scan) | `memex capture --from <path>`, review, then delete the file |
@@ -51,6 +52,9 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
   targets; the pre-commit hook runs it.
 - `--workspace` adds `E-POINTER`, `W-NO-POINTER` and `W-LEAK` for the configured `workspace`
   and the home locations of the leak scan; their paths are absolute (`memex help neutrality`).
-- `--errors-only` hides warning lines; `--limit N` (default 200, 0 for no limit) caps the
-  finding lines and prints `<CODE>: K more (raise --limit)` for the rest; `--json` prints one
-  object with `findings`, `errors`, `warnings` and `truncated`.
+- `--errors-only` suppresses ordinary warning lines; `--limit N` (default 200, 0 for no limit)
+  caps the finding lines and prints `<CODE>: K more (raise --limit)` for the rest.
+- `--immutable` also lists the immutable findings: `W-SHORT-BODY` and `W-ALIAS-LINK` in a
+  committed, intact journal, whose body cannot change; they never count as warnings, for
+  `--strict` or the exit code.
+- `--json` prints one object with `findings`, `errors`, `warnings`, `immutable` and `truncated`.

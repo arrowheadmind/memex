@@ -84,6 +84,8 @@ exit 1
   nothing was changed`. Fix the named field and retry; nothing was created.
 - The same title twice on one day is refused when the body differs: read the existing entry
   (`memex show <path>`) or choose a more specific title.
+- Linking an alias in a journal body (`[[notes/x.md]]`): it is refused, because the body cannot
+  change once committed; link the id the message gives.
 
 ## See also
 

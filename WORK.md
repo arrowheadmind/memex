@@ -497,7 +497,9 @@ Open items for later blocks:
     that history failure. For the implementer: compare blob ids where possible (`git ls-tree`
     of `HEAD` over `journal/` and the index's entries, once each), and read a `HEAD` blob only
     for a journal that has one of the two findings; record the time on a store of about 1,000
-    entries in this note.
+    entries in this note. Implemented 2026-10-27: one `ls-tree` over `journal/` and one
+    `cat-file --batch` containing only candidate blobs; a synthetic committed store of 1,000
+    locked short-body journals took 0.163 s for a full `check`.
   - Exit code: 1 when `N` > 0, or with `--strict` when `M` > 0, else 0; `L` never enters it
     and `--immutable` only changes what is listed. The reclassification does change outcomes:
     a store whose only warnings are these exits 0 under `--strict` where it exited 1 (CHANGELOG

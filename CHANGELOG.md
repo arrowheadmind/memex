@@ -6,8 +6,17 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Added
+
+- `memex check --immutable` lists `W-SHORT-BODY` and `W-ALIAS-LINK` findings on committed,
+  intact journal bodies without making them warnings or changing the exit code.
+
 ### Changed
 
+- `new journal`, `capture` and `capture --from` refuse a body that links through an alias,
+  before writing it; links in fenced code blocks and inline code spans remain ignored.
+- `check --strict` does not fail for `W-SHORT-BODY` and `W-ALIAS-LINK` on a committed, intact
+  journal body, because those findings cannot be corrected without violating immutability.
 - Mutating commands read file and standard-input values only after the store checks, write
   lock and freshen phase. In particular, `set --batch FILE` reads entries (and reports their
   `skipped` lines) before it reads `FILE`.
@@ -16,6 +25,11 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ### Changed output
 
+- `check` counts locked-journal `W-SHORT-BODY` and `W-ALIAS-LINK` findings separately on its
+  summary line and gives each a journal-specific message when listed with `--immutable`.
+- `check --json` always includes `"immutable":N`, and listed immutable findings have
+  `"severity":"immutable"`.
+- `doctor` appends the immutable-journal count to its `check` row without making the row fail.
 - `new` and `capture` use the refusal order specified in §11.2: command line, store and lock,
   entries and command-specific targets, values, id, then validation.
 - A repeat `capture --from PATH` after PATH has been removed exits 0 as a no-op and drops the
