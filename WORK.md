@@ -27,7 +27,7 @@ every gate.
 | B9 | Batch form of `set`: one commit for many assignments | opus | fable | `memex set --batch` applies N lines in one §9.1 unit with conformance cases | done | bbd7487 |
 | B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | done | 8a0af7d |
 | B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | done | 9498155 |
-| B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), the eight `check --json` expectations that gain `"immutable":0` updated and nothing else in the suite changed; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | done | 9fa4306 |
+| B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), with the intentional existing-fixture changes recorded in the B12 note; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | review | |
 
 Rules of the ledger:
 
@@ -499,7 +499,11 @@ Open items for later blocks:
     for a journal that has one of the two findings; record the time on a store of about 1,000
     entries in this note. Implemented 2026-10-27: one `ls-tree` over `journal/` and one
     `cat-file --batch` containing only candidate blobs; a synthetic committed store of 1,000
-    locked short-body journals took 0.163 s for a full `check`.
+    locked short-body journals took 0.163 s for a full `check`. Fix-round case 240 step 09
+    pins the mismatched-hash boundary with a body equal to `HEAD` and a well-formed but wrong
+    hash: it stays an ordinary `W-SHORT-BODY` alongside `E-HASH`. That step fails an
+    implementation that checks only the hash format and passes the implementation under
+    review.
   - Exit code: 1 when `N` > 0, or with `--strict` when `M` > 0, else 0; `L` never enters it
     and `--immutable` only changes what is listed. The reclassification does change outcomes:
     a store whose only warnings are these exits 0 under `--strict` where it exited 1 (CHANGELOG
@@ -510,8 +514,12 @@ Open items for later blocks:
     output is as today; `--json` always carries `"immutable":L` (a stable shape, §17.3), so
     the eight existing `check --json` expectations gain `"immutable":0` (cases 027 step 01,
     074 steps 01–03, 075, 077 step 03, 208 step 02, 226 step 04). `doctor`'s check row appends
-    the count and never FAILs or WARNs for it. The import report keeps counting them under
-    their code (cases 090 and 095 unchanged).
+    the count and never FAILs or WARNs for it. Other existing fixture changes are intentional:
+    cases 025 (steps 01 and 03), 026 (steps 01–02) and 027 (steps 02 and 04–07) print the
+    `check` synopsis for usage errors, so adding `--immutable` changes that synopsis; case 095
+    step 05 commits the delta-imported short journal, so §7 locks it and `check` reports
+    `1 on immutable journal bodies`. The import report itself, including its warning counts,
+    is unchanged, as is case 090.
   - Creation (proposed after the judge's review; confirmed by the operator 2026-10-26, as
     drafted): `new journal`, `capture` and `capture --from` refuse a body with
     a link that resolves through an alias, resolved against the store as it would be after the
@@ -611,7 +619,10 @@ Open items for later blocks:
     ordinary warning. 07 the bodies restored, S's `body_sha256` removed: S has
     `E-FIELD-MISSING` and an ordinary `W-SHORT-BODY` (missing hash: not locked; passes on
     92e148c). 08 S's `body_sha256` set to `"ABC"`: `E-FIELD-VALUE` and an ordinary
-    `W-SHORT-BODY`, A still counted (malformed hash; fails through A's count).
+    `W-SHORT-BODY`, A still counted (malformed hash; fails through A's count). 09 S's body is
+    restored to `HEAD`'s while its `body_sha256` is 64 lowercase hex digits but does not
+    match: `E-HASH` and an ordinary `W-SHORT-BODY`, A still counted. This fails an
+    implementation that tests only the hash's format when deciding whether the body is locked.
   - 246-check-immutable-no-commits. Seed: a locked short-body journal and a locked alias-link
     journal. 01 a git step `update-ref -d HEAD` (an unborn branch, §7 "no commits"): `check`
     lists both as ordinary warnings, `check: 0 errors, 2 warnings`, no immutable part (passes
