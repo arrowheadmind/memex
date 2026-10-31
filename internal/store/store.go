@@ -47,6 +47,11 @@ func ReadManifest(t Tree) (*Manifest, []Finding, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	return ParseManifest(data)
+}
+
+// ParseManifest parses the bytes of a memex.toml, as ReadManifest does.
+func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 	bad := func(format string, args ...any) Finding {
 		return Finding{Path: ManifestFile, Code: "E-MANIFEST", Message: fmt.Sprintf(format, args...)}
 	}

@@ -225,9 +225,10 @@ require_repos = true
   implements. If it is lower, memex tells the operator to run the migration that ships with the
   version that raised it.
 - `name` is a free string, shown by `doctor`. It is optional.
-- `require_repos` is a boolean, optional, default `false`. When `true`, every new entry must
-  say which repositories it concerns, or say explicitly that it concerns none (§5.5), and
-  `check` reports an entry that does neither (`W-NO-REPO`, §7). It is for a store that holds
+- `require_repos` is a boolean, optional, default `false`. When `true`, an entry created by
+  `new` or `capture`, and an existing entry rewritten by `update`, must say which
+  repositories it concerns, or say explicitly that it concerns none (§5.5), and `check`
+  reports an entry that does neither (`W-NO-REPO`, §7). It is for a store that holds
   knowledge about source repositories, where an entry created outside any repository would
   otherwise lose its attribution silently.
 - Unknown keys are an error.
@@ -406,7 +407,10 @@ On creation, unless options override it:
 `--repo NAME` and `--host NAME` (repeatable) set the fields. `--no-repo` empties the default.
 This is the only use memex makes of the current directory.
 
-**Required attribution.** In a store whose manifest has `require_repos = true` (§4):
+**Required attribution.** In a store whose manifest has `require_repos = true` (§4), in the
+working tree's `memex.toml` or in `HEAD`'s (a write commits only its own paths, §9.1 step 6,
+so the commit carries `HEAD`'s manifest, and an uncommitted edit of the key does not turn the
+requirement off for the writes):
 - `new` and `capture` refuse an entry whose `repos` would be empty, unless `--no-repo` is
   given (§11.2 refusal order step 6). With `--no-repo` (and no `--repo`) the entry is written
   with `repos = []`, the explicit statement that it concerns no repository. `--repo` given
@@ -419,8 +423,9 @@ This is the only use memex makes of the current directory.
 - `set`, `promote`, `fmt`, `save` and `import` are not affected. `set <id> repos=<name>` is
   the correction; `set <id> repos=` removes the field as it always does.
 
-The refusal is exit 1, nothing is written, standard output is empty, and standard error has
-two lines. For `new` and `capture`:
+The refusal is exit 1, nothing is written, standard output is empty, and standard error ends
+with these two lines (after the `memex: fetch failed: <reason>` line that every refused write
+prints first when the freshen step's fetch failed, §9.1 step 2). For `new` and `capture`:
 
 ```
 memex: <root> requires repos (require_repos in memex.toml) and this entry has none; retry with --repo <name>, or with --no-repo if it concerns no repository; nothing was changed

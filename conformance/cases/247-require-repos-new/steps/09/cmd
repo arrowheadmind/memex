@@ -1,0 +1,6 @@
+new
+task
+--title=A task from the parent
+--summary=Refused without a repository.
+--body
+-

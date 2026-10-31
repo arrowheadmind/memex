@@ -1,0 +1,7 @@
+add
+memex.toml
+
+commit
+-q
+-m
+set require_repos false

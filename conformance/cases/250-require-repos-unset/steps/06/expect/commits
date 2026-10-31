@@ -1,0 +1,6 @@
+memex: new journal 2026-01-15-written-with-the-key-false
+set require_repos false
+memex: update 2026-01-10-another-without-repos
+memex: update 2026-01-10-no-repos-field
+memex: new journal 2026-01-15-concerns-no-repository
+memex: new journal 2026-01-15-captured-outside-a-repository

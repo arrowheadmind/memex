@@ -56,7 +56,7 @@ every clone sees the same settings. Unknown keys are `E-MANIFEST`.
 |---|---|---|---|
 | `format` | integer | none (required) | Store format; this memex reads format 1 |
 | `name` | string | none | Store name, shown by `doctor` |
-| `require_repos` | boolean | `false` | Every new entry names its repositories: `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo` (which writes `repos = []`), and `check` reports `W-NO-REPO` |
+| `require_repos` | boolean | `false` | Entries name their repositories: `new` and `capture` refuse to create, and `update` to rewrite, an entry without `repos` unless `--no-repo` (which writes `repos = []`); `check` reports `W-NO-REPO`. `promote` and `import` are not affected |
 
 Example:
 

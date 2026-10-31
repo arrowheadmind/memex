@@ -4,16 +4,26 @@ import (
 	"strings"
 
 	"github.com/arrowheadmind/memex/internal/config"
+	"github.com/arrowheadmind/memex/internal/gitx"
 	"github.com/arrowheadmind/memex/internal/neutral"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
 )
 
-// requireRepos reports the store's require_repos (SPEC §4, §5.5). beginWrite has already
-// checked the manifest, so a read failure here means the key is not set.
+// requireRepos reports the store's require_repos (SPEC §4, §5.5): true when the working
+// tree's memex.toml or HEAD's sets it. A write commits only its own paths, so HEAD's manifest
+// is the one the commit carries, and an uncommitted edit of the key must not turn it off.
+// beginWrite has already checked the manifest, so a read failure means the key is not set.
 func (w *writing) requireRepos() bool {
-	m, _, err := store.ReadManifest(store.WorkTree{Root: w.root})
-	return err == nil && m != nil && m.RequireRepos
+	if m, _, err := store.ReadManifest(store.WorkTree{Root: w.root}); err == nil && m.RequireRepos {
+		return true
+	}
+	out, err := gitx.New(w.root, 0).Run("show", "HEAD:"+store.ManifestFile)
+	if err != nil {
+		return false
+	}
+	m, _, err := store.ParseManifest([]byte(out))
+	return err == nil && m.RequireRepos
 }
 
 // refuseNoRepo ends a write refused for missing repos (SPEC §5.5): the refusal line, then
