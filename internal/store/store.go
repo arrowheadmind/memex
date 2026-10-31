@@ -32,8 +32,9 @@ func (e *FormatError) Error() string { return e.Msg }
 
 // Manifest is memex.toml.
 type Manifest struct {
-	Format int64
-	Name   string
+	Format       int64
+	Name         string
+	RequireRepos bool // SPEC §4, §5.5
 }
 
 // ManifestFile is the manifest's path.
@@ -77,15 +78,22 @@ func ReadManifest(t Tree) (*Manifest, []Finding, error) {
 				m.Name = v
 				continue
 			}
+		case bool:
+			if k == "require_repos" {
+				m.RequireRepos = v
+				continue
+			}
 		}
 		switch k {
 		case "format":
 			fs = append(fs, bad("format must be an integer"))
 		case "name":
 			fs = append(fs, bad("name must be a string"))
+		case "require_repos":
+			fs = append(fs, bad("require_repos must be a boolean"))
 		default:
 			msg := "unknown key " + entry.Quote(k)
-			if near, ok := spec.Nearest(k, []string{"format", "name"}); ok {
+			if near, ok := spec.Nearest(k, []string{"format", "name", "require_repos"}); ok {
 				msg += " (did you mean " + entry.Quote(near) + "?)"
 			}
 			fs = append(fs, bad("%s", msg))

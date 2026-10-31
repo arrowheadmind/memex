@@ -157,3 +157,13 @@ func TestLocalDateLocation(t *testing.T) {
 		t.Errorf("BurntSushi/toml no longer marks Local Date by location: %v %v %v", m["d"], m["t"], m["z"])
 	}
 }
+
+// TestRenderEmptyRepos: an empty repos is kept, every other empty array is left out (SPEC
+// §5.1, §5.5).
+func TestRenderEmptyRepos(t *testing.T) {
+	f := Fields{"title": "T", "status": "active", "repos": []string{}, "tags": []string{}}
+	want := "+++\ntitle = \"T\"\nstatus = \"active\"\nrepos = []\n+++\n\nbody\n"
+	if got := Render(f, "body\n"); got != want {
+		t.Errorf("Render = %q, want %q", got, want)
+	}
+}

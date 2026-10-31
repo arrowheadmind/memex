@@ -291,7 +291,8 @@ func fieldValue(def *spec.Field, v any) (any, *Problem) {
 }
 
 // Render returns the canonical form of an entry (SPEC §5.1): fields in §5.3 order, arrays
-// sorted where §5.1 says, empty arrays and false booleans omitted, then the body as given.
+// sorted where §5.1 says, empty arrays (except repos) and false booleans omitted, then the
+// body as given.
 func Render(fields Fields, body string) string {
 	var b strings.Builder
 	b.WriteString("+++\n")
@@ -315,7 +316,9 @@ func Render(fields Fields, body string) string {
 			if slices.Contains(sortedArrays, def.Name) {
 				v = SortedSet(v)
 			}
-			if len(v) == 0 {
+			// An empty repos is kept: it says the entry concerns no repository (SPEC §5.1,
+			// §5.5), which an absent repos does not.
+			if len(v) == 0 && def.Name != "repos" {
 				continue
 			}
 			quoted := make([]string, len(v))

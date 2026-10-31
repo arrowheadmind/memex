@@ -53,6 +53,8 @@ type checker struct {
 	byID     map[string][]*parsed
 	byAlias  map[string][]*parsed
 	locked   map[string]bool
+	// requireRepos is the manifest's require_repos (SPEC §4): W-NO-REPO is reported.
+	requireRepos bool
 	// targets records, for each entry path, the paths its links resolve to (for --staged).
 	targets map[string][]string
 }
@@ -76,7 +78,7 @@ func Run(tree store.Tree, today time.Time, staged []string) ([]Finding, error) {
 // files (SPEC §7, summary currency). With hist nil, that finding is not computed: the write
 // path validates only errors, and reading history would cost it time for nothing.
 func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.History) ([]Finding, error) {
-	_, mf, err := store.ReadManifest(tree)
+	m, mf, err := store.ReadManifest(tree)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +88,7 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 	}
 	c := &checker{tree: tree, today: today, byID: map[string][]*parsed{},
 		byAlias: map[string][]*parsed{}, locked: map[string]bool{}, targets: map[string][]string{}}
+	c.requireRepos = m.RequireRepos
 	c.findings = append(c.findings, mf...)
 	c.findings = append(c.findings, layout.Findings...)
 	for _, f := range layout.Files {
@@ -315,6 +318,10 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 	// Warnings.
 	if len(f.Strings("tags")) == 0 && len(f.Strings("keywords")) == 0 && !isInvalid(f, "tags") && !isInvalid(f, "keywords") {
 		c.add(p.Path, "W-NO-TERMS", "no tags or keywords; add the words a reader would search with: memex set %s keywords=<word>,<word>", p.ID)
+	}
+	if c.requireRepos && !f.Has("repos") {
+		c.add(p.Path, "W-NO-REPO", "no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: "+
+			"memex set %s repos=<name>, or if it concerns none, write repos = [] in its frontmatter and run memex save", p.ID)
 	}
 	if !f.Has("summary") {
 		c.add(p.Path, "W-NO-SUMMARY", "no summary; add one sentence that tells a reader whether to open the entry: memex set %s summary=<sentence>", p.ID)

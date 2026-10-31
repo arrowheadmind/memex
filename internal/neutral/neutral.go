@@ -109,6 +109,27 @@ func (s Scan) scanDirs() []string {
 	return dirs
 }
 
+// isRepoTop reports whether a visited directory is a git top-level directory: it holds a
+// .git entry, a directory or the file of a worktree or submodule (SPEC §12 rule 2).
+func isRepoTop(dir string) bool {
+	_, err := os.Lstat(filepath.Join(dir, ".git"))
+	return err == nil
+}
+
+// Repositories returns the names of the git top-level directories the workspace scan
+// visits, each its basename, sorted by code point and each once: the repositories a write
+// refused for missing repos lists (SPEC §5.5).
+func (s Scan) Repositories() []string {
+	var names []string
+	for _, dir := range s.scanDirs() {
+		if isRepoTop(dir) {
+			names = append(names, filepath.Base(dir))
+		}
+	}
+	slices.Sort(names)
+	return slices.Compact(names)
+}
+
 // Pointers returns the E-POINTER and W-NO-POINTER findings of the workspace (SPEC §12
 // rule 2), with absolute paths.
 func (s Scan) Pointers() []store.Finding {
@@ -149,7 +170,7 @@ func (s Scan) Pointers() []store.Finding {
 				out = append(out, store.Finding{Path: p, Code: "E-POINTER", Message: msg})
 			}
 		}
-		if _, err := os.Lstat(filepath.Join(dir, ".git")); err != nil {
+		if !isRepoTop(dir) {
 			continue
 		}
 		_, e1 := os.Lstat(filepath.Join(dir, "CLAUDE.md"))

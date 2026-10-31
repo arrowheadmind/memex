@@ -103,3 +103,22 @@ func TestScanDepthAndExclusions(t *testing.T) {
 		t.Errorf("findings %v", fs)
 	}
 }
+
+func TestRepositories(t *testing.T) {
+	ws := t.TempDir()
+	store := filepath.Join(ws, "store")
+	for _, d := range []string{"b/.git", "a/.git", "group/a/.git", "group/c/.git", "store/.git",
+		"node_modules/x/.git", "d1/d2/d3/d4/d5/.git"} {
+		if err := os.MkdirAll(filepath.Join(ws, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(t, filepath.Join(ws, "wt", ".git"), "gitdir: elsewhere\n") // a worktree's .git file
+	got := strings.Join(Scan{Workspace: ws, Store: store}.Repositories(), ",")
+	if want := "a,b,c,wt"; got != want {
+		t.Errorf("Repositories = %q, want %q", got, want)
+	}
+	if got := (Scan{}).Repositories(); got != nil {
+		t.Errorf("no workspace: %q", got)
+	}
+}
