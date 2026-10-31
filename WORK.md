@@ -795,6 +795,9 @@ Open items for later blocks:
   Review round 2 (Codex, same setup), approve with fixes: (1) minor, accepted: the implicit
   attribution case above; (2) nit, accepted: the B12 note's "refusal order step 6" for the
   alias-link validation now says "(step 7 since B13)". Code: no findings.
+  Review round 3 (Codex, same setup) on c630cd7: approve, no findings. The block stays
+  `doing` until the operator has reviewed the three coordinator's defaults above at the go
+  and the branch is merged; the close is `scripts/next-block.sh done B13` then.
   Open for the operator: `promote` creates an entry and attributes it from the current
   directory like `new`, but the task named only `new`, `capture` and `update`; recommendation:
   a follow-up that applies the same refusal and `repos = []` to `promote` (coordinator's
