@@ -1,0 +1,7 @@
+capture
+--title=Captured inside a repository
+--summary=Attributed from the current directory, no --repo needed.
+--keyword
+checkouts
+--body
+-
