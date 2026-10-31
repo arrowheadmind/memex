@@ -28,7 +28,7 @@ every gate.
 | B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | done | 8a0af7d |
 | B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | done | 9498155 |
 | B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), with the intentional existing-fixture changes recorded in the B12 note; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | done | 50f2f1d |
-| B13 | Required repository attribution: `require_repos` in `memex.toml`; `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo`, which writes `repos = []`; the refusal lists the workspace's repositories; `check` reports `W-NO-REPO` (SPEC §2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 247–252 (each checked to fail on the binary at d39ef5e, except where the B13 note says a step pins unchanged behaviour), nothing else in the suite changed; `update --no-repo` is in `internal/spec`; the `new`, `capture`, `update` and `check` pages, `help config` (the manifest keys) and `help check-codes` carry the B13 note's text; CHANGELOG Unreleased lists `require_repos`, `update --no-repo` and `W-NO-REPO` under Added and the kept `repos = []` under Changed | doing | |
+| B13 | Required repository attribution: `require_repos` in `memex.toml`; `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo`, which writes `repos = []`; the refusal lists the workspace's repositories; `check` reports `W-NO-REPO` (SPEC §2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 247–252 (each checked to fail on the binary at d39ef5e, except where the B13 note says a step pins unchanged behaviour), the seven `update` usage lines of cases 224 and 229 that gain `[--no-repo]` updated and nothing else in the suite changed; `update --no-repo` is in `internal/spec`; the `new`, `capture`, `update` and `check` pages, `help config` (the manifest keys) and `help check-codes` carry the B13 note's text; CHANGELOG Unreleased lists `require_repos`, `update --no-repo` and `W-NO-REPO` under Added and the kept `repos = []` under Changed | doing | |
 
 Rules of the ledger:
 
@@ -731,6 +731,41 @@ Open items for later blocks:
     concerns none, a hand edit to `repos = []` and `memex save` (`set repos=` removes the
     field, as for every optional field, and is not changed).
   - Not affected: `set`, `fmt`, `save`, `import`, and `promote`.
+  Implemented 2026-10-31 (implement role). Cases, run against the binary at d39ef5e:
+  - 247-require-repos-new, from the runner's home, which is no repository, with
+    `workspace = "~/ws"`. 01 `capture` without `--repo`, the workspace holding no repository:
+    exit 1, the refusal and `no repositories in the workspace <HOME>/ws`, store and commits
+    unchanged. 02 after `git init` of `ws/zeta`, `ws/group/alpha`, `ws/group/beta`,
+    `ws/alpha`, `ws/node_modules/hidden` and `ws/a/b/c/d/deep` (depth 5): the list is
+    `alpha, beta, zeta` (sorted, deduplicated, the §12 depth and exclusions). 03 `--repo
+    alpha`: created and pushed. 04 the repeat without `--repo`: the `exists` no-op. 05
+    `--no-repo`: created with `repos = []`. 06 `new rule --no-repo --repo beta`: `repos =
+    ["beta"]`. 07 `new task` without `--repo`: refused like `capture`. 08 `check`: 0 warnings,
+    the `repos = []` entry included. All fail on d39ef5e except 04, which pins the order.
+  - 248-require-repos-no-workspace: no `workspace` key: the second line is `no repository
+    names to list: no workspace configured; set workspace = "..." in <HOME>/config.toml`,
+    exit 1 (fails).
+  - 249-require-repos-update. 01 `update` of a task with no `repos` field: exit 1, the two
+    lines, nothing changed. 02 the same with `--status=`: the usage error (values first).
+    03 `--no-repo`: pushed, `repos = []` written with the section. 04 a task with `repos =
+    []`: not refused. 05 a task with `repos = ["alpha"]` and `--no-repo`: updated, `repos`
+    unchanged. 06–07 `set repos=alpha`, then `update`: pushed. Steps 01, 03 and 05 fail on
+    d39ef5e (02 fails there too: an older binary knows no `--no-repo` usage line).
+  - 250-require-repos-unset, the key absent: `capture` without `--repo` and with
+    `--no-repo` both write no `repos` field, `update` with and without `--no-repo` succeeds
+    and adds none, `check` reports nothing. Steps 01–03 pass on d39ef5e (they pin unchanged
+    behaviour); 04 (`update --no-repo`) fails there.
+  - 251-check-no-repo, the other-answer case: 01 `W-NO-REPO` on a rule and on a locked
+    journal with no `repos` (an ordinary warning), none on `repos = []` (no `W-CANONICAL`
+    either) or on named repos; 02 `--staged` reports it for a staged entry only; 03 the same
+    entries with the key removed: 0 warnings; 04 `require_repos = false`: 0 warnings. 01, 03
+    and 04 fail on d39ef5e (it reports the key as unknown and `repos = []` as
+    `W-CANONICAL`).
+  - 252-manifest-require-repos: `require_repos = "yes"` is `require_repos must be a
+    boolean`, `require_repo` is the unknown key with `did you mean "require_repos"` (fails).
+  Unit tests: `neutral.TestRepositories` (the walk's depth, exclusions, store and worktree
+  `.git` file) and `entry.TestRenderEmptyRepos`. `scripts/check.sh`: conformance 168
+  passed, 0 failed.
   Open for the operator: `promote` creates an entry and attributes it from the current
   directory like `new`, but the task named only `new`, `capture` and `update`; recommendation:
   a follow-up that applies the same refusal and `repos = []` to `promote` (coordinator's
