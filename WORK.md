@@ -28,6 +28,7 @@ every gate.
 | B10 | Summary currency: `memex update`, a status change that crosses visibility needs a new summary in `set`, `W-STALE-SUMMARY` in `check` (SPEC §7, §9.2, §11.7, §11.17) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases (each refusal and both finding forms, a section added by hand, a status closed by hand, `--staged`, a shallow clone); help pages for `update`, `set` and `check`, `help agents` teaches `update` for status notes; §11.2's "To add to it" line names `memex update` | done | 8a0af7d |
 | B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | done | 9498155 |
 | B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), with the intentional existing-fixture changes recorded in the B12 note; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | done | 50f2f1d |
+| B13 | Required repository attribution: `require_repos` in `memex.toml`; `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo`, which writes `repos = []`; the refusal lists the workspace's repositories; `check` reports `W-NO-REPO` (SPEC §2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 247–252 (each checked to fail on the binary at d39ef5e, except where the B13 note says a step pins unchanged behaviour), nothing else in the suite changed; `update --no-repo` is in `internal/spec`; the `new`, `capture`, `update` and `check` pages, `help config` (the manifest keys) and `help check-codes` carry the B13 note's text; CHANGELOG Unreleased lists `require_repos`, `update --no-repo` and `W-NO-REPO` under Added and the kept `repos = []` under Changed | doing | |
 
 Rules of the ledger:
 
@@ -689,3 +690,48 @@ Open items for later blocks:
   Open for the operator: a journal that is not locked keeps the ordinary `W-SHORT-BODY` message, `edit the file`,
   which on an uncommitted journal also means rewriting `body_sha256`, and memex has no command
   for that (recommendation: leave it, `E-HASH` then names the fix; revisit if it bites).
+- B13 required repository attribution (spec drafted 2026-10-31 from the operator's task of
+  2026-10-28; the operator's go of 2026-10-31 covers the task as written). The scenario: a
+  store that holds knowledge about source repositories, where cross-repository work is done
+  from a directory that is not itself a repository (a parent directory of several
+  checkouts). `new`, `capture` and `update` there attribute an entry to no repository, and
+  nothing says so; a later `search --repo <name>` misses it. A habit ("remember `--repo`")
+  is what Principle 1 says fails, so the store declares it: `require_repos = true` in
+  `memex.toml`, a store setting, not a config-file one, because it is a property of what the
+  store holds and every clone and every host must see the same rule.
+  Decisions written into SPEC.md (§2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12, all
+  Planned in §0):
+  - The refusal is a refusal-order step after the id (`new`, `capture`: step 6, before
+    validation, so a repeat of an existing entry is still the `exists` no-op) and after the
+    values (`update`), exit 1, nothing written, two lines on standard error: the refusal,
+    naming the store root, the manifest key and both retries; then a line listing the
+    workspace's repositories, or saying why none can be listed. The workspace problem never
+    turns the refusal into exit 2: the list only helps the retry.
+  - The repository list reuses the §12 walk (git top-level directories down to depth 4, the
+    same exclusions, the store skipped), named by basename, sorted and deduplicated.
+    Coordinator's default, for the operator's review at the go: the task said "one level"
+    under the workspace, but the repositories such a store is about usually sit one level
+    deeper than the workspace root (under a parent directory of checkouts), where a
+    one-level list would not show them; the §12 walk already finds them and is the one
+    definition of "a repository under the workspace".
+  - `--no-repo` in such a store writes an explicit `repos = []`, and `W-NO-REPO` fires only
+    when the `repos` key is absent, so the warning can be cleared honestly for an entry that
+    concerns no repository. This needs §5.1's canonical form to keep an empty `repos` (it
+    omits every other empty array); `repos = []` was `W-CANONICAL` before and `fmt` removed
+    it. Coordinator's default, for the operator's review at the go; the alternative was a
+    new key, rejected (one more §5.3 field for a single bit the array already carries).
+    Without `require_repos`, `--no-repo` writes no field, as before, so a store that does
+    not set the key sees no change in what `new` and `capture` write.
+  - `update` gains only `--no-repo` (coordinator's default, for the operator's review at the
+    go): the refusal points to `memex set <id> repos=<name>`, the one command that sets
+    fields; `update --no-repo` writes `repos = []` in the same commit. An entry whose
+    `repos` is present, empty or not, is never refused.
+  - `W-NO-REPO` is frontmatter-only, so it applies to journals too and is never an immutable
+    finding (§7). Its message names `memex set <id> repos=<name>` and, for an entry that
+    concerns none, a hand edit to `repos = []` and `memex save` (`set repos=` removes the
+    field, as for every optional field, and is not changed).
+  - Not affected: `set`, `fmt`, `save`, `import`, and `promote`.
+  Open for the operator: `promote` creates an entry and attributes it from the current
+  directory like `new`, but the task named only `new`, `capture` and `update`; recommendation:
+  a follow-up that applies the same refusal and `repos = []` to `promote` (coordinator's
+  default: out of scope here).

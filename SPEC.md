@@ -53,6 +53,12 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.12 `check --immutable` | Implemented |
 | 11.13 `doctor` counts findings on immutable journal bodies | Implemented |
 | 11.2 A new journal body with an alias link is refused at validation | Implemented |
+| 4 `require_repos` in the manifest | Planned |
+| 5.1 An empty `repos` is kept in canonical form | Planned |
+| 5.5 Required repository attribution | Planned |
+| 7 `W-NO-REPO` | Planned |
+| 11.2 Refusal of a new entry without repos | Planned |
+| 11.17 `update --no-repo` and its refusal without repos | Planned |
 
 ---
 
@@ -102,7 +108,7 @@ the predecessor (brain-kit's `brainctl`, v2 and v3), and each names the failure 
 | **Frontmatter** | The TOML block at the top of an entry (§5.1). |
 | **Body** | Everything in an entry after the frontmatter (§5.1). |
 | **Pointer file** | A file a coding tool loads automatically (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) whose entire content is a pointer to the store's `AGENT.md` (§12). |
-| **Workspace** | The configured directory tree of source repositories. It is used only by the pointer check and the leak scan (§12). |
+| **Workspace** | The configured directory tree of source repositories. It is used only by the pointer check and the leak scan (§12), and to list repository names when a store that requires repository attribution refuses a write (§5.5). |
 | **Today** | The current date in the local time zone, or `MEMEX_TODAY` if set (§3.3). |
 
 ---
@@ -154,7 +160,7 @@ Keys:
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `store` | string | none | Store path (§3.1) |
-| `workspace` | string | none | Root for pointer checks and the leak scan (§12) |
+| `workspace` | string | none | Root for pointer checks and the leak scan (§12), and for the repository names listed when a write is refused for missing `repos` (§5.5) |
 | `sync_on_preflight` | boolean | `true` | `preflight` syncs the store first |
 | `search_limit` | integer ≥ 1 | `12` | Default `--limit` for `search` and `preflight` |
 | `list_limit` | integer ≥ 1 | `50` | Default `--limit` for `list` |
@@ -212,12 +218,18 @@ README.md           optional, free text, ignored by memex
 ```toml
 format = 1
 name = "example"
+require_repos = true
 ```
 
 - `format` is an integer. memex refuses (exit 2) a store whose `format` is greater than the one it
   implements. If it is lower, memex tells the operator to run the migration that ships with the
   version that raised it.
 - `name` is a free string, shown by `doctor`. It is optional.
+- `require_repos` is a boolean, optional, default `false`. When `true`, every new entry must
+  say which repositories it concerns, or say explicitly that it concerns none (§5.5), and
+  `check` reports an entry that does neither (`W-NO-REPO`, §7). It is for a store that holds
+  knowledge about source repositories, where an entry created outside any repository would
+  otherwise lose its attribution silently.
 - Unknown keys are an error.
 
 Type directories and `files/` MAY be absent: git doesn't track empty directories, and an
@@ -277,7 +289,9 @@ Fields are rendered like this:
 
 Omitted from canonical output:
 - absent optional fields;
-- empty arrays;
+- empty arrays, except `repos`: a `repos` field that is present and empty is written
+  `repos = []`, because it records that the entry concerns no repository (§5.5), which an
+  absent `repos` does not;
 - booleans that are `false`.
 
 Arrays of strings are written in their stored order. `tags`, `keywords`, `repos` and `hosts`
@@ -392,6 +406,50 @@ On creation, unless options override it:
 `--repo NAME` and `--host NAME` (repeatable) set the fields. `--no-repo` empties the default.
 This is the only use memex makes of the current directory.
 
+**Required attribution.** In a store whose manifest has `require_repos = true` (§4):
+- `new` and `capture` refuse an entry whose `repos` would be empty, unless `--no-repo` is
+  given (§11.2 refusal order step 6). With `--no-repo` (and no `--repo`) the entry is written
+  with `repos = []`, the explicit statement that it concerns no repository. `--repo` given
+  together with `--no-repo` wins, as everywhere.
+- `update` refuses an entry that has no `repos` field, unless `--no-repo` is given; with
+  `--no-repo` it writes `repos = []` in the same commit (§11.17). An entry with `repos = []`
+  or with names is not refused.
+- `check` reports an entry with no `repos` field as `W-NO-REPO` (§7). `repos = []` does not
+  warn: it is the honest answer for an entry that concerns no repository.
+- `set`, `promote`, `fmt`, `save` and `import` are not affected. `set <id> repos=<name>` is
+  the correction; `set <id> repos=` removes the field as it always does.
+
+The refusal is exit 1, nothing is written, standard output is empty, and standard error has
+two lines. For `new` and `capture`:
+
+```
+memex: <root> requires repos (require_repos in memex.toml) and this entry has none; retry with --repo <name>, or with --no-repo if it concerns no repository; nothing was changed
+<repository line>
+```
+
+For `update`:
+
+```
+memex: <root> requires repos (require_repos in memex.toml) and <id> has none; add the repository it concerns first: memex set <id> repos=<name>, or retry with --no-repo if it concerns none; nothing was changed
+<repository line>
+```
+
+`<root>` is the store root as resolved (§3.1). The `<repository line>` lists the
+repositories the retry could name: the git top-level directories of the workspace as the
+pointer check finds them (§12 rule 2: the workspace and the directories below it down to
+depth 4, the same exclusions, the store itself not entered), each named by its basename, in
+code-point order, each name once, separated by `, `:
+- `memex: repositories in the workspace <workspace>: <names>` when there is at least one;
+- `memex: no repositories in the workspace <workspace>` when there is none;
+- `memex: no repository names to list: <problem>` when the workspace cannot be used, where
+  `<problem>` is the text of the `check --workspace` exit-2 message of §12 rule 2 without its
+  `memex: ` prefix (for example `no workspace configured; set workspace = "..." in <config
+  path>`). The refusal is still exit 1: the workspace only helps the retry.
+
+`<workspace>` is the workspace path as §12 rule 2 resolves it. When `require_repos` is
+absent or `false`, nothing in this paragraph applies: `--no-repo` writes no `repos` field,
+as before, and no write is refused for an empty `repos`.
+
 ### 5.6 Bodies
 
 - The body is free Markdown. memex never edits a body except by writing one it was given, and
@@ -504,8 +562,8 @@ journal files is, with summary currency, the only use `check` makes of commits; 
 cannot be read is the history failure of summary currency (exit 2, `doctor` FAIL).
 
 Every other finding on a journal entry stays a warning or an error as the tables say, because
-a change outside the body clears it: `W-NO-TERMS`, `W-NO-SUMMARY` and `W-RAW-OLD`
-(`memex set`), `W-CANONICAL` (`memex fmt`, which never touches a journal body),
+a change outside the body clears it: `W-NO-TERMS`, `W-NO-SUMMARY`, `W-NO-REPO` and
+`W-RAW-OLD` (`memex set`), `W-CANONICAL` (`memex fmt`, which never touches a journal body),
 `W-PROMOTED-UNCITED` (`sources` in the derived entry), and `W-SECRET`, whose false positive
 `allow_secret` clears (a real credential in a journal body is a matter for the store's
 history, not for `check`). An error is never an immutable finding: an `E-LINK` or an
@@ -576,7 +634,7 @@ Errors:
 | `E-HASH` | `body_sha256` mismatch | `body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id | `alias "<value>" is also on <paths>` (the other entries); `alias "<value>" is the id of <paths>` |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id | On `files/<x>`: `"<x>" is not the id of an entry; attachments go in files/<id>/`, written literally as `files/<id>/`; on a file directly under `files/`: `not a directory; attachments go in files/<id>/` |
-| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`; `missing key "format"`; `format must be an integer`; `name must be a string` |
+| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`, `require_repos`; `missing key "format"`; `format must be an integer`; `name must be a string`; `require_repos must be a boolean` |
 
 Warnings:
 
@@ -588,6 +646,7 @@ Warnings:
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
+| `W-NO-REPO` | In a store with `require_repos = true` (§4), an entry of any type, journal included, with no `repos` field. An empty `repos = []` is not reported (§5.5). The finding is about frontmatter, so on a journal it is an ordinary warning, never an immutable finding | `no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set <id> repos=<name>, or if it concerns none, write repos = [] in its frontmatter and run memex save` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save`. In a locked journal body, an immutable finding (above): `body content measure <n> is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `W-STALE-SUMMARY` | A task or plan with a valid `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
@@ -1167,7 +1226,7 @@ Behavior:
    §9.1 step 5 describes (for example `memex: <path>: E-FIELD-VALUE summary must be one line
    of at most 500 characters`, then the refusal line).
 2. Normalize the body (§5.1) and check its content measure (§5.6). A journal
-   entry's alias links are refused with validation, after step 3 (refusal order step 6).
+   entry's alias links are refused with validation, after step 3 (refusal order step 7).
 3. Compute the id (§5.4).
    - If the id already exists with the same type and an identical body: print
      `exists <path>` and `nothing to commit`, and exit 0. Only the body is compared; a repeat
@@ -1229,7 +1288,12 @@ one result:
    Then `--parent` and each `--source`, in that order and in argument order, resolve as id
    arguments (§10), exit 1 with the `no entry` diagnostic and its candidates.
 5. **The id** (behavior step 3): the `exists` no-op (exit 0) or the `exists` refusal (exit 1).
-6. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed as §9.1
+6. **The repository requirement** (§5.5), only in a store with `require_repos = true`: an
+   entry whose `repos` would be empty (no `--repo`, and the current directory gives no
+   repository) without `--no-repo` is refused, exit 1, with the two lines of §5.5. Because it
+   comes after step 5, a repeat whose id exists with the same type and body is still the
+   `exists` no-op.
+7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed as §9.1
    step 5 describes.
    For a journal entry (`new journal`, `capture`,
    `capture --from`), validation also refuses a body with a link that resolves through an
@@ -1461,7 +1525,8 @@ failure, so that one store and one command line give one result:
    unless noted. For `update`, its options in synopsis order: a `--summary` equal to the
    current one (exit 1); a `--body` that cannot be read (a usage error, exit 2) or whose
    content measure is below 80 (exit 1); a `--status` that is not one of the type's statuses,
-   the empty value included (a usage error, exit 2).
+   the empty value included (a usage error, exit 2); then the repository requirement
+   (§11.17 step 8, exit 1).
 6. **The visibility rule** above, exit 1. `update` always gives a new summary, so it always
    satisfies it.
 7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
@@ -1671,7 +1736,7 @@ release version, or `0.0.0-dev` for a build that is not a release.
 ### 11.17 `update`
 
 ```
-memex update ID --summary=S --body FILE|- [--heading=H] [--status S]
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]
 ```
 
 Records progress on an entry in one step: it appends a dated section to the body and replaces
@@ -1701,10 +1766,16 @@ allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten
    the leading `\n\n` is omitted. The result is in normalized form: one final LF.
 7. An entry with uncommitted changes, or with a field that cannot be kept, is refused exactly
    as in `set` (§11.7).
-8. The checks run in the refusal order of §11.7: the command line, the store and the lock,
+8. In a store with `require_repos = true` (§4, §5.5), an entry with no `repos` field is
+   refused, exit 1, with the two `update` lines of §5.5, unless `--no-repo` is given; with
+   `--no-repo` the same commit writes `repos = []`. An entry whose `repos` is present (empty
+   or not) is updated as usual, and `--no-repo` then changes nothing. Without
+   `require_repos`, `--no-repo` changes nothing.
+9. The checks run in the refusal order of §11.7: the command line, the store and the lock,
    the id, the entry (step 1's journal refusal, then step 7), then the options in synopsis
-   order (steps 2, 3 and 5; `--body` is read only then), then validation.
-9. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
+   order (steps 2, 3 and 5; `--body` is read only then), then the repository requirement
+   (step 8), then validation.
+10. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
 
 Example:
 
@@ -1751,7 +1822,8 @@ the tool changes.
      file name that is a symbolic link is `E-POINTER`, because its content is a link and
      writing a pointer through it would change the link's target.
    - A git top-level directory is a visited directory that contains a `.git` entry (a
-     directory, or the file of a worktree or submodule).
+     directory, or the file of a worktree or submodule). The same directories name the
+     repositories listed when a write is refused for missing `repos` (§5.5).
    - Each file is checked once, under the name of the first directory that reaches it, in
      path order: `a/.claude/CLAUDE.md` is `a`'s `.claude/CLAUDE.md`, not the `CLAUDE.md` of
      the visited directory `a/.claude`.
