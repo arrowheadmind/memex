@@ -58,7 +58,7 @@ follows the `created` line, or the `exists` line when PATH still exists.
 | code | when |
 |---|---|
 | 0 | Created, or already existed with the same body |
-| 1 | Refused: body too short, the id taken by a different body |
+| 1 | Refused: body too short, the id taken by a different body, no `repos` in a store that requires them |
 | 2 | Usage error: missing `--title`, `--summary` or `--body`, an option journal entries do not allow |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |
@@ -90,6 +90,11 @@ nothing to commit
   tool and the next session find it.
 - Linking an alias in a journal body (`[[notes/x.md]]`): it is refused, because the body cannot
   change once committed; link the id the message gives.
+- Capturing from outside a repository without `--repo` in a store whose `memex.toml` has
+  `require_repos = true`: refused (exit 1, nothing changed), with a second line listing the
+  repositories of the configured `workspace`. Retry with `--repo <name>`, or with `--no-repo`
+  when it concerns none, which writes `repos = []`. A repeat of an existing capture is still
+  the `exists` no-op.
 
 ## See also
 

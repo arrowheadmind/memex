@@ -31,7 +31,7 @@ an unknown key, is exit 2.
 | key | type | default | meaning |
 |---|---|---|---|
 | `store` | string | none | Store path |
-| `workspace` | string | none | Root for pointer checks and the leak scan |
+| `workspace` | string | none | Root for pointer checks and the leak scan, and for the repository names a `require_repos` refusal lists |
 | `sync_on_preflight` | boolean | `true` | `preflight` syncs the store first |
 | `search_limit` | integer ≥ 1 | `12` | Default `--limit` for `search` and `preflight` |
 | `list_limit` | integer ≥ 1 | `50` | Default `--limit` for `list` |
@@ -45,6 +45,25 @@ Example:
 store = "~/memex-store"
 search_limit = 12
 network_timeout = 20
+```
+
+## Store manifest
+
+Each store has `memex.toml` at its root, read by every command. It is part of the store, so
+every clone sees the same settings. Unknown keys are `E-MANIFEST`.
+
+| key | type | default | meaning |
+|---|---|---|---|
+| `format` | integer | none (required) | Store format; this memex reads format 1 |
+| `name` | string | none | Store name, shown by `doctor` |
+| `require_repos` | boolean | `false` | Every new entry names its repositories: `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo` (which writes `repos = []`), and `check` reports `W-NO-REPO` |
+
+Example:
+
+```
+format = 1
+name = "projects"
+require_repos = true
 ```
 
 ## Environment variables

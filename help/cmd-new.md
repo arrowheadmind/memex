@@ -54,7 +54,7 @@ or `committed <sha7>, NOT pushed: <reason>`. Running the same command again prin
 | code | when |
 |---|---|
 | 0 | Created, or already existed with the same body |
-| 1 | Refused: body too short, a field or link invalid, the id taken by a different body |
+| 1 | Refused: body too short, a field or link invalid, the id taken by a different body, no `repos` in a store that requires them |
 | 2 | Usage error: unknown type or status, an option the type does not allow, missing option |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed (the last line says why) |
@@ -86,6 +86,12 @@ exit 1
   (`memex show <path>`) or choose a more specific title.
 - Linking an alias in a journal body (`[[notes/x.md]]`): it is refused, because the body cannot
   change once committed; link the id the message gives.
+- Writing from outside a repository without `--repo` in a store whose `memex.toml` has
+  `require_repos = true`: refused (exit 1, nothing changed) after the `exists` check, with a
+  second line listing the repositories of the configured `workspace` (the git top-level
+  directories `check --workspace` visits). Retry with `--repo <name>`, or with `--no-repo`
+  when the entry concerns none: it is written with `repos = []`, which `check` accepts.
+  Without `require_repos`, `--no-repo` writes no `repos` field.
 
 ## See also
 

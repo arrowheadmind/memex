@@ -145,6 +145,7 @@ func runUpdate(env *commands.Env, a *args, cmdErr func(string) *usageError) (int
 	o.Summary, _ = a.value("--summary")
 	o.Body, _ = a.value("--body")
 	o.Status, o.StatusSet = a.value("--status")
+	o.NoRepo = a.has("--no-repo")
 	if o.Summary == "" {
 		return 0, cmdErr("empty value for --summary; write the summary as it stands after this section")
 	}

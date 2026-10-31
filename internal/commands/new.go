@@ -421,6 +421,14 @@ func New(e *Env, o NewOptions) (int, *UsageError) {
 		}
 		return w.refuseExisting(f, en), nil
 	}
+	// The repository requirement, after the id and before validation (SPEC §5.5, §11.2
+	// refusal order step 6). With --no-repo the entry says it concerns no repository.
+	if w.requireRepos() && len(p.fields.Strings("repos")) == 0 {
+		if !o.NoRepo {
+			return w.refuseNoRepo("%s", newRefusalNoRepo(w.root)), nil
+		}
+		p.fields["repos"] = []string{}
+	}
 	files := []write.File{{Path: p.path, Data: p.data(), Check: true}}
 	aliasLinks := journalAliasLinks(p, entries)
 	if err := write.Validate(w.root, w.today, files); err != nil || len(aliasLinks) > 0 {

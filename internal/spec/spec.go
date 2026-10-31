@@ -401,13 +401,14 @@ var Commands = []Command{
 	{
 		Name:     "update",
 		Summary:  "Append a dated section to an entry and replace its summary, in one commit",
-		Usage:    "memex update ID --summary=S --body FILE|- [--heading=H] [--status S]",
+		Usage:    "memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]",
 		Mutating: true,
 		Options: []Option{
 			{Name: "--summary", Value: "S", Required: true, Summary: "The summary as it stands after this section; must differ from the current one"},
 			optBody,
 			{Name: "--heading", Value: "H", Default: "Status", Summary: "Heading of the new section, 1 to 100 characters; the date is appended"},
 			{Name: "--status", Value: "S", Summary: "New status, set in the same commit"},
+			{Name: "--no-repo", Summary: "In a store with require_repos, the entry concerns no repository: write repos = []"},
 		},
 		Positionals: []Positional{{Name: "ID", Required: true}},
 		ExitCodes:   writeExits,

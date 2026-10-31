@@ -66,6 +66,9 @@ In canonical order. A field not in this table, or on a type it is not allowed on
 There is no `updated` field (git records it) and no reverse-link field (`show` computes them).
 `tags`, `keywords`, `repos` and `hosts` are stored sorted and deduplicated. `new` and `capture`
 set `created`, `body_sha256` and, unless told otherwise, `repos` from the current repository.
+An empty array is left out, except `repos = []`, which says the entry concerns no repository:
+in a store with `require_repos = true` that is what `--no-repo` writes, and an entry with no
+`repos` field at all is `W-NO-REPO`.
 
 ## Bodies
 

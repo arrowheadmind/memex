@@ -5,7 +5,7 @@ Append a dated section to an entry and replace its summary, in one commit.
 ## Usage
 
 ```
-memex update ID --summary=S --body FILE|- [--heading=H] [--status S]
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]
 ```
 
 ## Description
@@ -34,6 +34,7 @@ EOF
 | `--body` | FILE | | Text of the new section: a file, or `-` for standard input (required) |
 | `--heading` | H | Status | Heading of the new section, 1 to 100 characters on one line (no LF or CR); the date is appended |
 | `--status` | S | | New status, set in the same commit; one of the type's statuses, never empty |
+| `--no-repo` | | | In a store with `require_repos`, the entry concerns no repository: write `repos = []` |
 
 ## Output
 
@@ -45,7 +46,7 @@ Only the outcome line (`pushed <sha7>`, …). The commit message is `memex: upda
 | code | when |
 |---|---|
 | 0 | Committed |
-| 1 | Unknown ID; a journal entry; the same summary; a short section; uncommitted edits; the result would not validate |
+| 1 | Unknown ID; a journal entry; the same summary; a short section; uncommitted edits; no `repos` in a store that requires them; the result would not validate |
 | 2 | Usage error: a missing `--summary` or `--body`, a bad `--heading`, an unreadable `--body`, an unknown or empty `--status` |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |
@@ -75,6 +76,11 @@ exit 1
 - Appending a status section by hand and leaving the summary: lists then show stale work as
   current, and `memex check` reports `W-STALE-SUMMARY`. `update` is the one-step form.
 - Repeating the old summary: refused. Say where the entry stands now, not what it set out to do.
+- Updating an entry with no `repos` field in a store whose `memex.toml` has
+  `require_repos = true`: refused (exit 1, nothing changed), with a second line listing the
+  repositories of the configured `workspace`. Add the repository first with
+  `memex set <id> repos=<name>`, or give `--no-repo` when it concerns none, which writes
+  `repos = []` in the same commit. Without `require_repos`, `--no-repo` changes nothing.
 - `memex set <id> status=done` alone on a task or plan: refused, because it keeps the summary;
   add `summary=` to the same command, or use `update` when there is something to record.
 

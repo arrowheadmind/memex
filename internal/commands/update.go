@@ -16,6 +16,7 @@ import (
 type UpdateOptions struct {
 	ID, Summary, Body, Heading, Status string
 	StatusSet                          bool // --status was given, possibly empty
+	NoRepo                             bool
 }
 
 // DefaultHeading is the heading of an update section without --heading (SPEC §11.17).
@@ -82,6 +83,11 @@ func Update(e *Env, o UpdateOptions) (int, *UsageError) {
 		w.end(nil)
 		return 0, &UsageError{unknownStatus(en.Type, o.Status)}
 	}
+	// The repository requirement, after the options (SPEC §5.5, §11.17 step 8).
+	noRepo := w.requireRepos() && !en.Fields.Has("repos")
+	if noRepo && !o.NoRepo {
+		return w.refuseNoRepo("%s", updateRefusalNoRepo(w.root, en.ID)), nil
+	}
 	asgs := []Assignment{{Field: "summary", Op: "=", Value: o.Summary, field: spec.LookupField("summary")}}
 	if o.StatusSet {
 		asgs = append(asgs, Assignment{Field: "status", Op: "=", Value: o.Status, field: spec.LookupField("status")})
@@ -93,6 +99,9 @@ func Update(e *Env, o UpdateOptions) (int, *UsageError) {
 			return 0, &UsageError{r.msg}
 		}
 		return e.fail(spec.ExitFailure, "%s", r.msg), nil
+	}
+	if noRepo {
+		f["repos"] = []string{}
 	}
 	body := strings.TrimRightFunc(en.Body, unicode.IsSpace)
 	if body != "" {

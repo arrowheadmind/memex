@@ -1,3 +1,3 @@
 memex: value for --heading must be 1 to 100 characters on one line
-memex update ID --summary=S --body FILE|- [--heading=H] [--status S]
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]
 Run: memex help update
