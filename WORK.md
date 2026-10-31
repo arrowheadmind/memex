@@ -741,7 +741,10 @@ Open items for later blocks:
     alpha`: created and pushed. 04 the repeat without `--repo`: the `exists` no-op. 05
     `--no-repo`: created with `repos = []`. 06 `new rule --no-repo --repo beta`: `repos =
     ["beta"]`. 07 `new task` without `--repo`: refused like `capture`. 08 `check`: 0 warnings,
-    the `repos = []` entry included. All fail on d39ef5e except 04, which pins the order.
+    the `repos = []` entry included. 09 (fix round) `memex.toml` edited to `require_repos =
+    false` without committing: `new task` is still refused, because the commit would carry
+    `HEAD`'s manifest (fails on the binary at 6b5fb3a, which committed the task). All fail on
+    d39ef5e except 04, which pins the order.
   - 248-require-repos-no-workspace: no `workspace` key: the second line is `no repository
     names to list: no workspace configured; set workspace = "..." in <HOME>/config.toml`,
     exit 1 (fails).
@@ -753,19 +756,40 @@ Open items for later blocks:
     d39ef5e (02 fails there too: an older binary knows no `--no-repo` usage line).
   - 250-require-repos-unset, the key absent: `capture` without `--repo` and with
     `--no-repo` both write no `repos` field, `update` with and without `--no-repo` succeeds
-    and adds none, `check` reports nothing. Steps 01–03 pass on d39ef5e (they pin unchanged
-    behaviour); 04 (`update --no-repo`) fails there.
+    and adds none, `check` reports nothing; 06 (fix round) `require_repos = false` committed:
+    `capture` without `--repo` is created with no `repos`. Steps 01–03 and 06 pass on d39ef5e
+    (they pin unchanged behaviour); 04 (`update --no-repo`) fails there.
   - 251-check-no-repo, the other-answer case: 01 `W-NO-REPO` on a rule and on a locked
     journal with no `repos` (an ordinary warning), none on `repos = []` (no `W-CANONICAL`
-    either) or on named repos; 02 `--staged` reports it for a staged entry only; 03 the same
-    entries with the key removed: 0 warnings; 04 `require_repos = false`: 0 warnings. 01, 03
-    and 04 fail on d39ef5e (it reports the key as unknown and `repos = []` as
-    `W-CANONICAL`).
+    either) or on named repos; 02 (fix round) `fmt`: `nothing to commit`, `repos = []` kept;
+    03 `--staged` reports it for a staged entry only; 04 the same entries with the key
+    removed: 0 warnings; 05 `require_repos = false`: 0 warnings. 01, 02, 03 and 05 fail on
+    d39ef5e (it reports the key as unknown, `repos = []` as `W-CANONICAL`, and `fmt` removes
+    it); 04 passes there only because that `fmt` already removed the empty array.
   - 252-manifest-require-repos: `require_repos = "yes"` is `require_repos must be a
     boolean`, `require_repo` is the unknown key with `did you mean "require_repos"` (fails).
   Unit tests: `neutral.TestRepositories` (the walk's depth, exclusions, store and worktree
   `.git` file) and `entry.TestRenderEmptyRepos`. `scripts/check.sh`: conformance 168
   passed, 0 failed.
+  Review round 1 (judge role: Codex, `codex exec` read-only through agent-run), request
+  changes, four findings, all handled in the fix round:
+  1. major, accepted: `require_repos` was read from the working tree only, and a write
+     commits only its own paths, so an uncommitted edit to `false` let `new`, `capture` or
+     `update` commit an entry without `repos` into a store whose `HEAD` requires them. Now the
+     requirement holds when either the working tree's or `HEAD`'s `memex.toml` sets it (SPEC
+     §5.5); case 247 step 09.
+  2. minor, accepted as a spec fix: the refusal is preceded by `memex: fetch failed:
+     <reason>` when the freshen fetch failed, like every refused write (`writing.end`); §5.5
+     said "two lines". It now says standard error ends with the two lines, after that
+     advisory. Behaviour unchanged, consistent with the other refusals.
+  3. minor, accepted: §4 and `help config` said "every new entry", but `promote` and
+     `import` are not affected and `update` creates nothing; both now name the commands.
+  4. minor, partly accepted: added `require_repos = false` committed for writes (250 step
+     06), `fmt` keeping `repos = []` (251 step 02) and the dirty-manifest regression (247
+     step 09). Rejected: a case for implicit attribution from inside a repository; the runner
+     always runs in its temporary home, whose basename is random, so a case cannot name the
+     expected `repos`; the requirement reads the computed `repos` and `attribution` itself is
+     unchanged and covered by `internal/commands/attribution_test.go`.
   Open for the operator: `promote` creates an entry and attributes it from the current
   directory like `new`, but the task named only `new`, `capture` and `update`; recommendation:
   a follow-up that applies the same refusal and `repos = []` to `promote` (coordinator's
