@@ -530,7 +530,7 @@ Open items for later blocks:
     alias; a journal body cannot change once it is committed, so link [[<target id>]]
     instead`, then the validation's error findings as §9.1 step 5 prints them, then §9.1's
     `memex: refused: the result would not validate; nothing was changed`. It sits
-    with validation, §11.2 refusal order step 6, after the id step (coordinator decision after
+    with validation, §11.2 refusal order step 6 (step 7 since B13), after the id step (coordinator decision after
     the second draft): a repeat whose existing entry matches stays the `exists` no-op, as B11
     decided for `promote` (a result that only validation would refuse is the no-op), while a
     fresh entry is still refused before anything is written. A short body is already refused there by the content
@@ -745,9 +745,12 @@ Open items for later blocks:
     false` without committing: `new task` is still refused, because the commit would carry
     `HEAD`'s manifest (fails on the binary at 6b5fb3a, which committed the task). All fail on
     d39ef5e except 04, which pins the order.
-  - 248-require-repos-no-workspace: no `workspace` key: the second line is `no repository
+  - 248-require-repos-no-workspace: 01 no `workspace` key: the second line is `no repository
     names to list: no workspace configured; set workspace = "..." in <HOME>/config.toml`,
-    exit 1 (fails).
+    exit 1 (fails). 02 (review round 2) the home made a repository, as case 158 does: a
+    `capture` without `--repo` is created with `repos = ["home"]`, the implicit attribution
+    satisfying the requirement (passes on d39ef5e, which never refuses; pins that the
+    requirement reads the computed `repos`).
   - 249-require-repos-update. 01 `update` of a task with no `repos` field: exit 1, the two
     lines, nothing changed. 02 the same with `--status=`: the usage error (values first).
     03 `--no-repo`: pushed, `repos = []` written with the section. 04 a task with `repos =
@@ -786,10 +789,12 @@ Open items for later blocks:
      `import` are not affected and `update` creates nothing; both now name the commands.
   4. minor, partly accepted: added `require_repos = false` committed for writes (250 step
      06), `fmt` keeping `repos = []` (251 step 02) and the dirty-manifest regression (247
-     step 09). Rejected: a case for implicit attribution from inside a repository; the runner
-     always runs in its temporary home, whose basename is random, so a case cannot name the
-     expected `repos`; the requirement reads the computed `repos` and `attribution` itself is
-     unchanged and covered by `internal/commands/attribution_test.go`.
+     step 09). First rejected, a case for implicit attribution from inside a repository, on
+     the claim that the runner's home has a random basename; round 2 showed that wrong (the
+     home is `<tmp>/home`, and case 158 makes it a repository), so 248 step 02 adds it.
+  Review round 2 (Codex, same setup), approve with fixes: (1) minor, accepted: the implicit
+  attribution case above; (2) nit, accepted: the B12 note's "refusal order step 6" for the
+  alias-link validation now says "(step 7 since B13)". Code: no findings.
   Open for the operator: `promote` creates an entry and attributes it from the current
   directory like `new`, but the task named only `new`, `capture` and `update`; recommendation:
   a follow-up that applies the same refusal and `repos = []` to `promote` (coordinator's
