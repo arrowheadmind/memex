@@ -6,6 +6,24 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Added
+
+- `require_repos = true` in `memex.toml`: `new` and `capture` refuse an entry that would have
+  no `repos`, and `update` an entry with no `repos` field, unless `--no-repo` is given, which
+  writes `repos = []`. The refusal names the store and lists the repositories found in the
+  configured `workspace` (the git top-level directories `check --workspace` visits).
+- `memex update --no-repo`.
+- `W-NO-REPO`: in a store with `require_repos = true`, an entry with no `repos` field.
+
+### Changed
+
+- An empty `repos = []` is canonical and kept by `fmt` and every write; it was `W-CANONICAL`
+  and removed. Other empty arrays are still left out.
+
+### Changed output
+
+- The `update` usage line ends with `[--no-repo]`.
+
 ## 0.3.0 (2026-10-27)
 
 ### Added

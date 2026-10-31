@@ -53,12 +53,12 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.12 `check --immutable` | Implemented |
 | 11.13 `doctor` counts findings on immutable journal bodies | Implemented |
 | 11.2 A new journal body with an alias link is refused at validation | Implemented |
-| 4 `require_repos` in the manifest | Planned |
-| 5.1 An empty `repos` is kept in canonical form | Planned |
-| 5.5 Required repository attribution | Planned |
-| 7 `W-NO-REPO` | Planned |
-| 11.2 Refusal of a new entry without repos | Planned |
-| 11.17 `update --no-repo` and its refusal without repos | Planned |
+| 4 `require_repos` in the manifest | Implemented |
+| 5.1 An empty `repos` is kept in canonical form | Implemented |
+| 5.5 Required repository attribution | Implemented |
+| 7 `W-NO-REPO` | Implemented |
+| 11.2 Refusal of a new entry without repos | Implemented |
+| 11.17 `update --no-repo` and its refusal without repos | Implemented |
 
 ---
 
