@@ -1,0 +1,2 @@
+memex: <STORE> requires repos (require_repos in memex.toml) and this entry has none; retry with --repo <name>, or with --no-repo if it concerns no repository; nothing was changed
+memex: repositories in the workspace <HOME>/ws: alpha, beta, zeta

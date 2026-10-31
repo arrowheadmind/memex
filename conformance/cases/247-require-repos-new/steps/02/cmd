@@ -1,0 +1,7 @@
+capture
+--title=Captured outside a repository
+--summary=A capture made from the parent directory of the checkouts.
+--keyword
+checkouts
+--body
+-

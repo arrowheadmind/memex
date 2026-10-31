@@ -1,0 +1,8 @@
+capture
+--title=Concerns no repository
+--summary=Cross-checkout notes that belong to no single repository.
+--keyword
+checkouts
+--body
+-
+--no-repo

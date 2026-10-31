@@ -1,0 +1,3 @@
+memex.toml: E-MANIFEST require_repos must be a boolean
+memex.toml: E-MANIFEST unknown key "require_repo" (did you mean "require_repos"?)
+check: 2 errors, 0 warnings

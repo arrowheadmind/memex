@@ -1,0 +1,2 @@
+memex: <STORE> requires repos (require_repos in memex.toml) and 2026-01-10-no-repos-field has none; add the repository it concerns first: memex set 2026-01-10-no-repos-field repos=<name>, or retry with --no-repo if it concerns none; nothing was changed
+memex: repositories in the workspace <HOME>/ws: alpha

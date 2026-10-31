@@ -1,0 +1,3 @@
+journal/2026-01-10-older-journal.md: W-NO-REPO no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set 2026-01-10-older-journal repos=<name>, or if it concerns none, write repos = [] in its frontmatter and run memex save
+rules/2026-01-10-without-repos.md: W-NO-REPO no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set 2026-01-10-without-repos repos=<name>, or if it concerns none, write repos = [] in its frontmatter and run memex save
+check: 0 errors, 2 warnings

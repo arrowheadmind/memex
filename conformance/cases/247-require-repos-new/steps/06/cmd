@@ -1,0 +1,11 @@
+new
+rule
+--title=Repo wins over no-repo
+--summary=Given both, the named repository is written.
+--keyword
+checkouts
+--no-repo
+--repo
+beta
+--body
+-
