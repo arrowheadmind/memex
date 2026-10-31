@@ -9,7 +9,7 @@
       forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       # A flake cannot see git tags, so the version is set here: a release commit sets it to
       # the tag's version (IMPLEMENTATION.md, "Packaging"); every other build is 0.0.0-dev.
-      version = "0.0.0-dev";
+      version = "0.4.0";
     in
     {
       packages = forAll (pkgs: rec {
