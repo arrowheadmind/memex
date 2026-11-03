@@ -2,8 +2,8 @@ promote
 2026-01-12-restic-needs-its-target
 --to
 rule
---title=Check the restore target on alpha
---summary=The restore target on alpha is checked before a restore.
+--title=Check the restore target on beta
+--summary=The restore target on beta is checked before a restore.
 --keyword
 restic
 --no-repo

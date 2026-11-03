@@ -825,8 +825,11 @@ Open items for later blocks:
     `repos = []`, the journal `promoted` and its `repos = ["alpha"]` kept. 03 the repeat of 01:
     the `exists` no-op. 04 `--no-repo --repo beta` on the now promoted journal: `repos =
     ["beta"]`, the journal only cited. 05 `memex.toml` edited to `require_repos = false`
-    without committing, promoting a rule (a cited source): still refused. 01, 02 and 05 fail on
-    af6a1b1; 03 and 04 pin the order and `--repo` winning.
+    without committing, promoting a rule (a cited source): still refused. 06 (judge round 1) a
+    501-character summary without `--no-repo`: the repos refusal, not the validation findings
+    (step 7 before step 8). 07 (judge round 1) the committed manifest restored, `git init` of
+    the runner's home: created with `repos = ["home"]`, the requirement met by attribution.
+    01, 02, 05, 06 and 07 fail on af6a1b1; 03 and 04 pin the order and `--repo` winning.
   - 254-require-repos-promote-unset: the same store without the key. 01 promote without
     `--repo`: created, no `repos` field. 02 `--no-repo`: no `repos` field. Passes on af6a1b1,
     by design: it pins unchanged behaviour.
@@ -834,3 +837,8 @@ Open items for later blocks:
   field), so clearing `W-NO-REPO` for an entry that concerns no repository is a hand edit and
   `memex save`; met 2026-11-03 backfilling 19 entries of the programming store. A `set`
   form for an empty array (for example `repos=[]`) would make it one command.
+  Review round 1 (judge: a fresh Claude Opus session through agent-run, read-only, because
+  Codex had reached its usage limit until 2026-11-06; operator's choice) on b1ed911: approve,
+  two minor (no step for step 7 before validation; none for attribution meeting the
+  requirement) and four nits (the `help config` sentence, the `--no-repo` sentence of the
+  `promote` page, §11.8's "for `new`", a fixture title with `--repo beta`), all applied.

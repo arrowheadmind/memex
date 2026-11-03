@@ -1,0 +1,3 @@
+memex: promote 2026-01-12-restic-needs-its-target to rule 2026-01-15-restore-targets-in-the-checkout
+memex: promote 2026-01-12-restic-needs-its-target to rule 2026-01-15-check-the-restore-target-on-beta
+memex: promote 2026-01-12-restic-needs-its-target to rule 2026-01-15-create-the-restore-target-first

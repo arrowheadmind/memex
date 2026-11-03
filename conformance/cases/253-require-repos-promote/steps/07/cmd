@@ -1,0 +1,10 @@
+promote
+2026-01-12-restic-needs-its-target
+--to
+rule
+--title=Restore targets in the checkout
+--summary=The repository is taken from the current directory.
+--keyword
+restic
+--body
+-

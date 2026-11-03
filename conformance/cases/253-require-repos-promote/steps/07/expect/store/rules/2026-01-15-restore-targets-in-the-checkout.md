@@ -1,10 +1,10 @@
 +++
-title = "Check the restore target on alpha"
+title = "Restore targets in the checkout"
 status = "active"
 created = 2026-01-15
-summary = "The restore target on alpha is checked before a restore."
+summary = "The repository is taken from the current directory."
 keywords = ["restic"]
-repos = ["beta"]
+repos = ["home"]
 sources = ["2026-01-12-restic-needs-its-target"]
 +++
 

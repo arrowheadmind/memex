@@ -82,7 +82,8 @@ $ memex show journal/2026-01-09-restore-test-on-alpha.md --json
   the source still unpromoted) after the `exists` check, with a second line listing the
   repositories of the configured `workspace`. The new entry does not take the source's
   `repos`: retry with `--repo <name>`, or with `--no-repo` when it concerns none, which
-  writes `repos = []`. The source's own `repos` is neither required nor changed.
+  writes `repos = []`. The source's own `repos` is neither required nor changed. Without
+  `require_repos`, `--no-repo` writes no `repos` field.
 
 ## See also
 

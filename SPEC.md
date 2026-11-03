@@ -1633,7 +1633,7 @@ failure:
 6. **The new entry's id**, as in §11.2 refusal order step 5.
 7. **The repository requirement** of the new entry, as in §11.2 refusal order step 6
    (§5.5): in a store with `require_repos = true`, a new entry whose `repos` would be empty
-   without `--no-repo` is refused, exit 1, with the two lines of §5.5 for `new`, and nothing
+   without `--no-repo` is refused, exit 1, with the two lines of §5.5, and nothing
    is written, the source included. Because it comes after step 6, a repeat of a successful
    `promote` is still the `exists` no-op.
 8. **Validation** of the new entry, and of the source only when step 4 rewrites it (a source
