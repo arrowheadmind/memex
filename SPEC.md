@@ -60,6 +60,8 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.2 Refusal of a new entry without repos | Implemented |
 | 11.17 `update --no-repo` and its refusal without repos | Implemented |
 | 11.8 Refusal of a promoted entry without repos | Implemented |
+| 11.7 `field=[]` sets an empty array | Planned |
+| 7 `W-NO-REPO` names `set <id> repos=[]` | Planned |
 
 ---
 
@@ -428,7 +430,8 @@ requirement off for the writes):
 - `check` reports an entry with no `repos` field as `W-NO-REPO` (§7). `repos = []` does not
   warn: it is the honest answer for an entry that concerns no repository.
 - `set`, `fmt`, `save` and `import` are not affected. `set <id> repos=<name>` is
-  the correction; `set <id> repos=` removes the field as it always does.
+  the correction, and `set <id> repos=[]` (§11.7) says the entry concerns no repository;
+  `set <id> repos=` removes the field as it always does.
 
 The refusal is exit 1, nothing is written, standard output is empty, and standard error ends
 with these two lines (after the `memex: fetch failed: <reason>` line that every refused write
@@ -659,7 +662,7 @@ Warnings:
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
-| `W-NO-REPO` | In a store with `require_repos = true` (§4), an entry of any type, journal included, with no `repos` field. An empty `repos = []` is not reported (§5.5). The finding is about frontmatter, so on a journal it is an ordinary warning, never an immutable finding | `no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set <id> repos=<name>, or if it concerns none, write repos = [] in its frontmatter and run memex save` |
+| `W-NO-REPO` | In a store with `require_repos = true` (§4), an entry of any type, journal included, with no `repos` field. An empty `repos = []` is not reported (§5.5). The finding is about frontmatter, so on a journal it is an ordinary warning, never an immutable finding | `no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set <id> repos=<name>, or if it concerns none: memex set <id> repos=[]` |
 | `W-NO-SUMMARY` | Entry without `summary` (imports and hand-written entries may lack one) | `no summary; add one sentence that tells a reader whether to open the entry: memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Content measure below 80 (§5.6) | `body content measure <n> is below 80; edit the file, then memex save`. In a locked journal body, an immutable finding (above): `body content measure <n> is below 80; a journal body is immutable, so this is not counted as a warning; if knowledge is missing, capture a fuller entry and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `W-STALE-SUMMARY` | A task or plan with a valid `summary` whose newest significant version is newer than its newest summary-changing version (summary currency, below) | New section: `summary was not updated when the section "<heading>" was added; rewrite it to the current state: memex set <id> summary=<sentence>`. Status change: `summary was not updated when status changed from "<old>" to "<new>"; rewrite it to the current state: memex set <id> summary=<sentence>` |
@@ -1470,10 +1473,21 @@ memex set --batch FILE|-
 |---|---|
 | `field=value` | Sets a field |
 | `field=` | Removes an optional field |
+| `field=[]` | Sets an array field to the empty array |
 | `field+=value` | Appends to an array field |
 | `field-=value` | Removes from an array field |
 
 - Arrays given in `field=` form are comma-separated.
+- **The empty array.** On an array field, `field=[]` (the value exactly `[]`) sets the field
+  to the empty array. The canonical form (§5.1) keeps only an empty `repos`, so `repos=[]`
+  writes `repos = []`, the statement that the entry concerns no repository (§5.5), and on
+  every other array field `field=[]` has the effect of `field=`. The commit message shows it
+  as `field=[]`. `[]` is never an element: `[]` among comma-separated values, `field+=[]` and
+  `field-=[]` are malformed assignments (§11.7 refusal order step 1), exit 2, with
+  `assignment "<arg>" uses [] as an element; [] is the empty array: write <field>=[] alone`.
+  On a field that is not an array, `[]` is an ordinary value (`title=[]` sets the title to
+  `[]`). `field-=value` that removes the last element removes the field, as before; it does
+  not leave an empty array.
 - Booleans are `true` or `false`. Dates are `YYYY-MM-DD`.
 - `title`, `status`, `summary` and every other §5.3 field may be set, except `created` and
   `body_sha256` (exit 1).
