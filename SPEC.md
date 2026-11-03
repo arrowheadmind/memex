@@ -1485,9 +1485,11 @@ memex set --batch FILE|-
   as `field=[]`. `[]` is never an element: `[]` among comma-separated values, `field+=[]` and
   `field-=[]` are malformed assignments (§11.7 refusal order step 1), exit 2, with
   `assignment "<arg>" uses [] as an element; [] is the empty array: write <field>=[] alone`.
+  Only the exact `[]` is special: `[ ]` or ` []` is an ordinary element, as any other text.
   On a field that is not an array, `[]` is an ordinary value (`title=[]` sets the title to
   `[]`). `field-=value` that removes the last element removes the field, as before; it does
-  not leave an empty array.
+  not leave an empty array. `field-=value` whose value is not in the array changes nothing,
+  so it never removes an empty `repos = []`.
 - Booleans are `true` or `false`. Dates are `YYYY-MM-DD`.
 - `title`, `status`, `summary` and every other §5.3 field may be set, except `created` and
   `body_sha256` (exit 1).

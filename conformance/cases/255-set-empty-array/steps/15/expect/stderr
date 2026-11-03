@@ -1,0 +1,1 @@
+memex: --batch line 1: assignment "repos+=[]" uses [] as an element; [] is the empty array: write repos=[] alone

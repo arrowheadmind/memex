@@ -233,6 +233,12 @@ func planFields(w *writing, res *resolver, en *store.Entry, asgs []Assignment) (
 					cur = append(cur, items[0])
 				}
 			case "-=":
+				// Removing an element that is not there changes nothing, so an empty
+				// repos = [] is kept (SPEC §11.7).
+				if !slices.Contains(cur, items[0]) {
+					texts = append(texts, a.Field+a.Op+cutValue(value))
+					continue
+				}
 				cur = slices.DeleteFunc(cur, func(s string) bool { return s == items[0] })
 			}
 			if len(cur) == 0 {

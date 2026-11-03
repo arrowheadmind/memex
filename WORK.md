@@ -869,3 +869,13 @@ Open items for later blocks:
     `repos = ["[]"]`); 03, 09 and 10 pin behaviour, and later steps differ only by the
     earlier ones' store.
   - 251-check-no-repo: steps 01 and 03 expect the new W-NO-REPO remedy; nothing else changed.
+  Review round 1 (judge: a fresh Claude Opus session through agent-run, read-only; Codex at
+  its usage limit until 2026-11-06) on 1c30566: approve with fixes, all applied. (1) minor:
+  `repos-=x` on `repos = []` removed the field although x was not there (since B13); now a
+  `-=` of an absent element changes nothing (§11.7), checked by hand on a scratch store: the
+  e56f500 binary pushed the removal, this one prints `nothing to commit`. (2) minor: steps
+  12 `repos=alpha,[]` (exit 2), 13 `tags=[]` with no tags and 14 `sources=[] aliases=[]`
+  (both `nothing to commit`, no id resolution), 15 a `--batch` line with `repos+=[]` (exit 1,
+  `--batch line 1: …`, no usage lines), 16 `repos-=beta` on `repos = []` (`nothing to
+  commit`, the field kept). (3) nit: §11.7 says only the exact `[]` is special. (4) nit: the
+  `set` page lists all three element forms.

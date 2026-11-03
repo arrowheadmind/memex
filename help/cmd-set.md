@@ -15,7 +15,7 @@ Changes one or more frontmatter fields of an entry without an editor, keeps the 
 byte, and commits. Assignments: `field=value` sets, `field=` removes an optional field,
 `field+=value` appends to an array, `field-=value` removes from one, `field=[]` empties one
 (`repos=[]` writes `repos = []`, "concerns no repository"; on other arrays it is `field=`;
-`[]` is never an element, so `field+=[]` is a usage error). Arrays in `field=` form are
+`[]` is never an element: `field=a,[]`, `field+=[]` and `field-=[]` are usage errors). Arrays in `field=` form are
 comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`. `created` and
 `body_sha256` cannot be set. `status=superseded` needs `superseded_by=<id>` in the same
 command; leaving `superseded` removes `superseded_by`. On a task or a plan, a `status=` that

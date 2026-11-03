@@ -18,6 +18,8 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
   The source is not concerned, and the new entry does not take its `repos`.
 - `set` refuses `[]` as an array element (`repos=[],x`, `repos+=[]`, `repos-=[]`) as a usage
   error; `repos=[]` used to write `repos = ["[]"]`.
+- `set <id> field-=value` whose value is not in the array changes nothing; on an entry with
+  `repos = []` it used to remove the field.
 
 ### Changed output
 
