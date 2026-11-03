@@ -14,14 +14,14 @@ memex set --batch FILE|-
 Changes one or more frontmatter fields of an entry without an editor, keeps the body byte for
 byte, and commits. Assignments: `field=value` sets, `field=` removes an optional field,
 `field+=value` appends to an array, `field-=value` removes from one, `field=[]` empties one
-(`repos=[]` writes `repos = []`, "concerns no repository"; on other arrays it is `field=`;
-`[]` is never an element: `field=a,[]`, `field+=[]` and `field-=[]` are usage errors). Arrays in `field=` form are
-comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`. `created` and
-`body_sha256` cannot be set. `status=superseded` needs `superseded_by=<id>` in the same
-command; leaving `superseded` removes `superseded_by`. On a task or a plan, a `status=` that
-closes or reopens it (a status visible by default to one that is not, or back) is refused unless
-the same command gives a new `summary=`; `memex update` does both and records why. The result
-must validate.
+(`repos=[]` writes `repos = []`, "concerns no repository"; on other arrays it is `field=`; `[]`
+is never an element: `field=a,[]`, `field+=[]` and `field-=[]` are usage errors). Arrays in
+`field=` form are comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`.
+`created` and `body_sha256` cannot be set. `status=superseded` needs `superseded_by=<id>` in the
+same command; leaving `superseded` removes `superseded_by`. On a task or a plan, a `status=`
+that closes or reopens it (a status visible by default to one that is not, or back) is refused
+unless the same command gives a new `summary=`; `memex update` does both and records why. The
+result must validate.
 `--batch FILE` reads one `ID ASSIGNMENT…` line per entry, quoted as on a command line
 (`'title=A b'`); blank lines and `#` lines are skipped. Every line is checked before anything is
 written, and the whole batch is one commit: one bad line (`--batch line <n>: …`) writes nothing.
