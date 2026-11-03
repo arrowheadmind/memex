@@ -29,6 +29,7 @@ every gate.
 | B11 | Refusal order for `new`, `capture` and `promote`: inputs read under the lock, the `capture --from` alias no-op before PATH is read, `promote`'s source checks in `set`'s order (SPEC §9.1, §11.2, §11.8) | implement | judge | The three Planned rows of the §0 table are Implemented with conformance cases 234–237 (each checked to fail on the 0.2.0 binary where it pins a change) and unit tests for the §9.1 phases with the lock held; the `new`, `capture` and `promote` pages say when `--body` is read and that a repeat `capture --from` of a removed file is the no-op; CHANGELOG Unreleased lists each change under Changed or Changed output | done | 9498155 |
 | B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), with the intentional existing-fixture changes recorded in the B12 note; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | done | 50f2f1d |
 | B13 | Required repository attribution: `require_repos` in `memex.toml`; `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo`, which writes `repos = []`; the refusal lists the workspace's repositories; `check` reports `W-NO-REPO` (SPEC §2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 247–252 (each checked to fail on the binary at d39ef5e, except where the B13 note says a step pins unchanged behaviour), the seven `update` usage lines of cases 224 and 229 that gain `[--no-repo]` updated and nothing else in the suite changed; `update --no-repo` is in `internal/spec`; the `new`, `capture`, `update` and `check` pages, `help config` (the manifest keys) and `help check-codes` carry the B13 note's text; CHANGELOG Unreleased lists `require_repos`, `update --no-repo` and `W-NO-REPO` under Added and the kept `repos = []` under Changed | done | 38f9a0e |
+| B14 | `promote` and required repository attribution: in a store with `require_repos = true`, `promote` refuses a new entry without `repos` unless `--no-repo`, which writes `repos = []`; the source is not concerned (SPEC §4, §5.5, §11.8) | implement | judge | The Planned row of the §0 table is Implemented with conformance cases 253–254 (253 checked to fail on the binary at af6a1b1 except the steps the B14 note says pin unchanged behaviour; 254 pins the unset key) and nothing else in the suite changed; the `promote` page and `help config` carry the B14 note's text; CHANGELOG Unreleased lists the refusal under Changed | doing | |
 
 Rules of the ledger:
 
@@ -802,3 +803,34 @@ Open items for later blocks:
   directory like `new`, but the task named only `new`, `capture` and `update`; recommendation:
   a follow-up that applies the same refusal and `repos = []` to `promote` (coordinator's
   default: out of scope here).
+- B14 `promote` and required repository attribution (operator's go 2026-11-03, the follow-up
+  the B13 note left open). Decisions written into SPEC.md (§4, §5.5, §11.8, Planned in §0):
+  - `promote` refuses as `new` does, with `new`'s two lines, at a new refusal-order step 7
+    after the id (step 6) and before validation (now step 8), so a repeat of a successful
+    `promote` is still the `exists` no-op. Nothing is written, the source included.
+  - Only the new entry is concerned. A journal source marked `promoted` is rewritten as `set`
+    rewrites it; its `repos` is neither required nor changed.
+  - The new entry does not inherit the source's `repos` (implement role's default, for the
+    judge and the operator): §5.5 says attribution comes from the current directory and the
+    options only, and a promote from the store's own directory would otherwise silently copy
+    a journal's repository into a rule that may be broader. The refusal names the retry.
+  Edge cases listed before building: the repeat no-op; `--repo` with `--no-repo` (`--repo`
+  wins); an uncommitted `require_repos = false` (HEAD's manifest still holds, reusing B13's
+  `requireRepos`); a cited non-journal source; the key unset (unchanged, `--no-repo` writes no
+  field); a refused promote leaves the source `raw`.
+  Cases, run against the binary at af6a1b1 (v0.4.0's tree):
+  - 253-require-repos-promote, from the runner's home, `workspace = "~/ws"` with no
+    repository. 01 promote a raw journal to a rule without `--repo`: exit 1, the two lines,
+    store and commits unchanged, the journal still `raw`. 02 `--no-repo`: created with
+    `repos = []`, the journal `promoted` and its `repos = ["alpha"]` kept. 03 the repeat of 01:
+    the `exists` no-op. 04 `--no-repo --repo beta` on the now promoted journal: `repos =
+    ["beta"]`, the journal only cited. 05 `memex.toml` edited to `require_repos = false`
+    without committing, promoting a rule (a cited source): still refused. 01, 02 and 05 fail on
+    af6a1b1; 03 and 04 pin the order and `--repo` winning.
+  - 254-require-repos-promote-unset: the same store without the key. 01 promote without
+    `--repo`: created, no `repos` field. 02 `--no-repo`: no `repos` field. Passes on af6a1b1,
+    by design: it pins unchanged behaviour.
+  Open for the operator, not in B14: `set` cannot write `repos = []` (`repos=` removes the
+  field), so clearing `W-NO-REPO` for an entry that concerns no repository is a hand edit and
+  `memex save`; met 2026-11-03 backfilling 19 entries of the programming store. A `set`
+  form for an empty array (for example `repos=[]`) would make it one command.

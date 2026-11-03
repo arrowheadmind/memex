@@ -59,7 +59,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 `W-NO-REPO` | Implemented |
 | 11.2 Refusal of a new entry without repos | Implemented |
 | 11.17 `update --no-repo` and its refusal without repos | Implemented |
-| 11.8 Refusal of a promoted entry without repos | Planned |
+| 11.8 Refusal of a promoted entry without repos | Implemented |
 
 ---
 

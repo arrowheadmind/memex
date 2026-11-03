@@ -6,6 +6,12 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Changed
+
+- `promote` in a store with `require_repos = true` refuses a new entry that would have no
+  `repos`, unless `--no-repo` is given, which writes `repos = []`, as `new` and `capture` do.
+  The source is not concerned, and the new entry does not take its `repos`.
+
 ## 0.4.0 (2026-10-31)
 
 ### Added

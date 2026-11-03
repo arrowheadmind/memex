@@ -52,7 +52,7 @@ summary, and the three correct moves.
 | code | when |
 |---|---|
 | 0 | Created |
-| 1 | Unknown source; the source has uncommitted edits or fields that promote cannot keep; the new entry refused as in `new`, or its id taken by a different body |
+| 1 | Unknown source; the source has uncommitted edits or fields that promote cannot keep; the new entry refused as in `new` (no `repos` where the store requires them included), or its id taken by a different body |
 | 2 | Usage error |
 | 4 | Another memex held the write lock for 60 s |
 | 5 | Committed but not pushed |
@@ -77,6 +77,12 @@ $ memex show journal/2026-01-09-restore-test-on-alpha.md --json
   entry stays as the evidence, cited in `sources`.
 - Forgetting `--keyword`: the rule will be searched with the reader's words, not the
   incident's.
+- Promoting from outside a repository (the store's own directory included) without `--repo`
+  in a store whose `memex.toml` has `require_repos = true`: refused (exit 1, nothing changed,
+  the source still unpromoted) after the `exists` check, with a second line listing the
+  repositories of the configured `workspace`. The new entry does not take the source's
+  `repos`: retry with `--repo <name>`, or with `--no-repo` when it concerns none, which
+  writes `repos = []`. The source's own `repos` is neither required nor changed.
 
 ## See also
 

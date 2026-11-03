@@ -53,7 +53,7 @@ func (w *writing) repositoryLine() string {
 	return "repositories in the workspace " + ws + ": " + strings.Join(names, ", ")
 }
 
-// newRefusalNoRepo is the first line of the new and capture refusal (SPEC §5.5).
+// newRefusalNoRepo is the first line of the new, capture and promote refusal (SPEC §5.5).
 func newRefusalNoRepo(root string) string {
 	return root + " requires repos (require_repos in memex.toml) and this entry has none; " +
 		"retry with --repo <name>, or with --no-repo if it concerns no repository; nothing was changed"

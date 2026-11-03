@@ -67,6 +67,14 @@ func Promote(e *Env, o PromoteOptions) (int, *UsageError) {
 		}
 		return w.refuseExisting(f, en), nil
 	}
+	// The repository requirement of the new entry, after the id and before validation
+	// (SPEC §5.5, §11.8 refusal order step 7); the source is not concerned.
+	if w.requireRepos() && len(p.fields.Strings("repos")) == 0 {
+		if !n.NoRepo {
+			return w.refuseNoRepo("%s", newRefusalNoRepo(w.root)), nil
+		}
+		p.fields["repos"] = []string{}
+	}
 	files := []write.File{{Path: p.path, Data: p.data(), Check: true}}
 	if rewrite {
 		f := entry.Fields{}
