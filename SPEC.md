@@ -59,6 +59,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 `W-NO-REPO` | Implemented |
 | 11.2 Refusal of a new entry without repos | Implemented |
 | 11.17 `update --no-repo` and its refusal without repos | Implemented |
+| 11.8 Refusal of a promoted entry without repos | Planned |
 
 ---
 
@@ -226,7 +227,7 @@ require_repos = true
   version that raised it.
 - `name` is a free string, shown by `doctor`. It is optional.
 - `require_repos` is a boolean, optional, default `false`. When `true`, an entry created by
-  `new` or `capture`, and an existing entry rewritten by `update`, must say which
+  `new`, `capture` or `promote`, and an existing entry rewritten by `update`, must say which
   repositories it concerns, or say explicitly that it concerns none (§5.5), and `check`
   reports an entry that does neither (`W-NO-REPO`, §7). It is for a store that holds
   knowledge about source repositories, where an entry created outside any repository would
@@ -415,17 +416,24 @@ requirement off for the writes):
   given (§11.2 refusal order step 6). With `--no-repo` (and no `--repo`) the entry is written
   with `repos = []`, the explicit statement that it concerns no repository. `--repo` given
   together with `--no-repo` wins, as everywhere.
+- `promote` refuses a new entry whose `repos` would be empty, unless `--no-repo` is given
+  (§11.8 refusal order step 7), as `new` does; with `--no-repo` (and no `--repo`) the new
+  entry is written with `repos = []`. Only the new entry is concerned: a journal source that
+  `promote` marks `promoted` is rewritten as `set` rewrites it, and its `repos` is neither
+  required nor changed. The new entry's `repos` comes from §5.5's attribution and the options
+  only, never from the source.
 - `update` refuses an entry that has no `repos` field, unless `--no-repo` is given; with
   `--no-repo` it writes `repos = []` in the same commit (§11.17). An entry with `repos = []`
   or with names is not refused.
 - `check` reports an entry with no `repos` field as `W-NO-REPO` (§7). `repos = []` does not
   warn: it is the honest answer for an entry that concerns no repository.
-- `set`, `promote`, `fmt`, `save` and `import` are not affected. `set <id> repos=<name>` is
+- `set`, `fmt`, `save` and `import` are not affected. `set <id> repos=<name>` is
   the correction; `set <id> repos=` removes the field as it always does.
 
 The refusal is exit 1, nothing is written, standard output is empty, and standard error ends
 with these two lines (after the `memex: fetch failed: <reason>` line that every refused write
-prints first when the freshen step's fetch failed, §9.1 step 2). For `new` and `capture`:
+prints first when the freshen step's fetch failed, §9.1 step 2). For `new`, `capture` and
+`promote`:
 
 ```
 memex: <root> requires repos (require_repos in memex.toml) and this entry has none; retry with --repo <name>, or with --no-repo if it concerns no repository; nothing was changed
@@ -1623,13 +1631,19 @@ failure:
    `sources` and is not checked here.
 5. **The values** of the new entry, as in §11.2 refusal order step 4.
 6. **The new entry's id**, as in §11.2 refusal order step 5.
-7. **Validation** of the new entry, and of the source only when step 4 rewrites it (a source
+7. **The repository requirement** of the new entry, as in §11.2 refusal order step 6
+   (§5.5): in a store with `require_repos = true`, a new entry whose `repos` would be empty
+   without `--no-repo` is refused, exit 1, with the two lines of §5.5 for `new`, and nothing
+   is written, the source included. Because it comes after step 6, a repeat of a successful
+   `promote` is still the `exists` no-op.
+8. **Validation** of the new entry, and of the source only when step 4 rewrites it (a source
    that is only cited is not validated), exit 1, every error finding printed.
 
 As in §11.2, the store's entries are read right after step 2, so the `memex: skipped` lines of
 §8.1 precede any diagnostic from step 3 on. For a repeat of a successful `promote`, a value
-that step 5 refuses (an unknown `--source`) is refused, while a result that only step 7 would
-refuse (a summary of 501 characters) is the `exists` no-op of step 6.
+that step 5 refuses (an unknown `--source`) is refused, while a result that only step 8 would
+refuse (a summary of 501 characters) is the `exists` no-op of step 6, and so is one that
+only step 7 would refuse (no `--no-repo` in a store that requires repos).
 
 ### 11.9 `fmt`
 
