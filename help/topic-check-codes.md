@@ -39,7 +39,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `W-RAW-OLD` | A `raw` journal entry older than 90 days | `memex set <id> status=kept`, or `memex promote <id>` |
 | `W-PROMOTED-UNCITED` | A `promoted` journal entry no entry cites in `sources` | Add it to the derived entry's `sources`, or set `kept` |
 | `W-NO-TERMS` | Neither `tags` nor `keywords` | `memex set <id> keywords=<word>,<word>` |
-| `W-NO-REPO` | In a store with `require_repos = true`, an entry with no `repos` field (journal entries too; `repos = []` is not reported) | `memex set <id> repos=<name>`; if it concerns no repository, write `repos = []` in its frontmatter and `memex save` |
+| `W-NO-REPO` | In a store with `require_repos = true`, an entry with no `repos` field (journal entries too; `repos = []` is not reported) | `memex set <id> repos=<name>`; if it concerns no repository, `memex set <id> repos=[]` |
 | `W-NO-SUMMARY` | No `summary` | `memex set <id> summary=<sentence>` |
 | `W-SHORT-BODY` | Body content measure below 80 | Edit the file, then `memex save`; in a committed journal, none: an immutable finding, counted apart |
 | `W-STALE-SUMMARY` | A task or plan whose summary did not change when a section was added or it was closed or reopened (read from first-parent history, the working tree or the index) | `memex set <id> summary=<sentence>` with where it stands now; next time use `memex update` |

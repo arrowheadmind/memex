@@ -30,6 +30,7 @@ every gate.
 | B12 | Actionable check warnings: `W-SHORT-BODY` and `W-ALIAS-LINK` on a journal whose body is locked (committed and intact) are immutable findings, counted apart from warnings on the summary line and listed with `check --immutable`; `new journal` and `capture` refuse an alias link (SPEC §5.6, §6, §7, §11.2, §11.12, §11.13) | implement | judge | The four Planned rows of the §0 table are Implemented with conformance cases 238–246 (each checked to fail on the binary at 92e148c, except 244 and 246, which guard the import counts and the no-commit boundary), with the intentional existing-fixture changes recorded in the B12 note; the `check`, `new` and `capture` pages and `help check-codes` carry the text of the B12 note; `--immutable` is in `internal/spec`; CHANGELOG Unreleased lists `--immutable` under Added, the alias-link refusal and the `--strict` outcome under Changed, and the summary line, the two journal messages, the JSON key and the doctor row under Changed output | done | 50f2f1d |
 | B13 | Required repository attribution: `require_repos` in `memex.toml`; `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo`, which writes `repos = []`; the refusal lists the workspace's repositories; `check` reports `W-NO-REPO` (SPEC §2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 247–252 (each checked to fail on the binary at d39ef5e, except where the B13 note says a step pins unchanged behaviour), the seven `update` usage lines of cases 224 and 229 that gain `[--no-repo]` updated and nothing else in the suite changed; `update --no-repo` is in `internal/spec`; the `new`, `capture`, `update` and `check` pages, `help config` (the manifest keys) and `help check-codes` carry the B13 note's text; CHANGELOG Unreleased lists `require_repos`, `update --no-repo` and `W-NO-REPO` under Added and the kept `repos = []` under Changed | done | 38f9a0e |
 | B14 | `promote` and required repository attribution: in a store with `require_repos = true`, `promote` refuses a new entry without `repos` unless `--no-repo`, which writes `repos = []`; the source is not concerned (SPEC §4, §5.5, §11.8) | implement | judge | The Planned row of the §0 table is Implemented with conformance cases 253–254 (253 checked to fail on the binary at af6a1b1 except the steps the B14 note says pin unchanged behaviour; 254 pins the unset key) and nothing else in the suite changed; the `promote` page and `help config` carry the B14 note's text; CHANGELOG Unreleased lists the refusal under Changed | done | ade710b |
+| B15 | `set field=[]` writes the empty array (`repos = []`); `[]` as an element is a usage error; `W-NO-REPO` names `memex set <id> repos=[]` (SPEC §5.5, §7, §11.7) | implement | judge | The two Planned rows of the §0 table are Implemented with conformance case 255 (checked to fail on the binary at e56f500 except the steps the B15 note says pin unchanged behaviour) and the `W-NO-REPO` lines of case 251 updated, nothing else in the suite changed; the `set` page and `help check-codes` carry the B15 note's text; CHANGELOG Unreleased lists `field=[]` under Added, the `[]` element refusal under Changed and the `W-NO-REPO` message under Changed output | doing | |
 
 Rules of the ledger:
 
@@ -842,3 +843,29 @@ Open items for later blocks:
   two minor (no step for step 7 before validation; none for attribution meeting the
   requirement) and four nits (the `help config` sentence, the `--no-repo` sentence of the
   `promote` page, §11.8's "for `new`", a fixture title with `--repo beta`), all applied.
+- B15 `set field=[]` (operator's go 2026-11-03, the open item of the B14 note). Before B15,
+  `set <id> repos=[]` wrote `repos = ["[]"]`, a junk repository name that validates (repos
+  elements have no pattern), and clearing `W-NO-REPO` honestly was a hand edit. Decisions
+  written into SPEC.md (§5.5, §7, §11.7, Planned in §0):
+  - `field=[]`, the value exactly `[]`, on an array field is the empty array: `repos = []` for
+    repos; on other arrays the canonical form drops it, so it is `field=`. Commit text
+    `field=[]`.
+  - `[]` is never an element: among comma-separated values, after `+=` or `-=`, it is a
+    malformed assignment, exit 2, at refusal-order step 1.
+  - Not an array: `[]` stays an ordinary value (`title=[]`), unchanged.
+  - `-=` of the last element still removes the field (unchanged; leaving `repos = []` would
+    claim "concerns no repository" without anyone saying so).
+  - `W-NO-REPO`'s remedy names `memex set <id> repos=[]` instead of the hand edit: Changed
+    output, so case 251's expected lines change.
+  Cases, run against the binary at e56f500:
+  - 255-set-empty-array, a store with `require_repos = true`. 01 `check`: W-NO-REPO with the
+    new remedy. 02 `set <id> repos=[]` on an entry without repos: `repos = []`. 03 the repeat:
+    `nothing to commit`. 04 `repos=[] tags=[]` on an entry with both: `repos = []`, tags
+    gone, commit text `repos=[] tags=[]`. 05 `check`: 0 warnings. 06 `repos=[],alpha`, 07
+    `repos+=[]`, 08 `repos-=[]`: exit 2 with the element line, the usage and `Run:` lines,
+    nothing changed. 09 `repos=alpha title=[]`: the title is the string `[]` (unchanged
+    behaviour). 10 `repos-=alpha`, the last element: the field removed (unchanged). 11
+    `--batch` with `repos=[]`: `repos = []`. 01, 02, 04 and 06–08 fail on e56f500 (02 wrote
+    `repos = ["[]"]`); 03, 09 and 10 pin behaviour, and later steps differ only by the
+    earlier ones' store.
+  - 251-check-no-repo: steps 01 and 03 expect the new W-NO-REPO remedy; nothing else changed.

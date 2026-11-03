@@ -321,7 +321,7 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 	}
 	if c.requireRepos && !f.Has("repos") {
 		c.add(p.Path, "W-NO-REPO", "no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: "+
-			"memex set %s repos=<name>, or if it concerns none, write repos = [] in its frontmatter and run memex save", p.ID)
+			"memex set %s repos=<name>, or if it concerns none: memex set %s repos=[]", p.ID, p.ID)
 	}
 	if !f.Has("summary") {
 		c.add(p.Path, "W-NO-SUMMARY", "no summary; add one sentence that tells a reader whether to open the entry: memex set %s summary=<sentence>", p.ID)

@@ -6,11 +6,23 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Added
+
+- `memex set <id> field=[]` sets an array field to the empty array: `repos=[]` writes
+  `repos = []`, the entry concerns no repository; on other arrays it is `field=`.
+
 ### Changed
 
 - `promote` in a store with `require_repos = true` refuses a new entry that would have no
   `repos`, unless `--no-repo` is given, which writes `repos = []`, as `new` and `capture` do.
   The source is not concerned, and the new entry does not take its `repos`.
+- `set` refuses `[]` as an array element (`repos=[],x`, `repos+=[]`, `repos-=[]`) as a usage
+  error; `repos=[]` used to write `repos = ["[]"]`.
+
+### Changed output
+
+- `W-NO-REPO`'s remedy is `memex set <id> repos=[]` for an entry that concerns no repository,
+  instead of a hand edit and `memex save`.
 
 ## 0.4.0 (2026-10-31)
 

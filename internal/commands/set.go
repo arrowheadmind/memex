@@ -47,8 +47,16 @@ func ParseAssignment(arg string) (Assignment, string) {
 	if a.Op != "=" && a.field.Kind != spec.KindArray {
 		return a, fmt.Sprintf("%s%s works only on array fields; %s is a %s, write %s=VALUE", a.Field, a.Op, a.Field, a.field.Kind, a.Field)
 	}
+	// [] is the empty array, never an element (SPEC §11.7).
+	if a.field.Kind == spec.KindArray && !(a.Op == "=" && a.Value == emptyArray) &&
+		slices.Contains(strings.Split(a.Value, ","), emptyArray) {
+		return a, fmt.Sprintf("assignment %q uses [] as an element; [] is the empty array: write %s=[] alone", arg, a.Field)
+	}
 	return a, ""
 }
+
+// emptyArray is the value of field=[], the empty array (SPEC §11.7).
+const emptyArray = "[]"
 
 // SetOptions are the arguments of `memex set`.
 type SetOptions struct {
@@ -149,6 +157,16 @@ func planFields(w *writing, res *resolver, en *store.Entry, asgs []Assignment) (
 			}
 			delete(f, a.Field)
 			texts = append(texts, a.Field+"=")
+			continue
+		}
+		if a.Op == "=" && value == emptyArray && def.Kind == spec.KindArray {
+			// The canonical form keeps only an empty repos (SPEC §5.1, §11.7).
+			if a.Field == "repos" {
+				f[a.Field] = []string{}
+			} else {
+				delete(f, a.Field)
+			}
+			texts = append(texts, a.Field+"="+emptyArray)
 			continue
 		}
 		resolveID := func(v string) (string, *refusal) {

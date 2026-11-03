@@ -13,8 +13,10 @@ memex set --batch FILE|-
 
 Changes one or more frontmatter fields of an entry without an editor, keeps the body byte for
 byte, and commits. Assignments: `field=value` sets, `field=` removes an optional field,
-`field+=value` appends to an array, `field-=value` removes from one. Arrays in `field=` form
-are comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`. `created` and
+`field+=value` appends to an array, `field-=value` removes from one, `field=[]` empties one
+(`repos=[]` writes `repos = []`, "concerns no repository"; on other arrays it is `field=`;
+`[]` is never an element, so `field+=[]` is a usage error). Arrays in `field=` form are
+comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`. `created` and
 `body_sha256` cannot be set. `status=superseded` needs `superseded_by=<id>` in the same
 command; leaving `superseded` removes `superseded_by`. On a task or a plan, a `status=` that
 closes or reopens it (a status visible by default to one that is not, or back) is refused unless
@@ -80,6 +82,8 @@ pushed <SHA7>
   share one commit.
 - Hundreds of `memex set` calls in a loop: each is a commit and a push. Write the lines to a
   file and run `memex set --batch FILE` once; naming one entry on two lines is refused.
+- `repos=` for an entry that concerns no repository: it removes the field, which a store with
+  `require_repos` reports as `W-NO-REPO`; write `repos=[]`.
 
 ## See also
 

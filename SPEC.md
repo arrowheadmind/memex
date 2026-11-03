@@ -60,8 +60,8 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.2 Refusal of a new entry without repos | Implemented |
 | 11.17 `update --no-repo` and its refusal without repos | Implemented |
 | 11.8 Refusal of a promoted entry without repos | Implemented |
-| 11.7 `field=[]` sets an empty array | Planned |
-| 7 `W-NO-REPO` names `set <id> repos=[]` | Planned |
+| 11.7 `field=[]` sets an empty array | Implemented |
+| 7 `W-NO-REPO` names `set <id> repos=[]` | Implemented |
 
 ---
 
