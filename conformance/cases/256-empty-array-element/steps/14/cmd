@@ -1,0 +1,8 @@
+capture
+--title=restic with an empty repository name
+--summary=The repository option of capture is given an empty value.
+--keyword
+restic
+--repo=
+--body
+-

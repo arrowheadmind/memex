@@ -1497,7 +1497,8 @@ memex set --batch FILE|-
   On a field that is not an array, `[]` is an ordinary value (`title=[]` sets the title to
   `[]`). `field-=value` that removes the last element removes the field, as before; it does
   not leave an empty array. `field-=value` whose value is not in the array changes nothing,
-  so it never removes an empty `repos = []`. The assignments apply in order, each to the
+  so it never removes an empty `repos = []`; `field-=` with an empty value is that no-op too,
+  since an element is never empty (§5.3). The assignments apply in order, each to the
   result of the one before, so `repos+=beta repos-=beta` on an entry with `repos = []`
   removes the field: the `-=` removes the last element (and `check` reports `W-NO-REPO`
   again where the store requires repos).

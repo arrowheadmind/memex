@@ -914,3 +914,13 @@ Open items for later blocks:
     hand-written `repos = [""]`: the `E-FIELD-VALUE` finding, exit 1. 01, 02, 05–08 and 11
     fail on ce76570 (each wrote or accepted `[""]`); 03, 04, 09 and 10 pin behaviour.
   - 159-set step 19 and 220-set-batch-refusals step 08: the usage line names `field=[]`.
+  Review round 1 (judge: a fresh Claude Fable 5.1 session through agent-run, read-only;
+  Codex offline) on 8709238: approve with fixes. (1) minor: `set <id> repos-=` was an
+  unspecified no-op; §11.7 now says `field-=` with an empty value is the no-op of removing an
+  absent element (kept, not refused: a usage error there would differ from `repos+=`'s
+  validation refusal). (2) minor: steps 12 `save` of the step 11 hand edit (refused, exit 1;
+  ce76570 pushed it), 13 the hand fix to `["alpha"]` and `save` (pushed, pins), 14 `capture
+  --repo=` and 15 `set --batch -` with `repos=,` (the `--batch line 1:` form): 12, 14 and 15
+  fail on ce76570. (3) nit: CHANGELOG names `save`. (4) nit: `help check-codes` says to edit
+  the file and `memex save`. (5) nit, not taken: whitespace-only names such as `[" "]` stay
+  valid; §5.3 forbids only the empty string.

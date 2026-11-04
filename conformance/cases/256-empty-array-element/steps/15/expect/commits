@@ -1,0 +1,4 @@
+memex: save 1 files
+memex: set 2026-01-10-concerns-no-repository repos+=beta repos-=beta
+memex: promote 2026-01-13-restic-concerns-no-repository to rule 2026-01-15-check-the-restore-target-on-beta
+memex: promote 2026-01-12-restic-without-repos to rule 2026-01-15-create-the-restore-target-first

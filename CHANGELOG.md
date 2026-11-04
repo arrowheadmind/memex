@@ -10,7 +10,8 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 - An array element that is the empty string is refused at validation on every array field:
   `--repo=`, `--host=`, `memex set <id> repos=,` and `repos+=` no longer write `repos = [""]`
-  or `hosts = [""]`, and `check` reports a hand-written one as `E-FIELD-VALUE`.
+  or `hosts = [""]`; `memex save` refuses a hand edit that writes one, and `check` reports
+  it as `E-FIELD-VALUE`.
 
 ### Changed output
 
