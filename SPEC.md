@@ -377,7 +377,8 @@ Listed in canonical order.
   name, keyword or id is never empty. On `tags` the element pattern already excludes it, and
   its message is the pattern's. So `--repo=`, `--host=`, `set <id> repos=,` and
   `set <id> repos+=` are refused at validation, and a hand-written `repos = [""]` is an
-  `E-FIELD-VALUE` finding (§7).
+  `E-FIELD-VALUE` finding (§7). An empty id given for `sources` (`--source=`,
+  `set <id> sources+=`) is refused earlier, as an id that does not resolve (§10).
 - A field on a type not listed under "Allowed on" is an error.
 - There is no `updated` field (git records it), and no reverse-link field. Reverse links are
   computed (§11.6).

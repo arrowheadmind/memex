@@ -37,7 +37,7 @@ standard input or `--from`.
 | `--tag` | X | | Tag for filtering; repeatable |
 | `--keyword` | K | | Word a reader would search with; repeatable |
 | `--repo` | R | the current repository | Repository the entry concerns; repeatable |
-| `--no-repo` | | | Do not attribute the entry to the current repository; under require_repos, write repos = [] |
+| `--no-repo` | | | Do not attribute the entry to the current repository; under `require_repos`, write `repos = []` |
 | `--host` | H | | Machine the entry concerns; repeatable |
 | `--always` | | | Rule printed by every preflight (rules only) |
 | `--kind` | K | | Not allowed on journal entries |

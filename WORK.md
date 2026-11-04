@@ -924,3 +924,8 @@ Open items for later blocks:
   fail on ce76570. (3) nit: CHANGELOG names `save`. (4) nit: `help check-codes` says to edit
   the file and `memex save`. (5) nit, not taken: whitespace-only names such as `[" "]` stay
   valid; §5.3 forbids only the empty string.
+  Review round 2 (judge: another fresh Claude Fable 5.1 session, read-only) on 6d0e1f5:
+  approve; every round 1 item checked, case 256 fails on ce76570 exactly where the note says.
+  Nits applied: the `--no-repo` rows of the `new`, `capture` and `promote` pages backtick
+  `require_repos` and `repos = []`; §5.3 says an empty `sources` id is refused at id
+  resolution. Kept by decision: whitespace-only names.
