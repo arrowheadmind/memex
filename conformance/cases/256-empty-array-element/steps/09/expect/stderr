@@ -1,0 +1,4 @@
+memex: assignment "repos+=alpha,[]" uses [] as an element; [] is the empty array: write repos=[] alone
+memex set ID ASSIGNMENT…
+memex set --batch FILE|-
+Run: memex help set

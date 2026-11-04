@@ -1,0 +1,2 @@
+memex: rules/2026-01-10-name-the-repository.md: E-FIELD-VALUE repos element "" is empty
+memex: refused: the result would not validate; nothing was changed

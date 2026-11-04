@@ -1,0 +1,12 @@
+promote
+2026-01-13-restic-concerns-no-repository
+--to
+rule
+--title=Check the restore target on beta
+--summary=The restore target on beta is checked before a restore.
+--keyword
+restic
+--repo
+beta
+--body
+-

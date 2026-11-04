@@ -1,0 +1,11 @@
+promote
+2026-01-10-name-the-repository
+--to
+rule
+--title=Name it with an empty value
+--summary=The repository option is given an empty value.
+--keyword
+repos
+--repo=
+--body
+-

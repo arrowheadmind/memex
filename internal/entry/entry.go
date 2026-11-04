@@ -280,6 +280,9 @@ func fieldValue(def *spec.Field, v any) (any, *Problem) {
 			switch {
 			case def.Name == "tags" && !tagPattern.MatchString(s):
 				return bad("element %s does not match ^[a-z0-9][a-z0-9-]*$", Quote(s))
+			case s == "":
+				// A name, keyword or id is never empty (SPEC §5.3).
+				return bad(`element "" is empty`)
 			case strings.Contains(s, "\n"):
 				return bad("element %s contains a line feed", Quote(s))
 			}

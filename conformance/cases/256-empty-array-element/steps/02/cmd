@@ -1,0 +1,10 @@
+new
+rule
+--title=An empty host name
+--summary=The host option is given an empty value.
+--keyword
+restic
+--no-repo
+--host=
+--body
+-

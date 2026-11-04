@@ -1,0 +1,2 @@
+memex: rules/2026-01-15-an-empty-host-name.md: E-FIELD-VALUE hosts element "" is empty
+memex: refused: the result would not validate; nothing was changed

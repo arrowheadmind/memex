@@ -1,0 +1,9 @@
+new
+rule
+--title=An empty repository name
+--summary=The repository option is given an empty value.
+--keyword
+restic
+--repo=
+--body
+-

@@ -1,0 +1,11 @@
+promote
+2026-01-12-restic-without-repos
+--to
+rule
+--title=Create the restore target first
+--summary=restic restore does not create its target directory.
+--keyword
+restic
+--no-repo
+--body
+-

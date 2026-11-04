@@ -15,8 +15,9 @@ Changes one or more frontmatter fields of an entry without an editor, keeps the 
 byte, and commits. Assignments: `field=value` sets, `field=` removes an optional field,
 `field+=value` appends to an array, `field-=value` removes from one, `field=[]` empties one
 (`repos=[]` writes `repos = []`, "concerns no repository"; on other arrays it is `field=`; `[]`
-is never an element: `field=a,[]`, `field+=[]` and `field-=[]` are usage errors). Arrays in
-`field=` form are comma-separated; booleans are `true` or `false`; dates are `YYYY-MM-DD`.
+is never an element: `field=a,[]`, `field+=[]`, `field-=[]` and `field+=a,[]` are usage
+errors). Arrays in `field=` form are comma-separated, and an empty element (`repos=a,`) is
+refused at validation; booleans are `true` or `false`; dates are `YYYY-MM-DD`.
 `created` and `body_sha256` cannot be set. `status=superseded` needs `superseded_by=<id>` in the
 same command; leaving `superseded` removes `superseded_by`. On a task or a plan, a `status=`
 that closes or reopens it (a status visible by default to one that is not, or back) is refused
@@ -84,6 +85,10 @@ pushed <SHA7>
   file and run `memex set --batch FILE` once; naming one entry on two lines is refused.
 - `repos=` for an entry that concerns no repository: it removes the field, which a store with
   `require_repos` reports as `W-NO-REPO`; write `repos=[]`.
+- An unquoted `repos=[]` in zsh: `[]` is a glob there and the command never reaches memex.
+  Quote it: `memex set <id> 'repos=[]'`.
+- `repos+=beta repos-=beta` on `repos = []`: the assignments apply in order, and the `-=`
+  removes the last element, so the field goes and `W-NO-REPO` comes back.
 
 ## See also
 

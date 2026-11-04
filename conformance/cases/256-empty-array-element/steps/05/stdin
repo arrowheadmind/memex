@@ -1,0 +1,1 @@
+Create the restore target directory before running restic restore, because restic does not create it and the restore fails.

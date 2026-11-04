@@ -28,7 +28,7 @@ type Assignment struct {
 func ParseAssignment(arg string) (Assignment, string) {
 	name, value, ok := strings.Cut(arg, "=")
 	if !ok {
-		return Assignment{}, fmt.Sprintf("assignment %q has no \"=\"; write field=value, field=, field+=value or field-=value", arg)
+		return Assignment{}, fmt.Sprintf("assignment %q has no \"=\"; write field=value, field=, field=[], field+=value or field-=value", arg)
 	}
 	a := Assignment{Field: name, Op: "=", Value: value}
 	if n, ok := strings.CutSuffix(name, "+"); ok {
@@ -323,7 +323,7 @@ func SetBatch(e *Env, file string) (int, *UsageError) {
 			return fail(problem)
 		}
 		if len(words) == 1 {
-			return fail("missing ASSIGNMENT; write field=value, field=, field+=value or field-=value")
+			return fail("missing ASSIGNMENT; write field=value, field=, field=[], field+=value or field-=value")
 		}
 		var asgs []Assignment
 		for _, arg := range words[1:] {

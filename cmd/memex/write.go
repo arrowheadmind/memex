@@ -115,7 +115,7 @@ func runSet(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *
 	case 0:
 		return 0, cmdErr("missing ID")
 	case 1:
-		return 0, cmdErr("missing ASSIGNMENT; write field=value, field=, field+=value or field-=value")
+		return 0, cmdErr("missing ASSIGNMENT; write field=value, field=, field=[], field+=value or field-=value")
 	}
 	o := commands.SetOptions{ID: a.positionals[0]}
 	for _, arg := range a.positionals[1:] {

@@ -150,7 +150,7 @@ var newOptions = []Option{
 	{Name: "--tag", Value: "X", Repeatable: true, Summary: "Tag for filtering"},
 	{Name: "--keyword", Value: "K", Repeatable: true, Summary: "Word a reader would search with"},
 	{Name: "--repo", Value: "R", Repeatable: true, Default: "the current repository", Summary: "Repository the entry concerns; replaces the current one"},
-	{Name: "--no-repo", Summary: "Do not attribute the entry to the current repository"},
+	{Name: "--no-repo", Summary: "Do not attribute the entry to the current repository; under require_repos, write repos = []"},
 	{Name: "--host", Value: "H", Repeatable: true, Summary: "Machine the entry concerns"},
 	{Name: "--always", Summary: "Rule printed by every preflight (rules only)"},
 	{Name: "--kind", Value: "K", Summary: "prompt or report (plans only)"},

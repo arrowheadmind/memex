@@ -1,0 +1,4 @@
+journal/2026-01-12-restic-without-repos.md: W-NO-REPO no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set 2026-01-12-restic-without-repos repos=<name>, or if it concerns none: memex set 2026-01-12-restic-without-repos repos=[]
+rules/2026-01-10-concerns-no-repository.md: W-NO-REPO no repos, and this store requires them (require_repos in memex.toml); add the repository it concerns: memex set 2026-01-10-concerns-no-repository repos=<name>, or if it concerns none: memex set 2026-01-10-concerns-no-repository repos=[]
+rules/2026-01-11-hand-written-empty-name.md: E-FIELD-VALUE repos element "" is empty
+check: 1 errors, 2 warnings
