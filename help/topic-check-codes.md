@@ -16,7 +16,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `E-FRONTMATTER` | Missing `+++` delimiters, or invalid TOML | Fix the frontmatter; the message gives the line |
 | `E-FIELD-UNKNOWN` | Field not in the table, or not allowed on this type | Remove or rename it (the message suggests the nearest name) |
 | `E-FIELD-MISSING` | Required field absent | Add it |
-| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Fix the value; the message says the kind or the limit |
+| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Fix the value; the message says the kind or the limit (an array element is never empty: `repos = [""]` is one) |
 | `E-STATUS` | Status not valid for the type | Use one of the listed statuses |
 | `E-CREATED` | `created` differs from the id's date | Set `created` to the id's date |
 | `E-SUPERSEDED` | `superseded` without `superseded_by`, or the reverse | `memex set <id> superseded_by=<new>`, or clear one side |
