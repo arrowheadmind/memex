@@ -59,9 +59,10 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 `W-NO-REPO` | Implemented |
 | 11.2 Refusal of a new entry without repos | Implemented |
 | 11.17 `update --no-repo` and its refusal without repos | Implemented |
-| 11.8 Refusal of a promoted entry without repos | Implemented |
+| 11.8 Refusal of `promote`'s new entry without repos | Implemented |
 | 11.7 `field=[]` sets an empty array | Implemented |
 | 7 `W-NO-REPO` names `set <id> repos=[]` | Implemented |
+| 5.3 An empty array element is an error | Planned |
 
 ---
 
@@ -372,6 +373,11 @@ Listed in canonical order.
 | 18 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
 
 - A field not in this table is an error.
+- An array element that is the empty string (`""`) is an error, on every array field: a
+  name, keyword or id is never empty. On `tags` the element pattern already excludes it, and
+  its message is the pattern's. So `--repo=`, `--host=`, `set <id> repos=,` and
+  `set <id> repos+=` are refused at validation, and a hand-written `repos = [""]` is an
+  `E-FIELD-VALUE` finding (§7).
 - A field on a type not listed under "Allowed on" is an error.
 - There is no `updated` field (git records it), and no reverse-link field. Reverse links are
   computed (§11.6).
@@ -640,7 +646,7 @@ Errors:
 | `E-FRONTMATTER` | Missing delimiters, or invalid TOML | `missing opening +++ line; the file must begin with the line +++`, `missing closing +++ line after the frontmatter`, `invalid TOML in the frontmatter at line <line>` |
 | `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type | `unknown field "<field>" (did you mean "<nearest>"?)` over the §5.3 names in canonical order; `field "<field>" is not allowed on a <type>; it is allowed on: <types>` with the "Allowed on" types of §5.3 separated by `, ` |
 | `E-FIELD-MISSING` | Required field absent | `missing required field "<field>"` |
-| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed` |
+| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed`; `<field> element "" is empty` |
 | `E-STATUS` | Status not valid for the type | `status "<value>" is not valid for a <type> (did you mean "<nearest>"?); valid: <statuses>`, the type's statuses in §5.2 order separated by `, ` |
 | `E-CREATED` | `created` ≠ id date | `created <date> differs from the date in the id, <id date>` |
 | `E-SUPERSEDED` | `superseded` without `superseded_by`, or `superseded_by` without `superseded` | `status is superseded but superseded_by is missing; add it: memex set <id> superseded_by=<new>`; `superseded_by is set but status is "<value>"; either memex set <id> status=superseded, or memex set <id> superseded_by=` |
@@ -1482,14 +1488,19 @@ memex set --batch FILE|-
   to the empty array. The canonical form (§5.1) keeps only an empty `repos`, so `repos=[]`
   writes `repos = []`, the statement that the entry concerns no repository (§5.5), and on
   every other array field `field=[]` has the effect of `field=`. The commit message shows it
-  as `field=[]`. `[]` is never an element: `[]` among comma-separated values, `field+=[]` and
-  `field-=[]` are malformed assignments (§11.7 refusal order step 1), exit 2, with
+  as `field=[]`. `[]` is never an element: a value of which `[]` is one of the
+  comma-separated parts is a malformed assignment with every operator (`repos=alpha,[]`,
+  `repos+=[]`, `repos-=[]`, and `repos+=alpha,[]` too, although after `+=` and `-=` the value
+  is otherwise one element) (§11.7 refusal order step 1), exit 2, with
   `assignment "<arg>" uses [] as an element; [] is the empty array: write <field>=[] alone`.
   Only the exact `[]` is special: `[ ]` or ` []` is an ordinary element, as any other text.
   On a field that is not an array, `[]` is an ordinary value (`title=[]` sets the title to
   `[]`). `field-=value` that removes the last element removes the field, as before; it does
   not leave an empty array. `field-=value` whose value is not in the array changes nothing,
-  so it never removes an empty `repos = []`.
+  so it never removes an empty `repos = []`. The assignments apply in order, each to the
+  result of the one before, so `repos+=beta repos-=beta` on an entry with `repos = []`
+  removes the field: the `-=` removes the last element (and `check` reports `W-NO-REPO`
+  again where the store requires repos).
 - Booleans are `true` or `false`. Dates are `YYYY-MM-DD`.
 - `title`, `status`, `summary` and every other §5.3 field may be set, except `created` and
   `body_sha256` (exit 1).

@@ -6,6 +6,17 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Changed
+
+- An array element that is the empty string is refused at validation on every array field:
+  `--repo=`, `--host=`, `memex set <id> repos=,` and `repos+=` no longer write `repos = [""]`
+  or `hosts = [""]`, and `check` reports a hand-written one as `E-FIELD-VALUE`.
+
+### Changed output
+
+- The `--no-repo` option of `new`, `capture` and `promote` says that under `require_repos` it
+  writes `repos = []`; the `set` usage messages list `field=[]`.
+
 ## 0.5.0 (2026-11-03)
 
 ### Added

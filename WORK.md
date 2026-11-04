@@ -31,6 +31,7 @@ every gate.
 | B13 | Required repository attribution: `require_repos` in `memex.toml`; `new`, `capture` and `update` refuse an entry without `repos` unless `--no-repo`, which writes `repos = []`; the refusal lists the workspace's repositories; `check` reports `W-NO-REPO` (SPEC §2, §3.2, §4, §5.1, §5.5, §7, §11.2, §11.7, §11.17, §12) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 247–252 (each checked to fail on the binary at d39ef5e, except where the B13 note says a step pins unchanged behaviour), the seven `update` usage lines of cases 224 and 229 that gain `[--no-repo]` updated and nothing else in the suite changed; `update --no-repo` is in `internal/spec`; the `new`, `capture`, `update` and `check` pages, `help config` (the manifest keys) and `help check-codes` carry the B13 note's text; CHANGELOG Unreleased lists `require_repos`, `update --no-repo` and `W-NO-REPO` under Added and the kept `repos = []` under Changed | done | 38f9a0e |
 | B14 | `promote` and required repository attribution: in a store with `require_repos = true`, `promote` refuses a new entry without `repos` unless `--no-repo`, which writes `repos = []`; the source is not concerned (SPEC §4, §5.5, §11.8) | implement | judge | The Planned row of the §0 table is Implemented with conformance cases 253–254 (253 checked to fail on the binary at af6a1b1 except the steps the B14 note says pin unchanged behaviour; 254 pins the unset key) and nothing else in the suite changed; the `promote` page and `help config` carry the B14 note's text; CHANGELOG Unreleased lists the refusal under Changed | done | ade710b |
 | B15 | `set field=[]` writes the empty array (`repos = []`); `[]` as an element is a usage error; `W-NO-REPO` names `memex set <id> repos=[]` (SPEC §5.5, §7, §11.7) | implement | judge | The two Planned rows of the §0 table are Implemented with conformance case 255 (checked to fail on the binary at e56f500 except the steps the B15 note says pin unchanged behaviour) and the `W-NO-REPO` lines of case 251 updated, nothing else in the suite changed; the `set` page and `help check-codes` carry the B15 note's text; CHANGELOG Unreleased lists `field=[]` under Added, the `[]` element refusal under Changed and the `W-NO-REPO` message under Changed output | done | fc36984 |
+| B16 | v0.5.1 follow-ups of the second reviews of B14 and B15: an empty array element is an error (`--repo=`, `set repos=,`); `[]` as a comma-separated part is malformed with every operator, as built; `--no-repo` and the `set` usage lines name `repos = []` and `field=[]` (SPEC §0, §5.3, §7, §11.7) | implement | judge | The Planned row of the §0 table is Implemented with conformance case 256 (checked to fail on the binary at ce76570 except the steps the B16 note says pin unchanged behaviour) and the steps added to 253 and 255; the `--no-repo` option row, the `set` page and `help check-codes` carry the B16 note's text; CHANGELOG Unreleased lists the empty-element refusal under Changed and the help and usage texts under Changed output | doing | |
 
 Rules of the ledger:
 
@@ -879,3 +880,24 @@ Open items for later blocks:
   `--batch line 1: …`, no usage lines), 16 `repos-=beta` on `repos = []` (`nothing to
   commit`, the field kept). (3) nit: §11.7 says only the exact `[]` is special. (4) nit: the
   `set` page lists all three element forms.
+- B16 v0.5.1 follow-ups (operator's go 2026-11-04) of the second reviews of B14 and B15 (fresh
+  Claude Fable 5.1 sessions through agent-run, read-only, Codex offline; journal
+  2026-11-04-second-reviews-of-memex-b14-and-b15-…). Decisions written into SPEC.md (§0, §5.3,
+  §7, §11.7, Planned in §0):
+  - An array element that is the empty string is an error on every array field (§5.3),
+    `E-FIELD-VALUE` `<field> element "" is empty`; on `tags` the pattern's message stays. One
+    validation rule instead of the reviewer's usage error for `--repo=` and `--host=`
+    (implement role's default, for the judge and the operator): it also covers `set repos=,`,
+    `repos=alpha,`, `repos+=` and hand edits, and both real stores had no such element
+    (counted 2026-11-04). `promote --repo=` under `require_repos` is now refused at validation
+    (step 8), after the repos step it passes.
+  - B15 review 2 finding 1 (`tags+=a,[]` refused although after `+=` the value is one
+    element): the code is kept and the spec says so. A value with `[]` as one comma-separated
+    part is malformed with every operator, since `repos+=alpha,[]` is almost surely a typo for
+    two assignments.
+  - B15 review 2 finding 2 (`repos+=beta repos-=beta` on `repos = []` removes the field): kept,
+    as B15 decided for `-=` of the last element; §11.7 now says so.
+  - Help: the shared `--no-repo` row says it writes `repos = []` under `require_repos`; the
+    `set` usage messages list `field=[]`; the `set` page says to quote `repos=[]` in zsh,
+    where an unquoted `[]` is a glob.
+  - §0 wording: "Refusal of `promote`'s new entry without repos".
