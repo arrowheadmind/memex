@@ -166,4 +166,9 @@ conformance/cases/    §15 cases (data, language-neutral)
 - **Version:** set at build time with `-ldflags "-X main.version=…"` from the git tag, and
   `0.0.0-dev` otherwise. The tag is the single source. Every release gets a `CHANGELOG.md` entry.
   A flake cannot read git tags, so `flake.nix` carries `version = "0.0.0-dev"`; the release
-  commit that is tagged `vX.Y.Z` sets it to `X.Y.Z`, and the next commit sets it back.
+  commit that is tagged `vX.Y.Z` sets it to `X.Y.Z`, and the next commit sets it back. The
+  same release commit sets the CHANGELOG heading `## X.Y.Z (date)`, the README's `**Status:**`
+  line and SPEC.md's tool version: `cmd/memex/release_test.go` fails `go test` (so
+  `scripts/check.sh`, CI and the nix build) when those lines do not name the CHANGELOG's newest
+  release, and `release.yml` fails the tag's release when the README does not name the tag's
+  version.

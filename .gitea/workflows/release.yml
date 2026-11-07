@@ -79,6 +79,16 @@ jobs:
             || { echo "CHANGELOG.md has no '## $VERSION (' section with content" >&2; exit 1; }
           echo "release notes for $VERSION:"; cat "$out/notes.md"
 
+      # The README's Status line names the version being released: a release fails when the
+      # README names another version (or none). The unit test cmd/memex/release_test.go holds
+      # the README and SPEC.md to the CHANGELOG's newest release in check.sh, CI and the nix
+      # build below; this is the statement against the tag itself.
+      - name: Check the README names the version
+        run: |
+          set -eu
+          grep -q "^\*\*Status:\*\* $VERSION released " README.md \
+            || { echo "README.md does not say '**Status:** $VERSION released …': $(grep -m1 '^\*\*Status:\*\*' README.md || echo 'no Status line')" >&2; exit 1; }
+
       # The binary is the flake's default package, built exactly as `nix build` documents in
       # IMPLEMENTATION.md ("Packaging"), static (CGO off), attached with its sha256 file. The
       # flake's version is set by the release commit, so the built binary must report the
