@@ -58,4 +58,4 @@ CI runs `scripts/check.sh` (`nix develop -c scripts/check.sh`) on every push.
 
 Then `memex help` for the overview, or `memex help agents` for an agent's rules of engagement.
 
-**License:** MIT (see [LICENSE](LICENSE)).
+**License:** MIT (see [LICENSE](LICENSE)). A security problem: [SECURITY.md](SECURITY.md).

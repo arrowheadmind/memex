@@ -6,6 +6,11 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ## Unreleased
 
+### Added
+
+- `SECURITY.md`: what matters most for memex's security, and how to report a vulnerability
+  privately (security@arrowheadmind.com); linked from the README.
+
 ## 0.5.1 (2026-11-04)
 
 ### Changed
