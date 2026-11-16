@@ -534,8 +534,9 @@ The warning names the entry that was meant when one is found, in order:
    trailing `.md` removed, is the id of an entry, or an alias of exactly one entry: that entry.
 2. Otherwise, when that text is longer than 120 characters and matches the id pattern apart
    from its length, the length cap of §5.4 is applied to it as far as it can be without the
-   title: its first 111 characters, trailing `-` removed, then `-`. When exactly one entry has
-   an id that is this text followed by 8 lowercase hex digits: that entry.
+   title: its first 111 characters, trailing `-` removed, then `-`. When exactly one id of the
+   store is this text followed by 8 lowercase hex digits: that id (as in step 1, where entries
+   that share an id, `E-DUP-ID`, count as one).
 
 **Field references** (`parent`, `sources`, `superseded_by`) MUST be ids. Aliases are not
 accepted there.

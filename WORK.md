@@ -957,3 +957,10 @@ Open items for later blocks:
   - The one existing fixture that changes: case 060's `[[2026-1-10-x]]` (a date without its
     zeros, under "Plain text, not links") is still plain text but is now `W-BROKEN-LINK`: a
     mistyped id is what the warning is for. Its stdout gains that line and one warning.
+  Review round 1 (judge: a fresh Claude Opus 5.5 session in its own copy, read-only; Codex not
+  used) on bce1163: pass with findings, none blocking; gate 173/0 and case 257 failing on the
+  binary at 9a5973a confirmed by the judge. Applied once: (1) §6 step 2 says "exactly one id"
+  (entries that share an id count as one, as in step 1), with a unit test row; (2) `save`,
+  `help writing`, `help concepts` and the `E-LINK` row of `help check-codes` say a link to a
+  missing id instead of "a broken link"; (3) `help links` names the single alias and ASCII;
+  (4) case 257's plain-text line gains `[[café-x]]`.

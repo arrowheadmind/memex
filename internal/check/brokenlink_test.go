@@ -14,6 +14,8 @@ func TestMeant(t *testing.T) {
 	for _, id := range []string{"2026-01-10-target", capped + "1a2b3c4d", sharedCap + "aaaaaaaa", sharedCap + "bbbbbbbb", sharedCap + "ABCDEF12"} {
 		c.byID[id] = []*parsed{{ID: id}}
 	}
+	// E-DUP-ID: two entries share the capped id; it is still one id, so it is named (SPEC §6).
+	c.byID[capped+"1a2b3c4d"] = append(c.byID[capped+"1a2b3c4d"], &parsed{ID: capped + "1a2b3c4d"})
 	c.byAlias["former-target"] = c.byID["2026-01-10-target"]
 	c.byAlias["shared-alias"] = []*parsed{{ID: "2026-01-10-a"}, {ID: "2026-01-10-b"}}
 

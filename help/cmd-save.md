@@ -12,7 +12,8 @@ memex save [-m MSG] [PATHS…] [--allow-delete] [--fmt]
 
 Editing an entry with any editor is first-class; `save` commits the result through the same
 protocol as every other write: the edited entries and their link targets are validated first,
-so a broken link or a missing field is refused with the findings and your edit stays in place.
+so a link to a missing id (`E-LINK`) or a missing field is refused with the findings and your
+edit stays in place.
 With no paths it takes every added, modified, deleted or untracked file in the store (except
 `.memex/` and anything ignored). A deleted entry is refused unless `--allow-delete` is given.
 It is also how the first commit of a new store is made.

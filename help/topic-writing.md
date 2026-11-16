@@ -54,8 +54,8 @@ the status), `memex: fmt <n> entries`, `memex: save <n> files` (or your
 ## Direct edits
 
 Editing an entry with any editor is first-class. Then `memex save [-m MSG] [PATHS…]` commits
-it through the same protocol: validation first, so a broken link or a missing field is refused
-with the findings and your edit left in place. With no paths it takes every added, modified,
+it through the same protocol: validation first, so a link to a missing id or a missing field is
+refused with the findings and your edit left in place. With no paths it takes every added, modified,
 deleted or untracked file in the store. A deleted entry needs `--allow-delete`; `--fmt`
 rewrites the selected entries into canonical form first.
 

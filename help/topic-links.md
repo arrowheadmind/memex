@@ -23,10 +23,11 @@ warning.
    that suggests the id.
 3. TARGET looks like an id but no entry has it, or it is an alias of several entries:
    `E-LINK`.
-4. Anything else is plain text. When it is shaped like a link (only letters, digits, `-`, `_`,
-   `.` and `/`, with at least one `-`, `_` or `/`), `check` reports `W-BROKEN-LINK`, naming
-   the entry meant when it finds exactly one: the id left after removing a type directory
-   (`tasks/`) and `.md`, or the capped id of an id written out beyond 120 characters. Link
+4. Anything else is plain text. When it is shaped like a link (only ASCII letters, digits,
+   `-`, `_`, `.` and `/`, with at least one `-`, `_` or `/`), `check` reports
+   `W-BROKEN-LINK`, naming the entry meant when it finds exactly one: what is left after
+   removing a type directory (`tasks/`) and `.md`, when that is an id or the alias of one
+   entry, or the capped id of an id written out beyond 120 characters. Link
    that id, or put the text in backticks if it is not a link. `[[ -f x ]]`, `[[:space:]]`
    and `[[links]]` are not reported.
 
