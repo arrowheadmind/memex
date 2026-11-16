@@ -32,6 +32,7 @@ every gate.
 | B14 | `promote` and required repository attribution: in a store with `require_repos = true`, `promote` refuses a new entry without `repos` unless `--no-repo`, which writes `repos = []`; the source is not concerned (SPEC §4, §5.5, §11.8) | implement | judge | The Planned row of the §0 table is Implemented with conformance cases 253–254 (253 checked to fail on the binary at af6a1b1 except the steps the B14 note says pin unchanged behaviour; 254 pins the unset key) and nothing else in the suite changed; the `promote` page and `help config` carry the B14 note's text; CHANGELOG Unreleased lists the refusal under Changed | done | ade710b |
 | B15 | `set field=[]` writes the empty array (`repos = []`); `[]` as an element is a usage error; `W-NO-REPO` names `memex set <id> repos=[]` (SPEC §5.5, §7, §11.7) | implement | judge | The two Planned rows of the §0 table are Implemented with conformance case 255 (checked to fail on the binary at e56f500 except the steps the B15 note says pin unchanged behaviour) and the `W-NO-REPO` lines of case 251 updated, nothing else in the suite changed; the `set` page and `help check-codes` carry the B15 note's text; CHANGELOG Unreleased lists `field=[]` under Added, the `[]` element refusal under Changed and the `W-NO-REPO` message under Changed output | done | fc36984 |
 | B16 | v0.5.1 follow-ups of the second reviews of B14 and B15: an empty array element is an error (`--repo=`, `set repos=,`); `[]` as a comma-separated part is malformed with every operator, as built; `--no-repo` and the `set` usage lines name `repos = []` and `field=[]` (SPEC §0, §5.3, §7, §11.7) | implement | judge | The Planned row of the §0 table is Implemented with conformance case 256 (checked to fail on the binary at ce76570 except the steps the B16 note says pin unchanged behaviour) and the usage lines of cases 159 and 220 that gain `field=[]` updated, nothing else in the suite changed; the `--no-repo` option row, the `set` page and `help check-codes` carry the B16 note's text; CHANGELOG Unreleased lists the empty-element refusal under Changed and the help and usage texts under Changed output | done | 6e46dfb |
+| B17 | `check` reports a broken link: a `[[…]]` shaped like a link that names no entry and is not `E-LINK` is `W-BROKEN-LINK`, with the entry meant when it can be found; an immutable finding in a locked journal body (SPEC §0, §6, §7, §13.1, §13.5) | implement | judge | The Planned row of the §0 table is Implemented with conformance case 257 (checked to fail on the binary at 9a5973a) and unit tests of the shape and of the entry meant; `help links`, `help check-codes`, `help importing` and the `check` page carry the B17 note's text; CHANGELOG Unreleased lists `W-BROKEN-LINK` under Added and the `--strict` outcome under Changed | doing | |
 
 Rules of the ledger:
 
@@ -929,3 +930,27 @@ Open items for later blocks:
   Nits applied: the `--no-repo` rows of the `new`, `capture` and `promote` pages backtick
   `require_repos` and `repos = []`; §5.3 says an empty `sources` id is refused at id
   resolution. Kept by decision: whitespace-only names.
+- B17 broken links (the operator's go 2026-11-16, from a retrospective of the operator's two
+  real stores: 26 and 1 `[[…]]` that name no entry while `check` reported 0 errors; counted
+  again for B17, they are paths like `[[tasks/<id>]]` and `[[journal/<id>.md]]`, ids written
+  out beyond the 120-character cap, and former names of an earlier tool). §6 made each of
+  them plain text, because none matches the id pattern. Decisions written into SPEC.md (§0,
+  §6, §7, §13.1, §13.5, Planned in §0):
+  - A new warning `W-BROKEN-LINK`, not an extension of `E-LINK`: the shape is a guess about
+    text §6 calls plain, and an error would make the pre-commit hook refuse every edit of an
+    entry that already holds such a link (`--staged` checks a staged entry whole), so both
+    stores would stop accepting ordinary `memex set` on those entries.
+  - The shape: only ASCII letters, digits, `-`, `_`, `.` and `/`, with at least one `-`, `_`
+    or `/`. Measured on both stores: it keeps shell tests (`[[ -x … ]]`), `[[:space:]]`,
+    `[[link]]` and `[[links]]` out, and finds every path-shaped and over-long link and the
+    former names. `[[[<id>]]` (a typo with three brackets) stays plain text: its target
+    starts with `[`.
+  - The entry meant: a type-directory prefix and a `.md` suffix removed, then an id or a
+    single alias; else the §5.4 cap applied as far as it goes without the title (111
+    characters, trailing `-` trimmed, `-`, then any 8 hex digits) and exactly one match.
+  - In a locked journal body it is an immutable finding, as `W-ALIAS-LINK` is: only a body
+    edit corrects it. Most of the hits in the real stores are in old journals.
+  - Not in B17 (follow-up for the operator): `new journal` and `capture` could refuse a
+    `W-BROKEN-LINK` as they refuse an alias link (§11.2), since a journal body is the one
+    place it can never be corrected later. The import keeps such links as the source held
+    them and §13.1 allows the warning.
