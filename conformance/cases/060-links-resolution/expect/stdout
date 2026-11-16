@@ -3,4 +3,5 @@ rules/2026-01-10-source.md: E-LINK [[2026-01-10-missing-too]] on line 12 is not 
 rules/2026-01-10-source.md: E-LINK [[2026-01-10-missing]] on line 12 is not the id of an entry
 rules/2026-01-10-source.md: W-ALIAS-LINK [[old-name]] on line 11 resolves through an alias; link [[2026-01-10-target]] instead
 rules/2026-01-10-source.md: W-ALIAS-LINK [[rules/old-path.md]] on line 11 resolves through an alias; link [[2026-01-10-target]] instead
-check: 3 errors, 2 warnings
+rules/2026-01-10-source.md: W-BROKEN-LINK [[2026-1-10-x]] on line 13 names no entry; link the id of an entry, or put it in backticks if it is not a link
+check: 3 errors, 3 warnings

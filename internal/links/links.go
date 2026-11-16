@@ -95,3 +95,20 @@ func run(b []byte, i int) int {
 	}
 	return n
 }
+
+// Shaped reports whether a [[TARGET]] that is neither an id nor an alias is shaped like a link
+// (SPEC §6, broken links): only ASCII letters, digits, '-', '_', '.' and '/', with at least
+// one '-', '_' or '/'. Such a TARGET is W-BROKEN-LINK; any other is plain text.
+func Shaped(target string) bool {
+	sep := false
+	for i := 0; i < len(target); i++ {
+		switch b := target[i]; {
+		case b == '-' || b == '_' || b == '/':
+			sep = true
+		case b == '.', b >= 'a' && b <= 'z', b >= 'A' && b <= 'Z', b >= '0' && b <= '9':
+		default:
+			return false
+		}
+	}
+	return sep
+}

@@ -76,8 +76,9 @@ check: 0 errors, 2 warnings
   stands now. Next time, record progress with `memex update`.
 - Running `check` with `--strict` in the hook before the imported store is curated: thousands
   of warnings would block every commit.
-- Editing a committed journal body to clear `W-SHORT-BODY` or `W-ALIAS-LINK`: the body is
-  immutable (`E-HASH`). If knowledge is missing, capture a fuller entry and supersede the old one.
+- Editing a committed journal body to clear `W-SHORT-BODY`, `W-ALIAS-LINK` or
+  `W-BROKEN-LINK`: the body is immutable (`E-HASH`). If knowledge is missing, capture a fuller
+  entry and supersede the old one.
 
 ## See also
 

@@ -47,7 +47,7 @@ months and 2,300 commits; every principle below names the failure it prevents.
 - `preflight` is the start-of-task ritual: sync, the `always` rules, a search for the task.
 - `capture` writes a journal entry; `promote` turns what it taught into a rule, runbook,
   decision or reference, and marks the journal entry `promoted`.
-- `check` validates the whole store and runs as the pre-commit hook, so a broken link or a
-  missing field never lands.
+- `check` validates the whole store and runs as the pre-commit hook, so a link to a missing
+  id (`E-LINK`) or a missing field never lands.
 - `list` replaces the predecessor's hand-maintained index; `show` prints an entry with the
   entries that cite, supersede, link or contain it.

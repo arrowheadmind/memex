@@ -1,8 +1,10 @@
 # memex help links
 
 Entries link to each other by id, never by prose path, so that a rename or a move cannot
-silently break a reference. `memex check` fails on a broken link, and the pre-commit hook runs
-`check`, so a broken link never lands.
+silently break a reference. `memex check` fails on a link that looks like an id and resolves to
+nothing, and the pre-commit hook runs `check`, so such a link never lands. A link written
+another way that names no entry (`[[tasks/<id>]]`, `[[<id>.md]]`) is a `W-BROKEN-LINK`
+warning.
 
 ## Syntax
 
@@ -21,6 +23,13 @@ silently break a reference. `memex check` fails on a broken link, and the pre-co
    that suggests the id.
 3. TARGET looks like an id but no entry has it, or it is an alias of several entries:
    `E-LINK`.
+4. Anything else is plain text. When it is shaped like a link (only ASCII letters, digits,
+   `-`, `_`, `.` and `/`, with at least one `-`, `_` or `/`), `check` reports
+   `W-BROKEN-LINK`, naming the entry meant when it finds exactly one: what is left after
+   removing a type directory (`tasks/`) and `.md`, when that is an id or the alias of one
+   entry, or the capped id of an id written out beyond 120 characters. Link
+   that id, or put the text in backticks if it is not a link. `[[ -f x ]]`, `[[:space:]]`
+   and `[[links]]` are not reported.
 
 Field references (`parent`, `sources`, `superseded_by`) must be ids; aliases are not accepted
 there, though `memex set` resolves an alias or a path to the id for you.

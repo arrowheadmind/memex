@@ -1,0 +1,9 @@
+rm
+--cached
+--quiet
+journal/2026-01-12-locked.md
+
+commit
+--quiet
+-m
+conformance: the journal leaves HEAD

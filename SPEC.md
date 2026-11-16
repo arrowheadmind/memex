@@ -63,6 +63,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.7 `field=[]` sets an empty array | Implemented |
 | 7 `W-NO-REPO` names `set <id> repos=[]` | Implemented |
 | 5.3 An empty array element is an error | Implemented |
+| 6, 7 `W-BROKEN-LINK` | Implemented |
 
 ---
 
@@ -517,6 +518,26 @@ run with no such closing run is literal text.
 
 A TARGET that is not an id but is an alias of more than one entry is unresolved: `E-LINK`.
 
+**Broken links.** Any other TARGET is plain text, but one **shaped like a link** was almost
+surely meant as one (a path such as `[[tasks/<id>]]` or `[[<id>.md]]`, an id written out
+beyond the length cap of §5.4, a former name) and is reported with a warning,
+`W-BROKEN-LINK`. TARGET is shaped like a link when it consists only of ASCII letters, digits,
+`-`, `_`, `.` and `/`, and contains at least one `-`, `_` or `/`; so `[[ -f x ]]`,
+`[[:space:]]` and `[[links]]` stay plain text with no finding. It is a warning and not an
+error because the shape is a guess about text that this section makes plain, and because a
+store that already holds such links must still accept edits: the pre-commit hook refuses
+errors (§7), and `--staged` checks every staged entry whole. In a journal entry whose body is
+locked it is an immutable finding (§7).
+
+The warning names the entry that was meant when one is found, in order:
+1. TARGET, with a leading type directory of §4 and its `/` removed (`tasks/`, …) and then a
+   trailing `.md` removed, is the id of an entry, or an alias of exactly one entry: that entry.
+2. Otherwise, when that text is longer than 120 characters and matches the id pattern apart
+   from its length, the length cap of §5.4 is applied to it as far as it can be without the
+   title: its first 111 characters, trailing `-` removed, then `-`. When exactly one id of the
+   store is this text followed by 8 lowercase hex digits: that id (as in step 1, where entries
+   that share an id, `E-DUP-ID`, count as one).
+
 **Field references** (`parent`, `sources`, `superseded_by`) MUST be ids. Aliases are not
 accepted there.
 
@@ -555,11 +576,12 @@ lines, and `--strict` changes only the exit code. Messages compare as text, so w
 path and code a finding on line 12 sorts before one on line 7.
 
 **Immutable findings.** A committed journal body is immutable (§5.6): changing it
-is `E-HASH`, and the documented correction is a new entry that supersedes it. Two warnings are
-corrected, keeping what the entry says and what its links resolve to, only by an edit of the
-body: `W-SHORT-BODY` and `W-ALIAS-LINK`. (Removing the alias from the link's target also
-clears `W-ALIAS-LINK`, but it turns the link into plain text or an `E-LINK`, so it is not a
-correction.) Once the body is locked no one can act on them, and a warning count that keeps
+is `E-HASH`, and the documented correction is a new entry that supersedes it. Three warnings
+are corrected, keeping what the entry says and what its links resolve to, only by an edit of
+the body: `W-SHORT-BODY`, `W-ALIAS-LINK` and `W-BROKEN-LINK`. (Removing the alias from the
+link's target also clears `W-ALIAS-LINK`, but it turns the link into plain text or an
+`E-LINK`, so it is not a correction; giving an entry the broken target as an alias clears
+`W-BROKEN-LINK` only by adding `W-ALIAS-LINK`.) Once the body is locked no one can act on them, and a warning count that keeps
 them hides the next warning that can be acted on. They are therefore **immutable findings**,
 not warnings, on an entry whose body is **locked**, which is when all of these hold:
 - its type is journal (whatever its status, `superseded` included);
@@ -571,7 +593,7 @@ not warnings, on an entry whose body is **locked**, which is when all of these h
   SHA-256 of that body: the entry has no `E-HASH`, and no `E-FIELD-MISSING` or
   `E-FIELD-VALUE` for `body_sha256`.
 
-A journal that is not locked keeps both codes as ordinary warnings, with their ordinary
+A journal that is not locked keeps these codes as ordinary warnings, with their ordinary
 messages, because its body can still be corrected: a journal not yet in `HEAD` (only in the
 view checked) before its first commit, and one whose body differs from `HEAD`'s, or whose hash
 is missing, malformed or does not match, by restoring the committed body. A store with no
@@ -595,7 +617,7 @@ because it means a link that does not resolve. An immutable finding keeps its co
 own message (the warnings table). It:
 - is never counted as a warning. The exit code is 1 when `N` > 0, or with `--strict` when `M`
   > 0; otherwise 0 (the exit-2 cases are unchanged). `L` never enters it, and `--immutable`
-  changes only what is listed, never the exit code. Because the two codes on locked journals
+  changes only what is listed, never the exit code. Because these codes on locked journals
   leave `M`, a store whose only warnings are those exits 0 under `--strict`, where before it
   exited 1: a changed outcome, listed as such in the changelog;
 - is counted as `L` whatever the options, and is listed only with `--immutable` (§11.12):
@@ -665,6 +687,7 @@ Warnings:
 |---|---|---|
 | `W-CANONICAL` | Entry valid but not in canonical form (`memex fmt` fixes it) | `not in canonical form; run memex fmt <path>` |
 | `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead`. In a locked journal body, an immutable finding (above): `[[<target>]] on line <line> resolves through an alias to [[<target id>]]; a journal body is immutable, so this is not counted as a warning` |
+| `W-BROKEN-LINK` | A `[[…]]` shaped like a link that names no entry and is not `E-LINK` (§6, broken links) | When §6 finds the entry meant: `[[<target>]] on line <line> names no entry; link [[<target id>]] instead`; otherwise `[[<target>]] on line <line> names no entry; link the id of an entry, or put it in backticks if it is not a link`. In a locked journal body, an immutable finding (above): `[[<target>]] on line <line> names no entry; it means [[<target id>]], but a journal body is immutable, so this is not counted as a warning`, or without the entry meant `[[<target>]] on line <line> names no entry; a journal body is immutable, so this is not counted as a warning` |
 | `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` | `verified <date> is more than review_days (<n>) ago; check the facts, then: memex set <id> verified=<today>` |
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
@@ -1959,7 +1982,7 @@ items, 474 INDEX rows, 116 plans), and the counts in the notes are from it.
   written in between.
 - **Lossless, and accounted for** (§13.6).
 - **Valid.** `memex check` on `DIR` reports zero errors. It MAY report `W-NO-SUMMARY`,
-  `W-NO-TERMS`, `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-RAW-OLD`, `W-SECRET` and
+  `W-NO-TERMS`, `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-BROKEN-LINK` (§13.5), `W-RAW-OLD`, `W-SECRET` and
   `W-PROMOTED-UNCITED` (the predecessor had no `sources` field, so every promoted
   investigation is uncited by construction). Any other finding is an import defect. This is
   what makes the operator's commit possible, since the pre-commit hook runs `check --staged`.
@@ -2166,7 +2189,8 @@ INDEX `File` values are resolved the same way.
 - **Existing wikilinks.** A `[[TARGET]]` already in a body is kept when TARGET is an id or an
   alias of the new store. When it matches the id pattern but resolves to nothing, it is wrapped
   in backticks so that it reads as the text it was and is not `E-LINK`; the report lists these
-  under `wikilinks_quoted`. Any other `[[…]]` is plain text (§6).
+  under `wikilinks_quoted`. Any other `[[…]]` is plain text (§6) and is kept as it is, one
+  shaped like a link included (`W-BROKEN-LINK`), since a journal body keeps what the source held.
 - Unresolved references stay unchanged and are counted in the report, grouped by target.
   Mentions of `docs/backlog.md` as a whole file are expected (over 300 of them).
 - `body_sha256` is computed after rewriting.

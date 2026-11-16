@@ -22,6 +22,11 @@ func ValidID(s string) bool {
 	return len(s) <= MaxIDLength && idPattern.MatchString(s)
 }
 
+// IDShaped reports whether s matches the id pattern of SPEC §5.4, whatever its length.
+func IDShaped(s string) bool {
+	return idPattern.MatchString(s)
+}
+
 // Slug turns a title into a slug: NFKD without Mn, simple lowercase, runs outside [a-z0-9]
 // collapsed to "-", trimmed, and "entry" when empty.
 func Slug(title string) string {
