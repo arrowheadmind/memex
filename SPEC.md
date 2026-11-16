@@ -63,7 +63,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.7 `field=[]` sets an empty array | Implemented |
 | 7 `W-NO-REPO` names `set <id> repos=[]` | Implemented |
 | 5.3 An empty array element is an error | Implemented |
-| 6, 7 `W-BROKEN-LINK` | Planned |
+| 6, 7 `W-BROKEN-LINK` | Implemented |
 
 ---
 

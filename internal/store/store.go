@@ -20,7 +20,7 @@ type Finding struct {
 	Path    string
 	Code    string
 	Message string
-	// Immutable marks W-SHORT-BODY and W-ALIAS-LINK on a locked journal body.
+	// Immutable marks W-SHORT-BODY, W-ALIAS-LINK and W-BROKEN-LINK on a locked journal body.
 	// The code remains W- so import accounting and the public code vocabulary do not change.
 	Immutable bool
 }

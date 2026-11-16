@@ -954,3 +954,6 @@ Open items for later blocks:
     `W-BROKEN-LINK` as they refuse an alias link (§11.2), since a journal body is the one
     place it can never be corrected later. The import keeps such links as the source held
     them and §13.1 allows the warning.
+  - The one existing fixture that changes: case 060's `[[2026-1-10-x]]` (a date without its
+    zeros, under "Plain text, not links") is still plain text but is now `W-BROKEN-LINK`: a
+    mistyped id is what the warning is for. Its stdout gains that line and one warning.

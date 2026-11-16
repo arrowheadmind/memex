@@ -1,0 +1,14 @@
+journal/2026-01-12-locked.md: W-BROKEN-LINK [[former_name]] on line 13 names no entry; a journal body is immutable, so this is not counted as a warning
+journal/2026-01-12-locked.md: W-BROKEN-LINK [[tasks/2026-01-10-target]] on line 12 names no entry; it means [[2026-01-10-target]], but a journal body is immutable, so this is not counted as a warning
+rules/2026-01-11-links.md: W-ALIAS-LINK [[former-target]] on line 27 resolves through an alias; link [[2026-01-10-target]] instead
+rules/2026-01-11-links.md: W-BROKEN-LINK [[2026-01-10-another-long-title-whose-capped-prefix-two-entries-share-so-that-the-entry-meant-cannot-be-told-apart-from-the-other]] on line 17 names no entry; link the id of an entry, or put it in backticks if it is not a link
+rules/2026-01-11-links.md: W-BROKEN-LINK [[2026-01-10-target.md]] on line 12 names no entry; link [[2026-01-10-target]] instead
+rules/2026-01-11-links.md: W-BROKEN-LINK [[2026-01-10-the-long-title-of-an-entry-whose-id-was-capped-by-the-length-rule-so-that-a-link-which-writes-it-out-whole-names-nothing]] on line 15 names no entry; link [[2026-01-10-the-long-title-of-an-entry-whose-id-was-capped-by-the-length-rule-so-that-a-link-which-writes-it-out-1a2b3c4d]] instead
+rules/2026-01-11-links.md: W-BROKEN-LINK [[Some-Page]] on line 19 names no entry; link the id of an entry, or put it in backticks if it is not a link
+rules/2026-01-11-links.md: W-BROKEN-LINK [[notes/2026-01-10-target]] on line 18 names no entry; link the id of an entry, or put it in backticks if it is not a link
+rules/2026-01-11-links.md: W-BROKEN-LINK [[old_brain_slug]] on line 19 names no entry; link the id of an entry, or put it in backticks if it is not a link
+rules/2026-01-11-links.md: W-BROKEN-LINK [[reference/former-target]] on line 14 names no entry; link [[2026-01-10-target]] instead
+rules/2026-01-11-links.md: W-BROKEN-LINK [[rules/2026-01-10-target.md]] on line 13 names no entry; link [[2026-01-10-target]] instead
+rules/2026-01-11-links.md: W-BROKEN-LINK [[rules/2026-01-10-target]] on line 11 names no entry; link [[2026-01-10-target]] instead
+rules/2026-01-11-links.md: W-BROKEN-LINK [[tasks/2026-01-10-the-long-title-of-an-entry-whose-id-was-capped-by-the-length-rule-so-that-a-link-which-writes-it-out-whole-names-nothing.md]] on line 16 names no entry; link [[2026-01-10-the-long-title-of-an-entry-whose-id-was-capped-by-the-length-rule-so-that-a-link-which-writes-it-out-1a2b3c4d]] instead
+check: 0 errors, 11 warnings, 2 on immutable journal bodies

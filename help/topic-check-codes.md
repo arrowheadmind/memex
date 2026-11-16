@@ -35,6 +35,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 |---|---|---|
 | `W-CANONICAL` | Valid but not in canonical form | `memex fmt <path>` |
 | `W-ALIAS-LINK` | A link resolved through an alias | Link the id the message gives; in a committed journal, none: an immutable finding, counted apart |
+| `W-BROKEN-LINK` | A `[[…]]` shaped like a link (letters, digits, `-`, `_`, `.`, `/`, with a `-`, `_` or `/`) that names no entry: `[[tasks/<id>]]`, `[[<id>.md]]`, an id longer than 120 characters, a former name | Link the id the message gives, or find the entry and link its id; backticks if it is not a link; in a committed journal, none: an immutable finding, counted apart |
 | `W-STALE-REFERENCE` | `verified + review_days` is in the past | Re-check the facts, then `memex set <id> verified=<today>` |
 | `W-RAW-OLD` | A `raw` journal entry older than 90 days | `memex set <id> status=kept`, or `memex promote <id>` |
 | `W-PROMOTED-UNCITED` | A `promoted` journal entry no entry cites in `sources` | Add it to the derived entry's `sources`, or set `kept` |
@@ -55,7 +56,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
   and the home locations of the leak scan; their paths are absolute (`memex help neutrality`).
 - `--errors-only` suppresses ordinary warning lines; `--limit N` (default 200, 0 for no limit)
   caps the finding lines and prints `<CODE>: K more (raise --limit)` for the rest.
-- `--immutable` also lists the immutable findings: `W-SHORT-BODY` and `W-ALIAS-LINK` in a
-  committed, intact journal, whose body cannot change; they never count as warnings, for
-  `--strict` or the exit code.
+- `--immutable` also lists the immutable findings: `W-SHORT-BODY`, `W-ALIAS-LINK` and
+  `W-BROKEN-LINK` in a committed, intact journal, whose body cannot change; they never count
+  as warnings, for `--strict` or the exit code.
 - `--json` prints one object with `findings`, `errors`, `warnings`, `immutable` and `truncated`.

@@ -34,3 +34,26 @@ func TestStripCodeSpans(t *testing.T) {
 		}
 	}
 }
+
+func TestShaped(t *testing.T) {
+	for target, want := range map[string]bool{
+		"tasks/2026-01-10-x":   true,
+		"2026-01-10-x.md":      true,
+		"old_brain_slug":       true,
+		"Some-Page":            true,
+		"a/b":                  true,
+		"links":                false,
+		"link.md":              false,
+		" -f x ":               false,
+		":space:":              false,
+		"a b-c":                false,
+		"[2026-01-10-x":        false,
+		"2026-01-10-x#section": false,
+		"café-x":               false,
+		"":                     false,
+	} {
+		if got := Shaped(target); got != want {
+			t.Errorf("Shaped(%q) = %v, want %v", target, got, want)
+		}
+	}
+}

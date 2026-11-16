@@ -12,6 +12,7 @@ import (
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/links"
 	"github.com/arrowheadmind/memex/internal/slug"
+	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/store"
 )
 
@@ -245,6 +246,62 @@ func (c *checker) resolveRef(p *parsed, field, id string) {
 	}
 }
 
+// brokenLink reports a [[TARGET]] shaped like a link that names no entry (W-BROKEN-LINK,
+// SPEC §6 broken links), with the entry meant when exactly one is found.
+func (c *checker) brokenLink(p *parsed, target string, line int) {
+	meant := c.meant(target)
+	switch {
+	case c.locked[p.Path] && meant != "":
+		c.addImmutable(p.Path, "W-BROKEN-LINK", "[[%s]] on line %d names no entry; it means [[%s]], but a journal body is immutable, so this is not counted as a warning", target, line, meant)
+	case c.locked[p.Path]:
+		c.addImmutable(p.Path, "W-BROKEN-LINK", "[[%s]] on line %d names no entry; a journal body is immutable, so this is not counted as a warning", target, line)
+	case meant != "":
+		c.add(p.Path, "W-BROKEN-LINK", "[[%s]] on line %d names no entry; link [[%s]] instead", target, line, meant)
+	default:
+		c.add(p.Path, "W-BROKEN-LINK", "[[%s]] on line %d names no entry; link the id of an entry, or put it in backticks if it is not a link", target, line)
+	}
+}
+
+// meant returns the id of the entry a broken link means, or "" (SPEC §6 broken links): the
+// target without a type directory prefix and a .md suffix is an id or a single alias; else,
+// when that is an id written out beyond the length cap, the one id the cap could have made.
+func (c *checker) meant(target string) string {
+	t := target
+	if dir, rest, ok := strings.Cut(t, "/"); ok && spec.LookupDirectory(dir) != nil {
+		t = rest
+	}
+	t = strings.TrimSuffix(t, ".md")
+	if len(c.byID[t]) > 0 {
+		return t
+	}
+	if owners := c.byAlias[t]; len(owners) == 1 {
+		return owners[0].ID
+	}
+	if len(t) <= slug.MaxIDLength || !slug.IDShaped(t) {
+		return ""
+	}
+	prefix := strings.TrimRight(t[:111], "-") + "-"
+	found := ""
+	for id := range c.byID {
+		if len(id) == len(prefix)+8 && strings.HasPrefix(id, prefix) && lowerHex(id[len(prefix):]) {
+			if found != "" {
+				return ""
+			}
+			found = id
+		}
+	}
+	return found
+}
+
+func lowerHex(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if !(s[i] >= '0' && s[i] <= '9' || s[i] >= 'a' && s[i] <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 	f := p.fields
 	if created, ok := f.Date("created"); ok && slug.ValidID(p.ID) {
@@ -284,6 +341,8 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 			c.add(p.Path, "E-LINK", "[[%s]] on line %d is an alias of several entries (%s); link an id", r.Target, line, paths(owners, nil))
 		case slug.ValidID(r.Target):
 			c.add(p.Path, "E-LINK", "[[%s]] on line %d is not the id of an entry", r.Target, line)
+		case links.Shaped(r.Target):
+			c.brokenLink(p, r.Target, line)
 		}
 	}
 	for _, r := range fileRefs {

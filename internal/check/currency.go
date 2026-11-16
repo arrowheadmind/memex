@@ -29,7 +29,7 @@ func ImmutableCandidates(findings []Finding) map[string]bool {
 	wanted := map[string]bool{}
 	journal := spec.LookupType("journal").Directory + "/"
 	for _, f := range findings {
-		if strings.HasPrefix(f.Path, journal) && (f.Code == "W-SHORT-BODY" || f.Code == "W-ALIAS-LINK") {
+		if strings.HasPrefix(f.Path, journal) && (f.Code == "W-SHORT-BODY" || f.Code == "W-ALIAS-LINK" || f.Code == "W-BROKEN-LINK") {
 			wanted[f.Path] = true
 		}
 	}

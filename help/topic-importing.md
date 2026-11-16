@@ -18,7 +18,8 @@ separate from everything else memex does.
   to an entry, to the frontmatter, to structure, or to a per-file remainder entry; the import
   exits 1 if any line is unattributed or any unit's text changed.
 - **Valid.** `memex check` on `DIR` reports zero errors; only `W-NO-SUMMARY`, `W-NO-TERMS`,
-  `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-RAW-OLD`, `W-PROMOTED-UNCITED` and `W-SECRET` may remain.
+  `W-SHORT-BODY`, `W-ALIAS-LINK`, `W-BROKEN-LINK` (a source's own `[[…]]` that names no entry,
+  kept as it was), `W-RAW-OLD`, `W-PROMOTED-UNCITED` and `W-SECRET` may remain.
 - **Status comes from structure, never from prose.** A status is set only from an explicit
   carrier (an index row, a `## Status` section, the backlog's sections and heading markers).
   Words such as `STALE` or `RESOLVED` in a rule's text become `marker-*` tags for the curation
