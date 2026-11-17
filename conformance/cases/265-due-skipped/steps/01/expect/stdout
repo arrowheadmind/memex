@@ -1,0 +1,3 @@
+blocked: 1
+- blocked tasks/2026-01-10-parked.md Parked task (why: Waits for the vendor.)
+skipped, not valid: 5 (run memex check)

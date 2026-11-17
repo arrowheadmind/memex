@@ -16,7 +16,7 @@ blocked: 3
 2026-01-05 blocked tasks/2026-01-07-parked.md Parked with a date (why: Parked until the budget is approved.)
 - blocked tasks/2026-01-08-parked-undated.md Parked without a date
 - blocked tasks/2026-01-10-colon-and-case.md Read the logs (why: Parked until the export arrives.)
-dates in text, no due: 3
-2026-02-01 open tasks/2026-01-10-2026-02-01-review-the-dumps.md 2026-02-01: review the dumps (set it: memex set 2026-01-10-2026-02-01-review-the-dumps due=2026-02-01)
-2026-03-01 blocked tasks/2026-01-10-colon-and-case.md Read the logs (set it: memex set 2026-01-10-colon-and-case due=2026-03-01)
-2026-01-30 in-progress tasks/2026-01-10-renew-the-certificate.md Renew the certificate (set it: memex set 2026-01-10-renew-the-certificate due=2026-01-30)
+dates in text, no due, guessed from the wording: 3; read each entry before setting its date
+2026-02-01 open tasks/2026-01-10-2026-02-01-review-the-dumps.md 2026-02-01: review the dumps (if it is a deadline: memex set 2026-01-10-2026-02-01-review-the-dumps due=2026-02-01)
+2026-03-01 blocked tasks/2026-01-10-colon-and-case.md Read the logs (if it is a deadline: memex set 2026-01-10-colon-and-case due=2026-03-01)
+2026-01-30 in-progress tasks/2026-01-10-renew-the-certificate.md Renew the certificate (if it is a deadline: memex set 2026-01-10-renew-the-certificate due=2026-01-30)

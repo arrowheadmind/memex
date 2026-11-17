@@ -42,7 +42,11 @@ type History struct {
 	// the commit records) of the newest commit that changes it: the last change of SPEC §7,
 	// W-OPEN-STALE.
 	Changed map[string]string
-	HasHEAD bool
+	// Boundary holds the paths whose newest version comes from the boundary commit of a
+	// shallow clone: that commit is not a change, so their Changed date is the boundary's,
+	// and the last change was on that date or earlier (SPEC §7, W-OPEN-STALE).
+	Boundary map[string]bool
+	HasHEAD  bool
 }
 
 // ReadHistory reads the history of the files under dirs with one `git log` over HEAD's
@@ -50,7 +54,7 @@ type History struct {
 // not in a git repository, or has no commits (HEAD is an unborn branch), has an empty
 // history; a HEAD that does not resolve otherwise is an error (SPEC §7, summary currency).
 func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
-	h := &History{Versions: map[string][][]byte{}, Changed: map[string]string{}}
+	h := &History{Versions: map[string][][]byte{}, Changed: map[string]string{}, Boundary: map[string]bool{}}
 	if _, err := g.Run("rev-parse", "--git-dir"); err != nil {
 		return h, nil
 	}
@@ -66,7 +70,8 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 	}
 	h.HasHEAD = true
 	// In a shallow clone a commit with no parents is the boundary, not a change: a path whose
-	// newest version comes from it has no last change (SPEC §7, W-OPEN-STALE).
+	// newest version comes from it was last changed on the boundary's date or earlier (SPEC
+	// §7, W-OPEN-STALE).
 	shallow := false
 	if out, err := g.Run("rev-parse", "--is-shallow-repository"); err == nil && strings.TrimSpace(out) == "true" {
 		shallow = true
@@ -80,15 +85,17 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 	closed := map[string]bool{}
 	objects := map[string][]string{} // path -> blob ids, newest first
 	var order []string
-	date := "" // the committer date of the commit whose records follow
+	date := ""        // the committer date of the commit whose records follow
+	boundary := false // that commit is the boundary of a shallow clone
 	tokens := strings.Split(out, "\x00")
 	for i := 0; i < len(tokens); i++ {
 		t := strings.TrimPrefix(tokens[i], "\n")
 		if header, ok := strings.CutPrefix(t, "\x01"); ok {
 			f := strings.Fields(header) // hash, date, parents
-			date = ""
-			if len(f) >= 2 && (len(f) > 2 || !shallow) {
+			date, boundary = "", false
+			if len(f) >= 2 {
 				date = f[1]
+				boundary = len(f) == 2 && shallow
 			}
 			continue
 		}
@@ -110,6 +117,9 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 		if _, seen := objects[p]; !seen {
 			order = append(order, p)
 			h.Changed[p] = date
+			if boundary {
+				h.Boundary[p] = true
+			}
 		}
 		objects[p] = append(objects[p], meta[3])
 		if status == "A" {

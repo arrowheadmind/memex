@@ -1,0 +1,2 @@
+memex.toml: E-MANIFEST stale_days needs store format 2; run memex migrate
+check: 1 errors, 0 warnings

@@ -21,6 +21,7 @@ type readStore struct {
 	root    string
 	entries []*store.Entry
 	today   time.Time
+	skipped []store.Skipped // the entry files that could not be read, already reported
 }
 
 // loadEntries opens the store and reads its entries. An entry that cannot be read is
@@ -42,7 +43,7 @@ func (e *Env) loadEntries() (*readStore, int, bool) {
 	for _, s := range skipped {
 		fmt.Fprintf(e.Stderr, "memex: skipped %s: %s; run memex check\n", s.Path, s.Problem)
 	}
-	return &readStore{cfg, root, entries, today}, 0, true
+	return &readStore{cfg, root, entries, today, skipped}, 0, true
 }
 
 // SearchOptions are the options of `memex search` (SPEC §11.3).

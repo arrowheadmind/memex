@@ -14,4 +14,5 @@ blocked: 3
 - blocked tasks/2026-01-08-parked-undated.md Parked without a date
 - blocked tasks/2026-01-10-colon-and-case.md Read the logs (why: Parked until the export arrives.)
 due after 2026-01-15: 3 (raise --days)
-dates in text, no due: 3 (memex due --hints lists them)
+dates in text, no due, guessed from the wording: 3 (memex due --hints lists them)
+skipped, not valid: 1 (run memex check)

@@ -48,13 +48,27 @@ func Due(e *Env, o DueOptions) int {
 	today := rs.today
 	todayS := today.Format(time.DateOnly)
 	horizon := today.AddDate(0, 0, o.Days).Format(time.DateOnly)
+	m, _, err := store.ReadManifest(store.WorkTree{Root: rs.root})
+	if err != nil {
+		panic(err) // loadEntries read it
+	}
 	var past, upcoming, when, blocked []dueItem
 	var hints []hint
+	var skipped []store.Skipped
+	for _, s := range rs.skipped { // loadEntries reported these on standard error
+		if strings.HasPrefix(s.Path, "tasks/") || strings.HasPrefix(s.Path, "plans/") {
+			skipped = append(skipped, s)
+		}
+	}
 	later := 0
 	for _, en := range rs.entries {
-		if bad := invalidDueField(en); bad != "" {
-			// Left out, but never silently (SPEC §11.18): only check would report it otherwise.
-			fmt.Fprintf(e.Stderr, "memex: skipped %s: %s is not valid; run memex check\n", en.Path, bad)
+		if en.Type.Name != "task" && en.Type.Name != "plan" {
+			continue
+		}
+		if problem := dueProblem(en, m.Format); problem != "" {
+			// Left out, but never silently (SPEC §11.18): a count line, the JSON, standard error.
+			fmt.Fprintf(e.Stderr, "memex: skipped %s: %s; run memex check\n", en.Path, problem)
+			skipped = append(skipped, store.Skipped{Path: en.Path, Problem: problem})
 			continue
 		}
 		status := en.Status()
@@ -122,6 +136,13 @@ func Due(e *Env, o DueOptions) int {
 				{Key: "date", Value: jsonx.String(h.date)},
 			}
 		}
+		sk := make(jsonx.Array, len(skipped))
+		for i, s := range skipped {
+			sk[i] = jsonx.Object{
+				{Key: "path", Value: jsonx.String(s.Path)},
+				{Key: "problem", Value: jsonx.String(s.Problem)},
+			}
+		}
 		e.Stdout.Write(jsonx.Encode(jsonx.Object{
 			{Key: "today", Value: jsonx.String(todayS)},
 			{Key: "horizon", Value: jsonx.String(horizon)},
@@ -131,6 +152,7 @@ func Due(e *Env, o DueOptions) int {
 			{Key: "blocked", Value: list(blocked)},
 			{Key: "later", Value: jsonx.Int(later)},
 			{Key: "hints", Value: hs},
+			{Key: "skipped", Value: sk},
 		}))
 		return 0
 	}
@@ -141,12 +163,12 @@ func Due(e *Env, o DueOptions) int {
 		if d == "" {
 			d = "-"
 		}
-		fmt.Fprintf(&b, "%s %s %s %s", d, it.en.Status(), it.en.Path, it.en.Fields.String("title"))
+		fmt.Fprintf(&b, "%s %s %s %s", d, it.en.Status(), entry.EscapeControl(it.en.Path), entry.EscapeControl(it.en.Fields.String("title")))
 		if it.dueWhen != "" {
-			fmt.Fprintf(&b, " (when: %s)", it.dueWhen)
+			fmt.Fprintf(&b, " (when: %s)", entry.EscapeControl(it.dueWhen))
 		}
 		if s := it.en.Fields.String("summary"); why && s != "" {
-			fmt.Fprintf(&b, " (why: %s)", s)
+			fmt.Fprintf(&b, " (why: %s)", entry.EscapeControl(s))
 		}
 		b.WriteString("\n")
 	}
@@ -168,28 +190,54 @@ func Due(e *Env, o DueOptions) int {
 	}
 	if len(hints) > 0 {
 		if o.Hints {
-			fmt.Fprintf(&b, "dates in text, no due: %d\n", len(hints))
+			fmt.Fprintf(&b, "dates in text, no due, guessed from the wording: %d; read each entry before setting its date\n", len(hints))
 			for _, h := range hints {
-				fmt.Fprintf(&b, "%s %s %s %s (set it: memex set %s due=%s)\n",
-					h.date, h.en.Status(), h.en.Path, h.en.Fields.String("title"), h.en.ID, h.date)
+				fmt.Fprintf(&b, "%s %s %s %s (if it is a deadline: memex set %s due=%s)\n",
+					h.date, h.en.Status(), entry.EscapeControl(h.en.Path), entry.EscapeControl(h.en.Fields.String("title")), h.en.ID, h.date)
 			}
 		} else {
-			fmt.Fprintf(&b, "dates in text, no due: %d (memex due --hints lists them)\n", len(hints))
+			fmt.Fprintf(&b, "dates in text, no due, guessed from the wording: %d (memex due --hints lists them)\n", len(hints))
 		}
 	}
 	if b.Len() == 0 {
 		b.WriteString("nothing due\n")
 	}
+	if len(skipped) > 0 {
+		fmt.Fprintf(&b, "skipped, not valid: %d (run memex check)\n", len(skipped))
+	}
 	fmt.Fprint(e.Stdout, b.String())
 	return 0
 }
 
-// invalidDueField names the first of due and due_when present with a value that is not valid,
-// or "".
-func invalidDueField(en *store.Entry) string {
-	for _, f := range []string{"due", "due_when"} {
+// dueProblem returns why memex due cannot classify or print a task or plan, or "": a field
+// it reads (status, title, summary, due, due_when) that is missing where required or not
+// valid, due or due_when in a store whose format does not allow them, or a control
+// character in a printed field where the format refuses it (SPEC §11.18, §5.3).
+func dueProblem(en *store.Entry, format int64) string {
+	st, ok := en.Fields["status"].(string)
+	switch {
+	case !en.Fields.Has("status"):
+		return "missing required field \"status\""
+	case !ok || !slices.Contains(en.Type.Statuses, st):
+		return "status is not valid"
+	case !en.Fields.Has("title"):
+		return "missing required field \"title\""
+	}
+	for _, f := range []string{"title", "summary", "due", "due_when"} {
 		if _, bad := en.Fields[f].(entry.Invalid); bad {
-			return f
+			return f + " is not valid"
+		}
+	}
+	for _, f := range spec.DueFields {
+		if en.Fields.Has(f) && format < spec.DueFormat {
+			return fmt.Sprintf("%s needs store format %d", f, spec.DueFormat)
+		}
+	}
+	if format >= spec.DueFormat {
+		for _, f := range entry.ControlFreeFields {
+			if entry.HasControl(en.Fields.String(f)) {
+				return f + " " + entry.ControlMessage
+			}
 		}
 	}
 	return ""

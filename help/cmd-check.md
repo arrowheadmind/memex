@@ -19,9 +19,9 @@ files that are not the pointer (`E-POINTER`), repositories without one (`W-NO-PO
 files in coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; takes no lock.
 Two findings read git history (first-parent, plus the working tree or, with `--staged`, the
 index): `W-STALE-SUMMARY`, a task or plan whose summary was not rewritten when a section was
-added or it was closed or reopened, and `W-OPEN-STALE`, an open task with no commit for more
-than `stale_days` (14) days (an uncommitted change counts as today). Bad history is exit 2,
-`memex: check needs the store's git history: <git's first error line>`.
+added or it was closed or reopened, and `W-OPEN-STALE`, an open task without `due` or
+`due_when` and no commit for more than `stale_days` days (an edit counts as today). Bad
+history is exit 2, `memex: check needs the store's git history: <git's first error line>`.
 A short body or an alias link in a committed journal cannot be fixed, because the body is
 immutable: it is an immutable finding, counted on the summary line and listed only with
 `--immutable`.

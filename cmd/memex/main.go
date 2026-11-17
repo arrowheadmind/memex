@@ -166,6 +166,7 @@ var runners = map[string]func(*commands.Env, *args, func(string) *usageError) (i
 	"list":      runList,
 	"show":      runShow,
 	"due":       runDue,
+	"migrate":   runMigrate,
 }
 
 // parseCommand parses a command's arguments and takes --store from them, which may appear

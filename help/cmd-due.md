@@ -15,10 +15,15 @@ Prints the `due` dates and `due_when` conditions of open entries (tasks `open` o
 horizon (today plus `--days`), waiting on a condition, and blocked tasks with their summary as
 the reason. Closed entries are never listed, so closing one takes it off. It reads only the
 store's files, never git or the network, and always exits 0 once it has printed, so a
-session-start hook, a timer or a nightly check can run it. Tasks that name a date only in
-their title or body (`2026-02-01: …`, `by 2026-01-30`, `due: 2026-03-01`) are counted as
-hints; `--hints` lists them with the `memex set` line that moves the date into `due`.
-`memex check` reports the past ones as `W-PAST-DUE`.
+session-start hook, a timer or a nightly check can run it. A task or plan it cannot read or
+classify (a status, title, summary, `due` or `due_when` that is missing or not valid, `due` in
+a format 1 store) is skipped, never silently: one line on standard error each, a count line,
+and the `skipped` list in `--json`. Tasks that name a date only in their title or body
+(`2026-02-01: …`, `by 2026-01-30`, `due: 2026-03-01`) are counted as hints. A hint is a guess
+from the wording and can be a date of the past (`2026-01-15 incident follow-up`, `was
+completed by 2026-01-15`): `--hints` lists them with the `memex set` line that would make the
+date the `due`, to run only after reading the entry. `memex check` reports a past `due` as
+`W-PAST-DUE`. Today is the local date of the machine that runs it (or `MEMEX_TODAY`).
 
 ## Options
 
@@ -34,12 +39,16 @@ Sections in this order, each omitted when empty: `past due: <n>`, `due by <horiz
 `when: <n>`, `blocked: <n>`. Each entry is one line, `<due> <status> <path> <title>`, with
 `-` for no date, then ` (when: <due_when>)` when it has a condition, and in `blocked`
 ` (why: <summary>)`. Then `due after <horizon>: <k> (raise --days)` when later dates exist,
-and `dates in text, no due: <h> (memex due --hints lists them)`; with `--hints` that is a
-section of lines ending `(set it: memex set <id> due=<date>)`. With nothing to print:
-`nothing due`. `--json` prints `{"today","horizon","past":[…],"upcoming":[…],"when":[…],
-"blocked":[…],"later":K,"hints":[…]}`; each entry is `{"id","type","status","path","title",
-"summary","due","due_when"}` (null when absent), each hint `{"id","status","path","title",
-"date"}`, and the hints are listed with or without `--hints`.
+and `dates in text, no due, guessed from the wording: <h> (memex due --hints lists them)`;
+with `--hints` that line ends `; read each entry before setting its date` and lines follow,
+each ending `(if it is a deadline: memex set <id> due=<date>)`. With nothing to print:
+`nothing due`. Then, when entries were skipped, `skipped, not valid: <k> (run memex check)`.
+A control character in a path, title, condition or summary is printed as `\t`, `\r`, `\n` or
+`\uXXXX`, so each entry stays one line. `--json` prints `{"today","horizon","past":[…],
+"upcoming":[…],"when":[…],"blocked":[…],"later":K,"hints":[…],"skipped":[…]}`; each entry
+is `{"id","type","status","path","title","summary","due","due_when"}` (null when absent),
+each hint `{"id","status","path","title","date"}`, each skipped file `{"path","problem"}`,
+and the hints are listed with or without `--hints`.
 
 ## Exit codes
 

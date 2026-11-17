@@ -85,7 +85,7 @@ func CreateLayout(dir, name string, g *gitx.Git) ([]string, error) {
 		done = append(done, "created "+rel+"/")
 		return nil
 	}
-	manifest := fmt.Sprintf("format = %d\nname = %s\n", spec.StoreFormat, entry.Quote(name))
+	manifest := fmt.Sprintf("format = %d\nname = %s\nstale_days = %d\n", spec.StoreFormat, entry.Quote(name), DefaultStaleDays)
 	if err := writeIfAbsent(ManifestFile, manifest, 0o644); err != nil {
 		return nil, err
 	}

@@ -17,8 +17,8 @@ func invoke(args ...string) (string, string, int) {
 }
 
 func TestRun(t *testing.T) {
-	const ver = "memex 0.0.0-dev (store format 1)\n"
-	const overviewHead = "# memex 0.0.0-dev (store format 1)\n\nIf you are an AI agent"
+	const ver = "memex 0.0.0-dev (store format 2)\n"
+	const overviewHead = "# memex 0.0.0-dev (store format 2)\n\nIf you are an AI agent"
 	cases := []struct {
 		name   string
 		args   []string

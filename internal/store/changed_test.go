@@ -59,7 +59,8 @@ func TestReadHistoryChanged(t *testing.T) {
 }
 
 // In a shallow clone the boundary commit is not a change (SPEC §7, last changed): a path whose
-// newest version comes from it has no date, and one changed after it keeps its own.
+// newest version comes from it carries the boundary's date and is marked Boundary (changed on
+// that date or earlier), and one changed after it keeps its own date.
 func TestReadHistoryChangedShallow(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not on PATH")
@@ -90,28 +91,37 @@ func TestReadHistoryChangedShallow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"tasks/a.md": "", "tasks/b.md": "2026-01-03", "tasks/c.md": ""}
+	want := map[string]string{"tasks/a.md": "2026-01-02", "tasks/b.md": "2026-01-03", "tasks/c.md": "2026-01-02"}
 	for p, d := range want {
 		if h.Changed[p] != d {
 			t.Errorf("Changed[%s] = %q, want %q", p, h.Changed[p], d)
 		}
+		if b := p != "tasks/b.md"; h.Boundary[p] != b {
+			t.Errorf("Boundary[%s] = %v, want %v", p, h.Boundary[p], b)
+		}
 	}
 }
 
-// stale_days (SPEC §4): 0 to 36500, default 14; anything else is E-MANIFEST.
+// stale_days (SPEC §4): 0 to 36500 in a format 2 store, absent means 0 (off), anything else
+// is E-MANIFEST and off; in a format 1 store the key is refused and off, so that no store
+// acquires a policy it did not write (review finding 2).
 func TestManifestStaleDays(t *testing.T) {
 	cases := []struct {
 		toml    string
 		days    int64
 		finding string
 	}{
-		{"format = 1\n", 14, ""},
-		{"format = 1\nstale_days = 0\n", 0, ""},
-		{"format = 1\nstale_days = 36500\n", 36500, ""},
-		{"format = 1\nstale_days = 36501\n", 14, "stale_days must be an integer from 0 to 36500"},
-		{"format = 1\nstale_days = -1\n", 14, "stale_days must be an integer from 0 to 36500"},
-		{"format = 1\nstale_days = \"7\"\n", 14, "stale_days must be an integer from 0 to 36500"},
-		{"format = 1\nstale_day = 7\n", 14, `unknown key "stale_day" (did you mean "stale_days"?)`},
+		{"format = 1\n", 0, ""},
+		{"format = 2\n", 0, ""},
+		{"format = 2\nstale_days = 0\n", 0, ""},
+		{"format = 2\nstale_days = 14\n", 14, ""},
+		{"format = 2\nstale_days = 36500\n", 36500, ""},
+		{"format = 2\nstale_days = 36501\n", 0, "stale_days must be an integer from 0 to 36500"},
+		{"format = 2\nstale_days = -1\n", 0, "stale_days must be an integer from 0 to 36500"},
+		{"format = 2\nstale_days = \"7\"\n", 0, "stale_days must be an integer from 0 to 36500"},
+		{"format = 2\nstale_day = 7\n", 0, `unknown key "stale_day" (did you mean "stale_days"?)`},
+		{"format = 1\nstale_days = 14\n", 0, "stale_days needs store format 2; run memex migrate"},
+		{"format = 1\nstale_days = -1\n", 0, "stale_days needs store format 2; run memex migrate"},
 	}
 	for _, c := range cases {
 		m, fs, err := ParseManifest([]byte(c.toml))

@@ -16,18 +16,31 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
   message names the entry meant when there is exactly one. In a committed, intact journal
   body it is an immutable finding, counted apart and listed with `check --immutable`.
 
-- `due` and `due_when`, optional fields on tasks and plans: the day the work is owed, and the
-  event it waits for when it has no date. `new --due DATE --due-when W`,
+- Store format 2. This memex reads and writes formats 1 and 2; `init` and `import` write 2.
+  Format 2 adds `due`, `due_when` and `stale_days`, and refuses control characters in
+  `title`, `summary` and `due_when`. A format 1 store reads and validates as before. A memex
+  that reads only format 1 refuses a format 2 store as a whole ("upgrade memex"), so upgrade
+  memex on every machine that uses a store before migrating it.
+- `memex migrate [--to N]` moves a store to format 2 (writing `stale_days = 14`) or back to
+  1 (refused while an entry carries `due` or `due_when`), in one commit, after checking that
+  every entry is valid at the new format.
+- `due` and `due_when`, optional fields on tasks and plans in a format 2 store: the day the
+  work is owed, and the event it waits for when it has no date. `new --due DATE --due-when W`,
   `update --due DATE --due-when W` (the new section records why a date moved) and
   `memex set <id> due=<date>` write them.
 - `memex due [--days N] [--hints] [--json]`: open tasks and plans past due, due within N days
   (default 7), waiting on a condition, and blocked tasks with their reason; exit 0 always,
-  reads no git. A date written only in a task's title or body is counted as a hint, and
-  `--hints` lists the `memex set` line that moves it into `due`.
+  reads no git. A task or plan it cannot read or classify is skipped with a line on standard
+  error, a `skipped, not valid: <k>` count line and a `skipped` list in the JSON. Control
+  characters are escaped in its text output. A date written only in a task's title or body
+  is counted as a hint, a guess from the wording, and `--hints` lists the `memex set` line
+  that would move it into `due`.
 - `check` reports `W-PAST-DUE` for an open task or plan whose `due` has passed, and
-  `W-OPEN-STALE` for an open or in-progress task unchanged in git for more than `stale_days`
-  days, each with the commands that clear it.
-- `stale_days` in `memex.toml` (0 to 36500, default 14; 0 turns `W-OPEN-STALE` off).
+  `W-OPEN-STALE` for an open or in-progress task with neither `due` nor `due_when` unchanged
+  in git for more than `stale_days` days (in a shallow clone, from the boundary's date, "or
+  earlier"), each with the commands that clear it.
+- `stale_days` in a format 2 `memex.toml` (0 to 36500; absent or 0 turns `W-OPEN-STALE` off;
+  `init` and `migrate` write 14).
 
 - `SECURITY.md`: what matters most for memex's security, and how to report a vulnerability
   privately (security@arrowheadmind.com); linked from the README.
@@ -42,15 +55,16 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 - The `AGENT.md` that `init` and `import` write says `memex save <path>`.
 - `check --strict` exits 1 on a store whose only new findings are `W-BROKEN-LINK` outside
   locked journal bodies, where before it exited 0; `doctor`'s `check` row counts them.
-- `check --strict` exits 1 on a store with an open task unchanged for more than 14 days
-  (`W-OPEN-STALE`) or a past `due` (`W-PAST-DUE`), where before it exited 0; `doctor`'s
-  `check` row counts them. An older memex reports `E-FIELD-UNKNOWN` on an entry with `due`
-  or `due_when`, and `E-MANIFEST` on `stale_days`: upgrade every machine before using them.
+- In a migrated or new (format 2) store, `check --strict` exits 1 on an open task unchanged
+  for more than `stale_days` days (`W-OPEN-STALE`) or a past `due` (`W-PAST-DUE`); `doctor`'s
+  `check` row counts them. A format 1 store gets neither until it is migrated.
 
 ### Changed output
 
 - The usage lines of `new`, `capture`, `promote` and `update` list `--due` and `--due-when`;
-  `help --all` ends with the `due` page.
+  `help --all` ends with the `due` and `migrate` pages.
+- `memex version`, `memex help` and `help --json` say `store format 2`; `doctor`'s `format`
+  row says the store's own format.
 
 ## 0.5.1 (2026-11-04)
 

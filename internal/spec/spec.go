@@ -8,8 +8,20 @@ package spec
 
 import "slices"
 
-// StoreFormat is the store format version this implementation reads and writes (SPEC §4).
-const StoreFormat = 1
+// StoreFormat is the newest store format this implementation reads and writes, the one
+// `init` and `migrate` write (SPEC §4). OldestStoreFormat is the oldest it reads and writes.
+// Format 2 adds due, due_when and stale_days (§4, §5.3); a format 1 store reads as before.
+const (
+	StoreFormat       = 2
+	OldestStoreFormat = 1
+)
+
+// DueFormat is the first store format whose entries may carry due and due_when and whose
+// manifest may carry stale_days (SPEC §4, §5.3).
+const DueFormat = 2
+
+// DueFields are the frontmatter fields a store of a format before DueFormat does not allow.
+var DueFields = []string{"due", "due_when"}
 
 // Exit codes (SPEC §10).
 const (
@@ -210,7 +222,7 @@ func withDefault(opts []Option, name, def string) []Option {
 
 var writeExits = []int{ExitOK, ExitFailure, ExitUsage, ExitLock, ExitNotPushed, ExitConflict}
 
-// Commands is every command, in the order of SPEC §11 (§11.1 init to §11.17 update).
+// Commands is every command, in the order of SPEC §11 (§11.1 init to §11.19 migrate).
 var Commands = []Command{
 	{
 		Name:    "init",
@@ -434,6 +446,16 @@ var Commands = []Command{
 			optJSON,
 		},
 		ExitCodes: []int{ExitOK, ExitUsage},
+	},
+	{
+		Name:     "migrate",
+		Summary:  "Move the store to another store format, in one commit",
+		Usage:    "memex migrate [--to N]",
+		Mutating: true,
+		Options: []Option{
+			{Name: "--to", Value: "N", Default: "2", Summary: "The store format to move to: 1 or 2"},
+		},
+		ExitCodes: writeExits,
 	},
 }
 

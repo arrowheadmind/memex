@@ -1,0 +1,2 @@
+tasks/2026-01-11-renew-the-certificate.md: E-FIELD-UNKNOWN field "due" needs store format 2; run memex migrate
+check: 1 errors, 0 warnings

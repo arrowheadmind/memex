@@ -42,14 +42,16 @@ type Manifest struct {
 // ManifestFile is the manifest's path.
 const ManifestFile = "memex.toml"
 
-// DefaultStaleDays and MaxStaleDays are stale_days' default and bound (SPEC §4).
+// DefaultStaleDays is the stale_days that init and migrate write; MaxStaleDays is its bound
+// (SPEC §4). An absent stale_days is 0, the finding off, so that no store acquires a policy it
+// did not write.
 const (
 	DefaultStaleDays = 14
 	MaxStaleDays     = 36500
 )
 
-// ReadManifest parses memex.toml from t. A format other than spec.StoreFormat is a
-// *FormatError; anything else wrong is an E-MANIFEST finding.
+// ReadManifest parses memex.toml from t. A format outside spec.OldestStoreFormat to
+// spec.StoreFormat is a *FormatError; anything else wrong is an E-MANIFEST finding.
 func ReadManifest(t Tree) (*Manifest, []Finding, error) {
 	data, err := t.ReadFile(ManifestFile)
 	if err != nil {
@@ -72,7 +74,7 @@ func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 		}
 		return &Manifest{}, []Finding{bad("%s", msg)}, nil
 	}
-	m := &Manifest{StaleDays: DefaultStaleDays}
+	m := &Manifest{}
 	var fs []Finding
 	keys := make([]string, 0, len(raw))
 	for k := range raw {
@@ -126,11 +128,17 @@ func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 		case m.Format > spec.StoreFormat:
 			return nil, nil, &FormatError{fmt.Sprintf(
 				"store format %d is newer than this memex reads (%d); upgrade memex", m.Format, spec.StoreFormat)}
-		case m.Format < spec.StoreFormat:
+		case m.Format < spec.OldestStoreFormat:
 			return nil, nil, &FormatError{fmt.Sprintf(
 				"store format %d is older than this memex reads (%d); run the migration that ships with the memex version that introduced format %d",
-				m.Format, spec.StoreFormat, spec.StoreFormat)}
+				m.Format, spec.OldestStoreFormat, spec.OldestStoreFormat)}
 		}
+	}
+	if _, ok := raw["stale_days"]; ok && m.Format < spec.DueFormat && m.Format >= spec.OldestStoreFormat {
+		// stale_days belongs to format 2 (SPEC §4): in an older store it is refused and off.
+		m.StaleDays = 0
+		fs = slices.DeleteFunc(fs, func(f Finding) bool { return strings.HasPrefix(f.Message, "stale_days ") })
+		fs = append(fs, bad("stale_days needs store format %d; run memex migrate", spec.DueFormat))
 	}
 	return m, fs, nil
 }

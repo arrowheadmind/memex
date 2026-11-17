@@ -128,7 +128,7 @@ func runHelpChecks(memex, git, version, pagesDir, fixtureDir string) ([]string, 
 	// `help --all` is the concatenation of §16.2, and `help` is the overview.
 	r = s.run([]string{"help"}, nil)
 	overview := r.stdout
-	if wantFirst := "# memex " + version + " (store format 1)"; !strings.HasPrefix(overview, wantFirst+"\n") {
+	if wantFirst := "# memex " + version + " (store format 2)"; !strings.HasPrefix(overview, wantFirst+"\n") {
 		fail("help: first line %q, want %q", firstLine(overview), wantFirst)
 	}
 	if ov, ok := pages["overview"]; ok {
