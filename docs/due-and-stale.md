@@ -77,7 +77,9 @@ the working tree differs from `HEAD`. A field (`updated`, `touched`) would have 
 every edit, and a hand edit would forget it; §5.3 already says there is no `updated` field
 because git records it. The date is the commit's own (its recorded offset), so every reader
 gets the same answer. Any commit counts, a one-field `set` or a mass `fmt` included: a session
-that looked at a task and set a field has touched it, and a mass reformat is rare. Rejected:
+that looked at a task and set a field has touched it, and a mass reformat is rare. In a
+shallow clone the boundary commit is not a change, so a shallow CI checkout reports only tasks
+changed after its boundary (fewer findings, never false ones). Rejected:
 author date (a rebase keeps it old), the file's mtime (every clone differs).
 
 **Fourteen days, per store.** Fourteen is what the brief proposes; one review asked for seven.
@@ -87,7 +89,8 @@ command-line option.
 
 **Parked is `blocked`.** The task statuses are fixed by §5.2 (`open`, `in-progress`,
 `blocked`, `done`, `dropped`), not per store. A new `parked` status would make every older
-memex report `E-STATUS` on those entries and refuse to `set` them. `blocked` already means
+memex report `E-STATUS` on those entries and refuse to `set` them. The same is true of `due`
+itself (`E-FIELD-UNKNOWN`), which cannot be avoided; a status is avoidable, so it was. `blocked` already means
 "not moving, for a reason", is visible by default, and `memex update --status blocked` forces
 a new summary, which is the reason `memex due` prints. Parked tasks are exempt from
 `W-PAST-DUE` and `W-OPEN-STALE` but always listed under `blocked`, dated or not, so a parked

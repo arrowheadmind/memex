@@ -1,0 +1,10 @@
+new
+task
+--title=A task
+--summary=S.
+--status
+closed
+--due
+bad
+--body
+-

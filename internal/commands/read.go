@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/search"
@@ -19,13 +20,14 @@ type readStore struct {
 	cfg     *config.Config
 	root    string
 	entries []*store.Entry
+	today   time.Time
 }
 
 // loadEntries opens the store and reads its entries. An entry that cannot be read is
 // reported on standard error, so that its absence from the results is not silent. On failure
 // it returns the exit code to use.
 func (e *Env) loadEntries() (*readStore, int, bool) {
-	cfg, _, root, err := e.openStore()
+	cfg, today, root, err := e.openStore()
 	if err != nil {
 		return nil, e.failErr(err), false
 	}
@@ -40,7 +42,7 @@ func (e *Env) loadEntries() (*readStore, int, bool) {
 	for _, s := range skipped {
 		fmt.Fprintf(e.Stderr, "memex: skipped %s: %s; run memex check\n", s.Path, s.Problem)
 	}
-	return &readStore{cfg, root, entries}, 0, true
+	return &readStore{cfg, root, entries, today}, 0, true
 }
 
 // SearchOptions are the options of `memex search` (SPEC §11.3).

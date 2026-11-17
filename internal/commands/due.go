@@ -41,20 +41,22 @@ type hint struct {
 
 // Due runs `memex due` (SPEC §11.18). It reads the working tree's entries only.
 func Due(e *Env, o DueOptions) int {
-	_, today, _, err := e.openStore()
-	if err != nil {
-		return e.failErr(err)
-	}
 	rs, code, ok := e.loadEntries()
 	if !ok {
 		return code
 	}
+	today := rs.today
 	todayS := today.Format(time.DateOnly)
 	horizon := today.AddDate(0, 0, o.Days).Format(time.DateOnly)
 	var past, upcoming, when, blocked []dueItem
 	var hints []hint
 	later := 0
 	for _, en := range rs.entries {
+		if bad := invalidDueField(en); bad != "" {
+			// Left out, but never silently (SPEC §11.18): only check would report it otherwise.
+			fmt.Fprintf(e.Stderr, "memex: skipped %s: %s is not valid; run memex check\n", en.Path, bad)
+			continue
+		}
 		status := en.Status()
 		it := dueItem{en: en, dueWhen: en.Fields.String("due_when")}
 		if d, ok := en.Fields.Date("due"); ok {
@@ -182,6 +184,17 @@ func Due(e *Env, o DueOptions) int {
 	return 0
 }
 
+// invalidDueField names the first of due and due_when present with a value that is not valid,
+// or "".
+func invalidDueField(en *store.Entry) string {
+	for _, f := range []string{"due", "due_when"} {
+		if _, bad := en.Fields[f].(entry.Invalid); bad {
+			return f
+		}
+	}
+	return ""
+}
+
 func nullable(s string) jsonx.Value {
 	if s == "" {
 		return jsonx.Null
@@ -212,15 +225,22 @@ func textDate(en *store.Entry) string {
 	lines := entry.Lines(en.Body)
 	fenced := entry.Fenced(lines)
 	for i, l := range lines {
-		if fenced[i] {
-			continue
+		if fenced[i] || (entry.IsATXHeading(l) && datedHeading.MatchString(l)) {
+			continue // code, or a section heading dated as memex update writes it
 		}
-		if d := firstDeadline(l); d != "" {
+		if d := firstDeadline(inlineCode.ReplaceAllString(l, " ")); d != "" {
 			return d
 		}
 	}
 	return ""
 }
+
+var (
+	// datedHeading is a heading line that ends in a date, the form of memex update's sections.
+	datedHeading = regexp.MustCompile(`[ \t][0-9]{4}-[0-9]{2}-[0-9]{2}[ \t]*$`)
+	// inlineCode is text between two backticks, an inline code span.
+	inlineCode = regexp.MustCompile("`[^`]*`")
+)
 
 // firstDeadline returns the first valid date after a deadline word in s, or "".
 func firstDeadline(s string) string {

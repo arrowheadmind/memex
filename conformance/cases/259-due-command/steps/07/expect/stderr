@@ -1,0 +1,3 @@
+memex: value for --days must be an integer from 0 to 36500, not "x"
+memex due [--days N] [--hints] [--json]
+Run: memex help due

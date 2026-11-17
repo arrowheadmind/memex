@@ -245,7 +245,8 @@ stale_days = 14
   otherwise lose its attribution silently.
 - `stale_days` is an integer from 0 to 36500, optional, default `14`: the number of days an
   open task may go unchanged before `check` reports it (`W-OPEN-STALE`, §7). `0` turns the
-  finding off. It is a property of the store, not of the caller, because every session that
+  finding off. A value that is not such an integer is `E-MANIFEST`, and the default 14
+  applies. It is a property of the store, not of the caller, because every session that
   checks the store must see the same findings.
 - Unknown keys are an error.
 
@@ -785,7 +786,10 @@ the committer date of the newest commit of summary currency's history that chang
 newest version above), written as `YYYY-MM-DD` in the time zone offset that commit records
 (git's `%cs`), so that every reader in every time zone gets the same date. A task that `HEAD`
 does not hold, and every task of a store with no commits or no git repository, has no last
-change and is not reported. Git is the record, not a field: a field would have to be written
+change and is not reported. In a shallow clone (`git rev-parse --is-shallow-repository`
+prints `true`) a commit with no parents is the clone's boundary, not a change: a task whose
+newest version comes from it has no last change either, so a shallow checkout reports only
+the tasks changed after its boundary, and none of the others. Git is the record, not a field: a field would have to be written
 by every edit, and a hand edit would forget it. Any commit that changes the file counts, a
 `memex set` of one field or a mass `memex fmt` included; a commit that only touches another
 file does not. It is a warning, never an immutable finding: a task's body can change.
@@ -1880,7 +1884,8 @@ allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten
 8. `--due` and `--due-when`, when given, set `due` and `due_when` in the same commit, so that
    a date moved or a condition changed carries its reason, the new section, and the new
    summary. They are allowed on tasks and plans (§5.3); on another type validation refuses
-   the result (§11.7 step 7: `memex: <path>: E-FIELD-UNKNOWN field "due" is not allowed on a
+   the result, exit 1 as `memex set <id> due=…` is, because the type is known only from the
+   entry the id names and a fault found in the store is not a usage error (§11.7 step 7: `memex: <path>: E-FIELD-UNKNOWN field "due" is not allowed on a
    <type>; it is allowed on: task, plan`, then the refusal line of §9.1 step 5). Neither
    removes a field; `memex set <id> due=` does.
 9. In a store with `require_repos = true` (§4, §5.5), an entry with no `repos` field is
@@ -1950,7 +1955,10 @@ whenever it has printed its result.
   `on or after`, matched without regard to ASCII case and not preceded by a letter or digit,
   followed by an optional `:`, one or more spaces or tabs, at most two `*` or `_`, then a date
   `YYYY-MM-DD` not followed by a digit. The date must be a valid calendar date. `<date>` is
-  the first one found, the title before the body and the body in reading order. It is a hint,
+  the first one found, the title before the body and the body in reading order. Text
+  between two backticks (an inline code span) is ignored, and so is an ATX heading line
+  that ends in a date, the form of the sections `memex update` writes (`## Deadline
+  2026-01-15` records when the section was written, not a deadline). It is a hint,
   not a finding: `check` does not report it, because a date in prose may be a fact about the
   past, and only its author can say whether it is owed. These are the stores' own
   conventions before `due` existed; `--hints` lists them so that they can be moved into the
@@ -1964,7 +1972,10 @@ whenever it has printed its result.
   `{"id":"…","status":"…","path":"…","title":"…","date":"…"}`. The JSON lists the hints
   whether or not `--hints` is given.
 - An entry that cannot be parsed is left out, with the `memex: skipped` line of §8.1 on
-  standard error, as in `list`.
+  standard error, as in `list`. So is an entry whose `due` or `due_when` is present but not
+  valid (§5.3, the `E-FIELD-VALUE` of §7, such as a quoted date or a date-time written by
+  hand), with `memex: skipped <path>: <field> is not valid; run memex check`, `due` named
+  before `due_when`, so that a hook that runs `due` sees it.
 - Exit 0, also when entries are past due; exit 2 for a usage or configuration error. A past
   date is a finding of `check` (`W-PAST-DUE`, §7), where `--strict` can make it fail.
 
