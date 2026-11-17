@@ -129,3 +129,17 @@ func TestSearchKey(t *testing.T) {
 		}
 	}
 }
+
+// A summary with a control character becomes one plain line, because the store format 2
+// that import writes refuses them; others are kept as they are (SPEC §13.3, §5.3).
+func TestOneLineSummary(t *testing.T) {
+	for in, want := range map[string]string{
+		"kept  as is":                   "kept  as is",
+		"a\ttab and \x1b[31mred\x1b[0m": "a tab and [31mred [0m",
+		" \tlead and trail\t ":          "lead and trail",
+	} {
+		if got := oneLineSummary(in); got != want {
+			t.Errorf("oneLineSummary(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

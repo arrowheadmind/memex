@@ -21,7 +21,7 @@ type MigrateOptions struct {
 
 var (
 	formatLine    = regexp.MustCompile(`^[ \t]*format[ \t]*=`)
-	staleDaysLine = regexp.MustCompile(`^[ \t]*stale_days[ \t]*=`)
+	staleDaysLine = regexp.MustCompile(`(?m)^[ \t]*stale_days[ \t]*=`)
 )
 
 // Migrate runs `memex migrate` (SPEC §11.19): it rewrites memex.toml to another store format
@@ -31,8 +31,16 @@ func Migrate(e *Env, o MigrateOptions) int {
 	if !ok {
 		return code
 	}
-	if code, refused := w.refuseUncommitted(store.ManifestFile); refused {
-		return code
+	// Only memex.toml is committed, so the store must be clean: the validation below reads the
+	// working tree, and an entry fixed but not saved would leave HEAD invalid at the new format.
+	if cs, err := changes(w.root); err != nil {
+		panic(err)
+	} else if len(cs) > 0 {
+		what := fmt.Sprintf("%d uncommitted changes", len(cs))
+		if len(cs) == 1 {
+			what = "1 uncommitted change"
+		}
+		return w.refuse(spec.ExitFailure, "the store has %s; run memex save first", what)
 	}
 	data, err := os.ReadFile(filepath.Join(w.root, store.ManifestFile))
 	if err != nil {
@@ -41,6 +49,10 @@ func Migrate(e *Env, o MigrateOptions) int {
 	m, mf, err := store.ParseManifest(data)
 	if err != nil {
 		panic(err) // beginWrite refused a format this memex cannot read
+	}
+	if o.To >= spec.DueFormat {
+		// Migrating is what resolves "stale_days needs store format 2" (SPEC §11.19 step 2).
+		mf = slices.DeleteFunc(mf, func(f store.Finding) bool { return f.Message == store.StaleDaysNeedsFormat })
 	}
 	if len(mf) > 0 {
 		for _, f := range mf {
@@ -67,9 +79,13 @@ func Migrate(e *Env, o MigrateOptions) int {
 		}
 		return w.refuse(spec.ExitFailure, "refused: the store would not validate at format %d; fix these entries first, nothing was changed", o.To)
 	}
+	lines := []string{fmt.Sprintf("store format %d -> %d", m.Format, o.To)}
+	if o.To >= spec.DueFormat && !staleDaysLine.Match(data) {
+		lines = append(lines, fmt.Sprintf("stale_days = %d written: check now reports open tasks unchanged for more than %d days (W-OPEN-STALE); stale_days = 0 turns it off",
+			store.DefaultStaleDays, store.DefaultStaleDays))
+	}
 	files := []write.File{{Path: store.ManifestFile, Data: next, Check: true, Expect: data}}
-	return w.commit(files, fmt.Sprintf("memex: migrate the store to format %d", o.To),
-		fmt.Sprintf("store format %d -> %d", m.Format, o.To))
+	return w.commit(files, fmt.Sprintf("memex: migrate the store to format %d", o.To), lines...)
 }
 
 // refuseDueFields refuses a move to a format before spec.DueFormat while an entry carries due
@@ -95,8 +111,12 @@ func (w *writing) refuseDueFields() (int, bool) {
 		fmt.Fprintf(w.e.Stderr, "memex: %s: carries %s; remove it first: memex set %s %s\n",
 			en.Path, strings.Join(names, " and "), en.ID, strings.Join(assigns, " "))
 	}
-	return w.refuse(spec.ExitFailure, "refused: %d entries carry due or due_when, which store format %d does not allow; nothing was changed",
-		len(carriers), spec.DueFormat-1), true
+	what := fmt.Sprintf("%d entries carry", len(carriers))
+	if len(carriers) == 1 {
+		what = "1 entry carries"
+	}
+	return w.refuse(spec.ExitFailure, "refused: %s due or due_when, which store format %d does not allow; nothing was changed",
+		what, spec.DueFormat-1), true
 }
 
 // migratedManifest returns data with its format line set to `format = to`, and stale_days

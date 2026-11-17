@@ -1,2 +1,2 @@
 memex: tasks/2026-01-15-renew-the-certificate.md: carries due; remove it first: memex set 2026-01-15-renew-the-certificate due=
-memex: refused: 1 entries carry due or due_when, which store format 1 does not allow; nothing was changed
+memex: refused: 1 entry carries due or due_when, which store format 1 does not allow; nothing was changed

@@ -1028,3 +1028,11 @@ Open items for later blocks:
   204 use format 3 as the newer format; 090, 150, 203 and 244 expect `format = 2` and
   `stale_days = 14` from `init`/`import`; 258–262 and the help fixture are format 2 stores
   (261 messages gain the `--due` clause); 259 the hint labels and `skipped`.
+  Review round 2 (judge: a fresh Claude Opus 5.5 session in its own worktree, read-only;
+  Codex owed, not run) on 3e9737b: pass with findings, none blocking; gate 185/0 and four
+  Codex fixes confirmed by mutation (cases 264, 265, 266, 267, 268). Applied once: (J1)
+  `migrate` refuses a store with uncommitted changes, and `check --staged` validates the whole
+  store when `memex.toml` is staged (case 263 steps 14–16); (J2) moving to 2 does not count
+  the "stale_days needs store format 2" finding (step 17); (J3) the importer makes a summary
+  with a control character one line (unit test); (J4) `migrate` says when it wrote
+  `stale_days = 14`; (J5) `1 entry carries`.

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/arrowheadmind/memex/internal/check"
 	"github.com/arrowheadmind/memex/internal/config"
@@ -501,7 +502,7 @@ func (im *Importer) write() error {
 		}
 		fields := entry.Fields{"title": u.Title, "status": u.Status, "created": created}
 		if u.Summary != "" {
-			fields["summary"] = u.Summary
+			fields["summary"] = oneLineSummary(u.Summary)
 		}
 		if len(u.Tags) > 0 {
 			fields["tags"] = sortedTags(u.Tags)
@@ -589,4 +590,20 @@ func (im *Importer) validate() error {
 	}
 	sort.Slice(im.report.Warnings, func(i, j int) bool { return im.report.Warnings[i].Target < im.report.Warnings[j].Target })
 	return nil
+}
+
+// oneLineSummary returns a summary that holds a control character with each control
+// character made a space and runs of white space made one space, because a format 2 store
+// refuses them (SPEC §5.3, §13.3); any other summary is returned as it is.
+func oneLineSummary(s string) string {
+	if !entry.HasControl(s) {
+		return s
+	}
+	s = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
+	return strings.Join(strings.Fields(s), " ")
 }
