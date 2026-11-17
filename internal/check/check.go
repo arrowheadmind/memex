@@ -492,6 +492,9 @@ func (c *checker) checkCanonical() {
 // selectStaged keeps the findings about staged paths (or inside staged directories' paths)
 // and about the entries that staged entries link to.
 func (c *checker) selectStaged(staged []string) []Finding {
+	if slices.Contains(staged, store.ManifestFile) {
+		return c.findings // the manifest decides what every entry may hold (SPEC §7, --staged)
+	}
 	keep := map[string]bool{}
 	for _, s := range staged {
 		keep[s] = true

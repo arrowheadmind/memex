@@ -1,2 +1,3 @@
 store format 1 -> 2
+stale_days = 14 written: check now reports open tasks unchanged for more than 14 days (W-OPEN-STALE); stale_days = 0 turns it off
 pushed <SHA7>

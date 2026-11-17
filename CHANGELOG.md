@@ -47,6 +47,9 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 - `check --strict` exits 1 on a store whose only new findings are `W-BROKEN-LINK` outside
   locked journal bodies, where before it exited 0; `doctor`'s `check` row counts them.
+- `check --staged` validates the whole store when `memex.toml` is staged (so the pre-commit
+  hook catches a format change that makes a committed entry invalid).
+- A brain v3 import makes a summary with a control character one plain line.
 - In a migrated or new (format 2) store, `check --strict` exits 1 on an open task unchanged
   for more than `stale_days` days (`W-OPEN-STALE`) or a past `due` (`W-PAST-DUE`); `doctor`'s
   `check` row counts them. A format 1 store gets neither until it is migrated.

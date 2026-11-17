@@ -39,6 +39,10 @@ type Manifest struct {
 	StaleDays int64
 }
 
+// StaleDaysNeedsFormat is the E-MANIFEST message of stale_days in a store before
+// spec.DueFormat (SPEC §4); migrate ignores it when it moves the store to that format.
+var StaleDaysNeedsFormat = fmt.Sprintf("stale_days needs store format %d; run memex migrate", spec.DueFormat)
+
 // ManifestFile is the manifest's path.
 const ManifestFile = "memex.toml"
 
@@ -138,7 +142,7 @@ func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 		// stale_days belongs to format 2 (SPEC §4): in an older store it is refused and off.
 		m.StaleDays = 0
 		fs = slices.DeleteFunc(fs, func(f Finding) bool { return strings.HasPrefix(f.Message, "stale_days ") })
-		fs = append(fs, bad("stale_days needs store format %d; run memex migrate", spec.DueFormat))
+		fs = append(fs, bad("%s", StaleDaysNeedsFormat))
 	}
 	return m, fs, nil
 }

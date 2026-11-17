@@ -593,7 +593,9 @@ Any other URL, path or `repo@sha` pin is free text and is not checked.
 
 `memex check` validates the whole store. `memex check --staged` validates the entries that are
 added, modified or changed in type (a symbolic link replaced by a file) in the git index, plus
-the link targets they reference.
+the link targets they reference. When `memex.toml` is among the staged paths it validates the
+whole store, because the manifest decides what every entry may hold (a staged `format = 2`
+makes a control character in a committed title an error).
 
 **Output** is one line per finding, sorted by path, then code, then message (all by code
 point):
@@ -2038,18 +2040,22 @@ Moves the store to store format N (§4), 1 or 2, default 2, in one commit.
 
 1. `--to` must be `1` or `2`; another value is the usage error
    `value for --to must be a store format from 1 to 2, not "<value>"`.
-2. It takes the lock and freshens as every write (§9.1). `memex.toml` with uncommitted
-   changes is refused (`memex.toml has uncommitted changes; run memex save first`, exit 1),
-   and so is a `memex.toml` with an `E-MANIFEST` finding, each finding first on standard
-   error as `memex: memex.toml: E-MANIFEST <message>`, then
-   `refused: memex.toml is not valid; fix it first (memex check lists the findings)`.
+2. It takes the lock and freshens as every write (§9.1). A store with uncommitted changes (the
+   paths of `memex save`, §9.3) is refused, `the store has <n> uncommitted changes; run memex
+   save first` (`1 uncommitted change`), exit 1: only `memex.toml` is committed, and the check
+   of step 6 reads the working tree, so an entry fixed but not saved would leave the commit
+   invalid. A `memex.toml` with an `E-MANIFEST` finding is refused, each finding first on
+   standard error as `memex: memex.toml: E-MANIFEST <message>`, then
+   `refused: memex.toml is not valid; fix it first (memex check lists the findings)`; moving
+   to 2, the finding `stale_days needs store format 2; run memex migrate` is not counted,
+   since the migration is what resolves it.
 3. A store already at N prints `store format <n> already; nothing to migrate` and the
    `nothing to commit` outcome, exit 0.
 4. To 1: while any task or plan carries `due` or `due_when`, it is refused: for each one, by
    path, `memex: <path>: carries <fields>; remove it first: memex set <id> <field>= …` on
    standard error (`<fields>` is `due`, `due_when` or `due and due_when`), then
    `refused: <k> entries carry due or due_when, which store format 1 does not allow; nothing
-   was changed`, exit 1.
+   was changed` (`1 entry carries` for one), exit 1.
 5. The new `memex.toml` is the old one with the line that sets `format` replaced by
    `format = <N>`; moving to 2, `stale_days = 14` appended when the key is absent; moving to 1,
    every line that sets `stale_days` removed. Every other line is kept byte for byte.
@@ -2059,7 +2065,9 @@ Moves the store to store format N (§4), 1 or 2, default 2, in one commit.
    `refused: the store would not validate at format <N>; fix these entries first, nothing was
    changed`, exit 1.
 7. It writes and commits `memex.toml` with the message `memex: migrate the store to format <N>`,
-   prints `store format <old> -> <N>` and the outcome (§9.4).
+   prints `store format <old> -> <N>`, then, when step 5 appended `stale_days`,
+   `stale_days = 14 written: check now reports open tasks unchanged for more than 14 days
+   (W-OPEN-STALE); stale_days = 0 turns it off` (one line), and the outcome (§9.4).
 
 A store is migrated once, from one machine, after every machine that uses it runs a memex
 that reads format 2: until then, an older memex there refuses the whole store (§4). A memex
@@ -2243,7 +2251,9 @@ A **unit** is the smallest piece of source that becomes one entry.
   becomes `2026-10-12-rotate-the-password`; the heading's date stays in the title.
 - **YAML blocks.** When a file (an investigation or a `--leak` file) has no heading at all
   and begins with a YAML block (`---` on the first line, up to the next `---`), the block's
-  `name:` value is the title and its `description:` value, when present, is the summary;
+  `name:` value is the title and its `description:` value, when present, is the summary
+  (a summary from any source that holds a control character has each one made a space and
+  its runs of white space made one space, since the store written is format 2, §5.3);
   only then does the filename serve as the title. The block stays in the body.
 - **Status lines.** The *value* of a `## Status` section or a `**Status:**` line is the first
   word of its first non-blank line, lowercased, with trailing punctuation and symbols removed

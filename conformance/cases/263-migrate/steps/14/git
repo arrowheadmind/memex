@@ -1,0 +1,8 @@
+checkout
+--
+memex.toml
+
+commit
+-q
+-am
+tab again
