@@ -64,8 +64,11 @@ behind a flag of `list` would give the same command two output shapes. Rejected:
 `list --due [--before DATE]`.
 
 **Fast by reading files only.** `memex due` loads the entries as `list` does and never runs
-git. Measured on a made-up store of 5,000 entries (`scripts/due-bench.sh`): see the B18 note
-in WORK.md for the numbers.
+git, so it costs what `list` costs. Measured with `scripts/due-bench.sh` on a made-up store of
+5,000 entries: 235–290 ms per run (text or `--json`), against 455–490 ms for `check` on the
+same store. On a copy of a real store of about 2,800 entries, `due` and `list --limit 1` both
+took 220–255 ms; `check` took the same time before and after this change (the last-change dates
+come from the `git log` it already ran).
 
 **"Touched" is read from git, not from a field.** The last change of a task is the committer
 date of the newest commit on `HEAD`'s first-parent history that changes the file (the same
@@ -98,7 +101,11 @@ anyway. The pattern is narrow on purpose: a title that begins with a date, or a 
 (`due`, `by`, `deadline`, `no later than`, `on or after`) right before a full date. Words such
 as `before`, `until` and `on` were measured and dropped: they mostly date past facts
 ("deleted before 2026-10-28", "a limit until 2026-11-06"). Dates without a year are not
-matched. The measurements are in the B18 note.
+matched. Measured on copies of two real stores (about 80 open tasks): 19 tasks hinted, all 19
+naming a real deadline (17 in the title, 2 in the body); one of the two body hints is the first
+of several dates, which its body later replaces, so the suggested `memex set` line must be read
+before it is run. No task was hinted for a date that is not a deadline. The pattern misses
+"re-check on 11-09" (no year, and `on` alone is too broad).
 
 **Messages carry the commands.** Each warning ends with the exact commands that clear it,
 like every other `check` message. To move a date with its reason in one commit, `update`

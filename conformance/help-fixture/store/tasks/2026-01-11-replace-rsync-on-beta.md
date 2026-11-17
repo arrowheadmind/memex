@@ -6,6 +6,7 @@ summary = "beta still runs the old rsync job; move it to restic like alpha."
 tags = ["backup"]
 hosts = ["beta"]
 parent = "2026-01-08-backup-overhaul"
+due = 2026-01-20
 +++
 
 ## Goal

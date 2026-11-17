@@ -56,6 +56,7 @@ memex save                                              # after editing an entry
 | `help` | Print help |
 | `version` | Print the version |
 | `update` | Append a dated section to an entry and replace its summary, in one commit |
+| `due` | List what open tasks and plans owe: past due, due soon, waiting, blocked |
 
 ## Topics
 

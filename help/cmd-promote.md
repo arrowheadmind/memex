@@ -39,6 +39,8 @@ source, and only then reads the `--body` file or standard input.
 | `--verified` | DATE | today | When the facts were checked (references only) |
 | `--review-days` | N | | Staleness threshold for `verified` (references only) |
 | `--alias` | A | | Former name or path that resolves to this entry; repeatable |
+| `--due` | DATE | | Day the work is owed, YYYY-MM-DD (tasks and plans only); `memex due` lists it |
+| `--due-when` | W | | Event the work waits for, one line (tasks and plans only) |
 
 ## Output
 

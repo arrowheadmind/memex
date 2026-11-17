@@ -976,3 +976,18 @@ Open items for later blocks:
   severity); `W-OPEN-STALE` reads the last change from the `git log` summary currency already
   runs; `update` gains `--due` and `--due-when` so that a moved date carries its reason in one
   commit. No store format change.
+  Implemented on the branch: conformance cases 258 (fields, `new` and `set`), 259 (`memex due`
+  text, `--days`, `--hints`, `--json`, the hint pattern), 260 (`W-PAST-DUE`), 261
+  (`W-OPEN-STALE`, the commit's own offset, `stale_days` 13/14/0/invalid, a working-tree and a
+  staged change), 262 (`update --due`); all five fail on the binary at bb4b345. The usage
+  lines of cases 154, 180, 224, 229, 234 and 249 gain `[--due DATE] [--due-when W]` (23
+  expect files), nothing else in the suite changed. The help fixture's task "Replace rsync on
+  beta" gains `due = 2026-01-20` and its plan a `due_when`, for the `due` page's examples.
+  Unit tests: the hint pattern (22 rows), the last-change date and its offset (made to fail by
+  reading the date in UTC: the unit test and case 261 both fail), `stale_days` parsing.
+  Measured: `memex due` 235–290 ms on 5,000 made-up entries (`scripts/due-bench.sh`), the
+  same as `list`; `check` time unchanged. On copies of the operator's two stores: hints 19 and
+  0, all 19 real deadlines (one names the first of several dates its body later replaces);
+  `W-OPEN-STALE` 20 and 8 with the default 14 days. Found while testing: the pre-commit hook
+  runs the `memex` on PATH, so a host with an older memex refuses to commit an entry with
+  `due` (`E-FIELD-UNKNOWN`): every machine needs the new version before the first `due`.

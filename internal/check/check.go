@@ -56,6 +56,8 @@ type checker struct {
 	locked   map[string]bool
 	// requireRepos is the manifest's require_repos (SPEC §4): W-NO-REPO is reported.
 	requireRepos bool
+	// staleDays is the manifest's stale_days (SPEC §4): W-OPEN-STALE's threshold, 0 for off.
+	staleDays int64
 	// targets records, for each entry path, the paths its links resolve to (for --staged).
 	targets map[string][]string
 }
@@ -90,6 +92,7 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 	c := &checker{tree: tree, today: today, byID: map[string][]*parsed{},
 		byAlias: map[string][]*parsed{}, locked: map[string]bool{}, targets: map[string][]string{}}
 	c.requireRepos = m.RequireRepos
+	c.staleDays = m.StaleDays
 	c.findings = append(c.findings, mf...)
 	c.findings = append(c.findings, layout.Findings...)
 	for _, f := range layout.Files {
@@ -123,6 +126,7 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 		c.checkEntry(p, cited)
 		if hist != nil {
 			c.checkCurrency(p, hist.Versions[p.Path])
+			c.checkStale(p, hist)
 		}
 	}
 	c.checkCanonical()
@@ -400,6 +404,9 @@ func (c *checker) checkEntry(p *parsed, cited map[string]bool) {
 				verified.Format(time.DateOnly), days, p.ID, c.today.Format(time.DateOnly))
 		}
 	}
+	if due, ok := f.Date("due"); ok && spec.IsOpen(p.Type.Name, f.String("status")) && due.Before(c.today) {
+		c.add(p.Path, "W-PAST-DUE", "%s", pastDueMessage(p.Type.Name, p.ID, due))
+	}
 	if p.Type.Name == "journal" {
 		status := f.String("status")
 		created, ok := f.Date("created")
@@ -463,4 +470,42 @@ func (c *checker) selectStaged(staged []string) []Finding {
 		}
 	}
 	return out
+}
+
+// pastDueMessage is the W-PAST-DUE message (SPEC §7): the commands that close the entry, move
+// the date with its reason, and, for a task, park it.
+func pastDueMessage(typ, id string, due time.Time) string {
+	msg := fmt.Sprintf("due %s has passed; if it is done: memex update %s --status done --summary=<sentence> --body -; "+
+		"to move the date, saying why in the body: memex update %s --due=<new> --summary=<sentence> --body -",
+		due.Format(time.DateOnly), id, id)
+	if typ == spec.ParkedType {
+		msg += fmt.Sprintf("; to park it: memex update %s --status %s --summary=<sentence> --body -", id, spec.ParkedStatus)
+	}
+	return msg
+}
+
+// checkStale reports W-OPEN-STALE (SPEC §7): an open or in-progress task last changed more
+// than stale_days days before today. The last change is today when the file read differs from
+// HEAD's, and otherwise the committer date of the newest commit that changes it; a task HEAD
+// does not hold has none.
+func (c *checker) checkStale(p *parsed, hist *store.History) {
+	status := p.fields.String("status")
+	if c.staleDays == 0 || p.Type.Name != "task" || !spec.IsOpen(p.Type.Name, status) {
+		return
+	}
+	vs := hist.Versions[p.Path]
+	if len(vs) == 0 || string(vs[0]) != string(p.data) {
+		return // not in HEAD, or changed since: changed today
+	}
+	changed, err := time.Parse(time.DateOnly, hist.Changed[p.Path])
+	if err != nil {
+		return
+	}
+	if changed.AddDate(0, 0, int(c.staleDays)).Before(c.today) {
+		c.add(p.Path, "W-OPEN-STALE", "%s and unchanged since %s, more than stale_days (%d) days ago; "+
+			"record where it stands: memex update %s --summary=<sentence> --body -, "+
+			"or close it: memex update %s --status done --summary=<sentence> --body -, "+
+			"or park it: memex update %s --status %s --summary=<sentence> --body -",
+			status, changed.Format(time.DateOnly), c.staleDays, p.ID, p.ID, p.ID, spec.ParkedStatus)
+	}
 }

@@ -64,12 +64,12 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 `W-NO-REPO` names `set <id> repos=[]` | Implemented |
 | 5.3 An empty array element is an error | Implemented |
 | 6, 7 `W-BROKEN-LINK` | Implemented |
-| 4 `stale_days` in the manifest | Planned |
-| 5.3 `due` and `due_when` | Planned |
-| 7 `W-PAST-DUE` and `W-OPEN-STALE` | Planned |
-| 11.2 `new --due` and `--due-when` | Planned |
-| 11.17 `update --due` and `--due-when` | Planned |
-| 11.18 `due` | Planned |
+| 4 `stale_days` in the manifest | Implemented |
+| 5.3 `due` and `due_when` | Implemented |
+| 7 `W-PAST-DUE` and `W-OPEN-STALE` | Implemented |
+| 11.2 `new --due` and `--due-when` | Implemented |
+| 11.17 `update --due` and `--due-when` | Implemented |
+| 11.18 `due` | Implemented |
 
 ---
 
@@ -1921,8 +1921,9 @@ whenever it has printed its result.
   decision or on something else, and its summary says why. Every other status (`done`,
   `dropped`, `abandoned`, `superseded`) is closed, and a closed entry is never listed, so
   closing an entry, `memex update <id> --status done …`, takes it off the list.
-- `--days N` (an integer ≥ 0, default 7) sets the horizon: today plus N days. `--days 0`
-  lists only what is due today.
+- `--days N` (an integer from 0 to 36500, default 7; another value is the usage error
+  `value for --days must be an integer from 0 to 36500, not "<value>"`) sets the horizon:
+  today plus N days. `--days 0` lists only what is due today.
 - The output has these sections, in this order. A section with no entries is omitted. Each
   begins with a header line, and each entry is one line,
   `<due> <status> <path> <title>`, where `<due>` is `due` as `YYYY-MM-DD`, or `-` when the

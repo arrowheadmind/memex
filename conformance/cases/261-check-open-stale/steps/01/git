@@ -1,3 +1,7 @@
-add -A
+add
+-A
 
-commit -q -m dated
+commit
+-q
+-m
+dated
