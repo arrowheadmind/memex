@@ -1641,10 +1641,8 @@ failure, so that one store and one command line give one result:
    unless noted. For `update`, its options in synopsis order: a `--summary` equal to the
    current one (exit 1); a `--body` that cannot be read (a usage error, exit 2) or whose
    content measure is below 80 (exit 1); a `--status` that is not one of the type's statuses,
-   the empty value included (a usage error, exit 2); a `--due` or `--due-when` on a type
-   that does not allow it (exit 1, `memex: <path>: E-FIELD-UNKNOWN field "due" is not allowed
-   on a <type>; it is allowed on: task, plan`, then the refusal line of §9.1 step 5, as
-   validation prints it); then the repository requirement (§11.17 step 9, exit 1).
+   the empty value included (a usage error, exit 2); then the repository requirement
+   (§11.17 step 9, exit 1).
 6. **The visibility rule** above, exit 1. `update` always gives a new summary, so it always
    satisfies it.
 7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
@@ -1893,8 +1891,10 @@ allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten
    as in `set` (§11.7).
 8. `--due` and `--due-when`, when given, set `due` and `due_when` in the same commit, so that
    a date moved or a condition changed carries its reason, the new section, and the new
-   summary. They are allowed on tasks and plans (§5.3); on another type the step 5 refusal
-   of §11.7 applies. Neither removes a field; `memex set <id> due=` does.
+   summary. They are allowed on tasks and plans (§5.3); on another type validation refuses
+   the result (§11.7 step 7: `memex: <path>: E-FIELD-UNKNOWN field "due" is not allowed on a
+   <type>; it is allowed on: task, plan`, then the refusal line of §9.1 step 5). Neither
+   removes a field; `memex set <id> due=` does.
 9. In a store with `require_repos = true` (§4, §5.5), an entry with no `repos` field is
    refused, exit 1, with the two `update` lines of §5.5, unless `--no-repo` is given; with
    `--no-repo` the same commit writes `repos = []`. An entry whose `repos` is present (empty

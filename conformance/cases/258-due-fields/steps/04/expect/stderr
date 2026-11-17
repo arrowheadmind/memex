@@ -1,0 +1,6 @@
+memex: option --due-when is not allowed on a rule; it is allowed on: task, plan
+memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…
+          [--repo R]… [--no-repo] [--host H]… [--always] [--kind K]
+          [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…
+          [--due DATE] [--due-when W]
+Run: memex help new

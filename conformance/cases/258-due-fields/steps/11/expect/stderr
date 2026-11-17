@@ -1,0 +1,1 @@
+memex: field "due" is not allowed on a rule; it is allowed on: task, plan

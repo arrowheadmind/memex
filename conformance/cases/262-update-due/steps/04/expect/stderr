@@ -1,0 +1,4 @@
+memex: value for --due must be a date written YYYY-MM-DD, not "2026-1-31"
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--due DATE]
+             [--due-when W] [--no-repo]
+Run: memex help update

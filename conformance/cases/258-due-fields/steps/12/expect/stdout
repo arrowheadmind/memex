@@ -1,0 +1,3 @@
+rules/2026-01-10-warm-the-cache.md: E-FIELD-UNKNOWN field "due" is not allowed on a rule; it is allowed on: task, plan
+tasks/2026-01-15-rotate-the-backup-key.md: E-FIELD-VALUE due must be a date written YYYY-MM-DD, unquoted
+check: 2 errors, 0 warnings

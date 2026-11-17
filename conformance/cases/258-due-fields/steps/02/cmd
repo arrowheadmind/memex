@@ -1,0 +1,10 @@
+new
+task
+--title=Rotate the backup key
+--summary=Rotate it before the old key expires.
+--keyword=backup
+--due
+2026-01-20
+--due-when=after the vault upgrade lands
+--body
+-
