@@ -65,6 +65,12 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 5.3 An empty array element is an error | Implemented |
 | 6, 7 `W-BROKEN-LINK` | Implemented |
 | 9.3 A bare `save` with several changes is refused without `--all` | Implemented |
+| 4 `stale_days` in the manifest | Planned |
+| 5.3 `due` and `due_when` | Planned |
+| 7 `W-PAST-DUE` and `W-OPEN-STALE` | Planned |
+| 11.2 `new --due` and `--due-when` | Planned |
+| 11.17 `update --due` and `--due-when` | Planned |
+| 11.18 `due` | Planned |
 
 ---
 
@@ -225,6 +231,7 @@ README.md           optional, free text, ignored by memex
 format = 1
 name = "example"
 require_repos = true
+stale_days = 14
 ```
 
 - `format` is an integer. memex refuses (exit 2) a store whose `format` is greater than the one it
@@ -237,6 +244,10 @@ require_repos = true
   reports an entry that does neither (`W-NO-REPO`, §7). It is for a store that holds
   knowledge about source repositories, where an entry created outside any repository would
   otherwise lose its attribution silently.
+- `stale_days` is an integer from 0 to 36500, optional, default `14`: the number of days an
+  open task may go unchanged before `check` reports it (`W-OPEN-STALE`, §7). `0` turns the
+  finding off. It is a property of the store, not of the caller, because every session that
+  checks the store must see the same findings.
 - Unknown keys are an error.
 
 Type directories and `files/` MAY be absent: git doesn't track empty directories, and an
@@ -369,10 +380,12 @@ Listed in canonical order.
 | 12 | `parent` | string | no | plan, task | Id of an enclosing plan |
 | 13 | `sources` | array | no | all | Ids this entry was derived from |
 | 14 | `superseded_by` | string | iff status is `superseded` | all | Id of the replacing entry |
-| 15 | `verified` | date | yes | reference | When the facts were last checked against the live system |
-| 16 | `review_days` | integer, 1–36500 | no | reference | Staleness threshold for `verified` |
-| 17 | `aliases` | array | no | all | Former names or paths that resolve to this entry (§6) |
-| 18 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
+| 15 | `due` | date | no | task, plan | The day by which the work is owed (§11.18) |
+| 16 | `due_when` | string | no | task, plan | The event the work waits for, when it has no date: 1–300 characters, no LF (§11.18) |
+| 17 | `verified` | date | yes | reference | When the facts were last checked against the live system |
+| 18 | `review_days` | integer, 1–36500 | no | reference | Staleness threshold for `verified` |
+| 19 | `aliases` | array | no | all | Former names or paths that resolve to this entry (§6) |
+| 20 | `body_sha256` | string | yes | journal | Lowercase hex SHA-256 of the body bytes |
 
 - A field not in this table is an error.
 - An array element that is the empty string (`""`) is an error, on every array field: a
@@ -384,6 +397,10 @@ Listed in canonical order.
 - A field on a type not listed under "Allowed on" is an error.
 - There is no `updated` field (git records it), and no reverse-link field. Reverse links are
   computed (§11.6).
+- `due` is a date, never a time: today (§2) is a date, every other date in a store is a date,
+  and a promise kept to the hour belongs in a calendar, not in a store. A TOML date-time is the
+  `E-FIELD-VALUE` of a wrong kind. `due` and `due_when` may be given together: the condition
+  is what the work waits for and the date is the day by which it is owed regardless.
 
 ### 5.4 Ids
 
@@ -670,7 +687,7 @@ Errors:
 | `E-FRONTMATTER` | Missing delimiters, or invalid TOML | `missing opening +++ line; the file must begin with the line +++`, `missing closing +++ line after the frontmatter`, `invalid TOML in the frontmatter at line <line>` |
 | `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type | `unknown field "<field>" (did you mean "<nearest>"?)` over the §5.3 names in canonical order; `field "<field>" is not allowed on a <type>; it is allowed on: <types>` with the "Allowed on" types of §5.3 separated by `, ` |
 | `E-FIELD-MISSING` | Required field absent | `missing required field "<field>"` |
-| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed`; `<field> element "" is empty` |
+| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `due_when must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed`; `<field> element "" is empty` |
 | `E-STATUS` | Status not valid for the type | `status "<value>" is not valid for a <type> (did you mean "<nearest>"?); valid: <statuses>`, the type's statuses in §5.2 order separated by `, ` |
 | `E-CREATED` | `created` ≠ id date | `created <date> differs from the date in the id, <id date>` |
 | `E-SUPERSEDED` | `superseded` without `superseded_by`, or `superseded_by` without `superseded` | `status is superseded but superseded_by is missing; add it: memex set <id> superseded_by=<new>`; `superseded_by is set but status is "<value>"; either memex set <id> status=superseded, or memex set <id> superseded_by=` |
@@ -680,7 +697,7 @@ Errors:
 | `E-HASH` | `body_sha256` mismatch | `body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id | `alias "<value>" is also on <paths>` (the other entries); `alias "<value>" is the id of <paths>` |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id | On `files/<x>`: `"<x>" is not the id of an entry; attachments go in files/<id>/`, written literally as `files/<id>/`; on a file directly under `files/`: `not a directory; attachments go in files/<id>/` |
-| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`, `require_repos`; `missing key "format"`; `format must be an integer`; `name must be a string`; `require_repos must be a boolean` |
+| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`, `require_repos`, `stale_days`; `missing key "format"`; `format must be an integer`; `name must be a string`; `require_repos must be a boolean`; `stale_days must be an integer from 0 to 36500` |
 
 Warnings:
 
@@ -690,6 +707,8 @@ Warnings:
 | `W-ALIAS-LINK` | Link resolved through an alias | `[[<target>]] on line <line> resolves through an alias; link [[<target id>]] instead`. In a locked journal body, an immutable finding (above): `[[<target>]] on line <line> resolves through an alias to [[<target id>]]; a journal body is immutable, so this is not counted as a warning` |
 | `W-BROKEN-LINK` | A `[[…]]` shaped like a link that names no entry and is not `E-LINK` (§6, broken links) | When §6 finds the entry meant: `[[<target>]] on line <line> names no entry; link [[<target id>]] instead`; otherwise `[[<target>]] on line <line> names no entry; link the id of an entry, or put it in backticks if it is not a link`. In a locked journal body, an immutable finding (above): `[[<target>]] on line <line> names no entry; it means [[<target id>]], but a journal body is immutable, so this is not counted as a warning`, or without the entry meant `[[<target>]] on line <line> names no entry; a journal body is immutable, so this is not counted as a warning` |
 | `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` | `verified <date> is more than review_days (<n>) ago; check the facts, then: memex set <id> verified=<today>` |
+| `W-PAST-DUE` | A task with status `open` or `in-progress`, or a plan with status `draft` or `active` (§11.18, open), whose `due` is before today | Task: `due <date> has passed; if it is done: memex update <id> --status done --summary=<sentence> --body -; to move the date, saying why in the body: memex update <id> --due=<new> --summary=<sentence> --body -; to park it: memex update <id> --status blocked --summary=<sentence> --body -`. Plan (no status parks a plan): `due <date> has passed; if it is done: memex update <id> --status done --summary=<sentence> --body -; to move the date, saying why in the body: memex update <id> --due=<new> --summary=<sentence> --body -` |
+| `W-OPEN-STALE` | A task with status `open` or `in-progress` that was last changed (below) more than `stale_days` (§4) days before today. Not reported when `stale_days` is `0` | `<status> and unchanged since <date>, more than stale_days (<n>) days ago; record where it stands: memex update <id> --summary=<sentence> --body -, or close it: memex update <id> --status done --summary=<sentence> --body -, or park it: memex update <id> --status blocked --summary=<sentence> --body -` |
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
@@ -744,7 +763,8 @@ the author knows what the new section changes; it checks that the summary was to
   adds a section and changes the summary is current. Rules, decisions, runbooks and references
   are not checked: their sections are rarely status notes, and references have `verified`.
 - Reading history is the only use `check` makes of commits (with the `HEAD` journal
-  files that decide a locked body, immutable findings above); the current findings of every
+  files that decide a locked body, immutable findings above, and the last change of a task
+  for `W-OPEN-STALE`, below, which the same `git log` gives); the current findings of every
   other code come from the files alone. `check`, `check --staged` (and so the pre-commit hook)
   and `doctor`'s `check` read it; the validation of a write (§9.1 steps 3 and 5) uses errors
   only and does not. The history is read in one pass, so that `check` stays fast on a store of
@@ -759,6 +779,17 @@ the author knows what the new section changes; it checks that the summary was to
   `git exited with status <n>` when git printed nothing; `timed out after <N>s` for a git
   command `doctor` bounds (§11.13); `object <oid> is missing` when a file version the log
   names is not in the repository.
+
+**Last changed** (`W-OPEN-STALE`). A task is last changed on today when the file `check` reads
+(the index's with `--staged`, the working tree's otherwise) differs from `HEAD`'s; otherwise on
+the committer date of the newest commit of summary currency's history that changes it (the
+newest version above), written as `YYYY-MM-DD` in the time zone offset that commit records
+(git's `%cs`), so that every reader in every time zone gets the same date. A task that `HEAD`
+does not hold, and every task of a store with no commits or no git repository, has no last
+change and is not reported. Git is the record, not a field: a field would have to be written
+by every edit, and a hand edit would forget it. Any commit that changes the file counts, a
+`memex set` of one field or a mass `memex fmt` included; a commit that only touches another
+file does not. It is a warning, never an immutable finding: a task's body can change.
 
 `check --workspace` adds the pointer and leak findings of §12 (`E-POINTER`, `W-NO-POINTER`,
 `W-LEAK`). Their `<path>` is absolute, `<dir>` is the directory that holds the file, and
@@ -1247,6 +1278,7 @@ into `DIR` with the pointer text of §12. It requires a resolved store (§3.1).
 memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…
           [--repo R]… [--no-repo] [--host H]… [--always] [--kind K]
           [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…
+          [--due DATE] [--due-when W]
 memex capture --title=T --summary=S --body FILE|- [same options]
 memex capture --from PATH [--title=T] [--summary=S] [same options]
 ```
@@ -1277,9 +1309,11 @@ Behavior:
    `--summary` is required, because search results and lists show it, and it is what lets an
    agent decide whether to open an entry without reading it. `--keyword` SHOULD be given
    whenever the body's vocabulary differs from how someone would ask about it.
-   `verified` defaults to today for references.
-   An unknown type or status, an option not allowed on the type, and a malformed `--verified`
-   or `--review-days` are usage errors (exit 2); a value that fails §5.3 or §7 (a bad tag, a
+   `verified` defaults to today for references. `--due` and `--due-when` set `due` and
+   `due_when` (§5.3, §11.18), on tasks and plans only; `--due` takes a date `YYYY-MM-DD`, never
+   a time, and may be in the past (a promise written down late is still owed).
+   An unknown type or status, an option not allowed on the type, a malformed `--verified`,
+   `--review-days` or `--due`, and an empty `--due-when` are usage errors (exit 2); a value that fails §5.3 or §7 (a bad tag, a
    `parent` that is not a plan, an unresolved link) exits 1 with the findings, printed as
    §9.1 step 5 describes (for example `memex: <path>: E-FIELD-VALUE summary must be one line
    of at most 500 characters`, then the refusal line).
@@ -1329,8 +1363,12 @@ one result:
       that order (`missing --title`, `missing --summary`, `missing --body`).
    4. The values that need no store, in this order: a `--status` that is not one of the
       type's statuses; an option not allowed on the type, checked in the order `--always`,
-      `--kind`, `--parent`, `--verified`, `--review-days`; a malformed `--verified`; a
-      malformed `--review-days`.
+      `--kind`, `--parent`, `--verified`, `--review-days`, `--due`, `--due-when`; a malformed
+      `--verified`; a malformed `--review-days`; a malformed `--due`
+      (`value for --due must be a date written YYYY-MM-DD, not "<value>"`); an empty
+      `--due-when` (`empty value for --due-when`). A `--due-when` longer than 300 characters
+      or holding an LF is not a usage error: validation refuses it (step 7,
+      `E-FIELD-VALUE due_when must be 1 to 300 characters on one line`).
 
    Nothing else is read at this step: not the `--body` file, not standard input, not the
    `--from` file.
@@ -1575,8 +1613,9 @@ failure, so that one store and one command line give one result:
 
 1. **The command line alone**, before the store is read: a missing argument, an unknown or
    repeated option, a malformed assignment, an unknown field name, `+=` or `-=` on a field that
-   is not an array; for `update`, a missing or empty `--summary`, a missing `--body` and a
-   `--heading` that is not 1–100 characters on one line; for `--batch`, a positional argument
+   is not an array; for `update`, a missing or empty `--summary`, a missing `--body`, a
+   `--heading` that is not 1–100 characters on one line, a malformed `--due` and an empty
+   `--due-when` (the messages of §11.2); for `--batch`, a positional argument
    and a `FILE` that cannot be read (`FILE` is read after step 2 instead, as the
    paragraph after this list says). Usage errors, exit 2.
 2. **The store and §9.1 steps 1–2**: the store resolves (§3.1) and its format is supported
@@ -1602,8 +1641,10 @@ failure, so that one store and one command line give one result:
    unless noted. For `update`, its options in synopsis order: a `--summary` equal to the
    current one (exit 1); a `--body` that cannot be read (a usage error, exit 2) or whose
    content measure is below 80 (exit 1); a `--status` that is not one of the type's statuses,
-   the empty value included (a usage error, exit 2); then the repository requirement
-   (§11.17 step 8, exit 1).
+   the empty value included (a usage error, exit 2); a `--due` or `--due-when` on a type
+   that does not allow it (exit 1, `memex: <path>: E-FIELD-UNKNOWN field "due" is not allowed
+   on a <type>; it is allowed on: task, plan`, then the refusal line of §9.1 step 5, as
+   validation prints it); then the repository requirement (§11.17 step 9, exit 1).
 6. **The visibility rule** above, exit 1. `update` always gives a new summary, so it always
    satisfies it.
 7. **Validation** of the result (§9.1 step 3), exit 1, every error finding printed.
@@ -1819,7 +1860,8 @@ release version, or `0.0.0-dev` for a build that is not a release.
 ### 11.17 `update`
 
 ```
-memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--due DATE]
+             [--due-when W] [--no-repo]
 ```
 
 Records progress on an entry in one step: it appends a dated section to the body and replaces
@@ -1849,16 +1891,20 @@ allowed (§9.3); `W-STALE-SUMMARY` then reports a summary that was not rewritten
    the leading `\n\n` is omitted. The result is in normalized form: one final LF.
 7. An entry with uncommitted changes, or with a field that cannot be kept, is refused exactly
    as in `set` (§11.7).
-8. In a store with `require_repos = true` (§4, §5.5), an entry with no `repos` field is
+8. `--due` and `--due-when`, when given, set `due` and `due_when` in the same commit, so that
+   a date moved or a condition changed carries its reason, the new section, and the new
+   summary. They are allowed on tasks and plans (§5.3); on another type the step 5 refusal
+   of §11.7 applies. Neither removes a field; `memex set <id> due=` does.
+9. In a store with `require_repos = true` (§4, §5.5), an entry with no `repos` field is
    refused, exit 1, with the two `update` lines of §5.5, unless `--no-repo` is given; with
    `--no-repo` the same commit writes `repos = []`. An entry whose `repos` is present (empty
    or not) is updated as usual, and `--no-repo` then changes nothing. Without
    `require_repos`, `--no-repo` changes nothing.
-9. The checks run in the refusal order of §11.7: the command line, the store and the lock,
+10. The checks run in the refusal order of §11.7: the command line, the store and the lock,
    the id, the entry (step 1's journal refusal, then step 7), then the options in synopsis
-   order (steps 2, 3 and 5; `--body` is read only then), then the repository requirement
-   (step 8), then validation.
-10. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
+   order (steps 2, 3, 5 and 8; `--body` is read only then), then the repository requirement
+   (step 9), then validation.
+11. Commits through §9.1, with the message of §9.2. Standard output is only the outcome line.
 
 Example:
 
@@ -1870,6 +1916,72 @@ Rotated on alpha and beta; the old key is revoked in the vault and a restore fro
 newest snapshot succeeded with the new key on both hosts.
 EOF
 ```
+
+### 11.18 `due`
+
+```
+memex due [--days N] [--hints] [--json]
+```
+
+Prints what open tasks and plans owe and when: the dates of `due` and the conditions of
+`due_when` (§5.3). It is the command that a session-start hook, a timer and a nightly check
+run, so it reads only the working tree's entries, never git or the network, and exits 0
+whenever it has printed its result.
+
+- An entry is **open** when it is a task with status `open` or `in-progress`, or a plan with
+  status `draft` or `active`. A task with status `blocked` is **parked**: the work waits, by
+  decision or on something else, and its summary says why. Every other status (`done`,
+  `dropped`, `abandoned`, `superseded`) is closed, and a closed entry is never listed, so
+  closing an entry, `memex update <id> --status done …`, takes it off the list.
+- `--days N` (an integer ≥ 0, default 7) sets the horizon: today plus N days. `--days 0`
+  lists only what is due today.
+- The output has these sections, in this order. A section with no entries is omitted. Each
+  begins with a header line, and each entry is one line,
+  `<due> <status> <path> <title>`, where `<due>` is `due` as `YYYY-MM-DD`, or `-` when the
+  entry has none:
+  1. `past due: <n>`: open entries whose `due` is before today, by `due` ascending, then id.
+  2. `due by <horizon>: <n>`: open entries whose `due` is from today to the horizon, by
+     `due`, then id. `<horizon>` is the date `YYYY-MM-DD`.
+  3. `when: <n>`: open entries with `due_when` and no `due`, by id. The line ends with
+     ` (when: <due_when>)`. An entry with both is listed by its date, its line also ending
+     with ` (when: <due_when>)`.
+  4. `blocked: <n>`: every parked task, with or without a date or a condition, by id. The line
+     ends with ` (why: <summary>)` when the task has a summary, so that the reason is read
+     with the date; a `due_when` is shown before it as above.
+  Then, when open entries are due after the horizon, the line
+  `due after <horizon>: <k> (raise --days)`. Then, when tasks name a date only in their
+  text (below), the line `dates in text, no due: <h> (memex due --hints lists them)`, or with
+  `--hints` the section `dates in text, no due: <h>`, by id, each line
+  `<date> <status> <path> <title> (set it: memex set <id> due=<date>)`. When nothing at all
+  is printed, the output is the one line `nothing due`.
+- **A date in the text.** A task with status `open`, `in-progress` or `blocked` that has
+  neither `due` nor `due_when` names a date in its text when its title begins with a date
+  `YYYY-MM-DD` not followed by a letter or digit, or when its title or its body outside
+  fenced code blocks (§5.6) holds one of `due`, `by`, `deadline`, `no later than` or
+  `on or after`, matched without regard to ASCII case and not preceded by a letter or digit,
+  followed by an optional `:`, one or more spaces or tabs, at most two `*` or `_`, then a date
+  `YYYY-MM-DD` not followed by a digit. The date must be a valid calendar date. `<date>` is
+  the first one found, the title before the body and the body in reading order. It is a hint,
+  not a finding: `check` does not report it, because a date in prose may be a fact about the
+  past, and only its author can say whether it is owed. These are the stores' own
+  conventions before `due` existed; `--hints` lists them so that they can be moved into the
+  field once.
+- **JSON output:**
+  `{"today":"…","horizon":"…","past":[…],"upcoming":[…],"when":[…],"blocked":[…],"later":K,"hints":[…]}`,
+  where each entry of the four lists is
+  `{"id":"…","type":"…","status":"…","path":"…","title":"…","summary":null,"due":null,"due_when":null}`,
+  with `summary`, `due` and `due_when` null when absent, `later` is the number of open entries
+  due after the horizon, and each hint is
+  `{"id":"…","status":"…","path":"…","title":"…","date":"…"}`. The JSON lists the hints
+  whether or not `--hints` is given.
+- An entry that cannot be parsed is left out, with the `memex: skipped` line of §8.1 on
+  standard error, as in `list`.
+- Exit 0, also when entries are past due; exit 2 for a usage or configuration error. A past
+  date is a finding of `check` (`W-PAST-DUE`, §7), where `--strict` can make it fail.
+
+`memex list` is not given a `--due` option: its line is one shape for every entry, sorted by
+`created`, and a caller that parses it must not find a different shape behind a flag; `due`
+groups by what to do (late, soon, waiting, parked) and has its own empty answer.
 
 ---
 
@@ -2448,7 +2560,7 @@ from the behavior it describes.
 | `memex help COMMAND`, `memex COMMAND --help`, `memex COMMAND -h` | The command page (§16.5) |
 | `memex help TOPIC` | The topic page (§16.6) |
 | `memex help topics` | One line per command and topic: name, two spaces, one-line description |
-| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11 (§11.1 `init` through §11.17 `update`). Pages are separated by a line `---`. |
+| `memex help --all` | The overview, every topic page, then every command page, in the order of §16.6 and §11 (§11.1 `init` through §11.18 `due`). Pages are separated by a line `---`. |
 | `memex help --json` | The machine-readable interface (§16.7) |
 
 - An unknown name exits 2 and prints, on stderr:
