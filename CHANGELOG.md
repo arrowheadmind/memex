@@ -14,6 +14,19 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
   message names the entry meant when there is exactly one. In a committed, intact journal
   body it is an immutable finding, counted apart and listed with `check --immutable`.
 
+- `due` and `due_when`, optional fields on tasks and plans: the day the work is owed, and the
+  event it waits for when it has no date. `new --due DATE --due-when W`,
+  `update --due DATE --due-when W` (the new section records why a date moved) and
+  `memex set <id> due=<date>` write them.
+- `memex due [--days N] [--hints] [--json]`: open tasks and plans past due, due within N days
+  (default 7), waiting on a condition, and blocked tasks with their reason; exit 0 always,
+  reads no git. A date written only in a task's title or body is counted as a hint, and
+  `--hints` lists the `memex set` line that moves it into `due`.
+- `check` reports `W-PAST-DUE` for an open task or plan whose `due` has passed, and
+  `W-OPEN-STALE` for an open or in-progress task unchanged in git for more than `stale_days`
+  days, each with the commands that clear it.
+- `stale_days` in `memex.toml` (0 to 36500, default 14; 0 turns `W-OPEN-STALE` off).
+
 - `SECURITY.md`: what matters most for memex's security, and how to report a vulnerability
   privately (security@arrowheadmind.com); linked from the README.
 
@@ -21,6 +34,15 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 - `check --strict` exits 1 on a store whose only new findings are `W-BROKEN-LINK` outside
   locked journal bodies, where before it exited 0; `doctor`'s `check` row counts them.
+- `check --strict` exits 1 on a store with an open task unchanged for more than 14 days
+  (`W-OPEN-STALE`) or a past `due` (`W-PAST-DUE`), where before it exited 0; `doctor`'s
+  `check` row counts them. An older memex reports `E-FIELD-UNKNOWN` on an entry with `due`
+  or `due_when`, and `E-MANIFEST` on `stale_days`: upgrade every machine before using them.
+
+### Changed output
+
+- The usage lines of `new`, `capture`, `promote` and `update` list `--due` and `--due-when`;
+  `help --all` ends with the `due` page.
 
 ## 0.5.1 (2026-11-04)
 

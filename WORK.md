@@ -33,6 +33,7 @@ every gate.
 | B15 | `set field=[]` writes the empty array (`repos = []`); `[]` as an element is a usage error; `W-NO-REPO` names `memex set <id> repos=[]` (SPEC §5.5, §7, §11.7) | implement | judge | The two Planned rows of the §0 table are Implemented with conformance case 255 (checked to fail on the binary at e56f500 except the steps the B15 note says pin unchanged behaviour) and the `W-NO-REPO` lines of case 251 updated, nothing else in the suite changed; the `set` page and `help check-codes` carry the B15 note's text; CHANGELOG Unreleased lists `field=[]` under Added, the `[]` element refusal under Changed and the `W-NO-REPO` message under Changed output | done | fc36984 |
 | B16 | v0.5.1 follow-ups of the second reviews of B14 and B15: an empty array element is an error (`--repo=`, `set repos=,`); `[]` as a comma-separated part is malformed with every operator, as built; `--no-repo` and the `set` usage lines name `repos = []` and `field=[]` (SPEC §0, §5.3, §7, §11.7) | implement | judge | The Planned row of the §0 table is Implemented with conformance case 256 (checked to fail on the binary at ce76570 except the steps the B16 note says pin unchanged behaviour) and the usage lines of cases 159 and 220 that gain `field=[]` updated, nothing else in the suite changed; the `--no-repo` option row, the `set` page and `help check-codes` carry the B16 note's text; CHANGELOG Unreleased lists the empty-element refusal under Changed and the help and usage texts under Changed output | done | 6e46dfb |
 | B17 | `check` reports a broken link: a `[[…]]` shaped like a link that names no entry and is not `E-LINK` is `W-BROKEN-LINK`, with the entry meant when it can be found; an immutable finding in a locked journal body (SPEC §0, §6, §7, §13.1, §13.5) | implement | judge | The Planned row of the §0 table is Implemented with conformance case 257 (checked to fail on the binary at 9a5973a) and unit tests of the shape and of the entry meant; `help links`, `help check-codes`, `help importing` and the `check` page carry the B17 note's text; CHANGELOG Unreleased lists `W-BROKEN-LINK` under Added and the `--strict` outcome under Changed | doing | |
+| B18 | Dates somebody reads and open tasks that went quiet: `due` and `due_when` on tasks and plans; `memex due`; `W-PAST-DUE` and `W-OPEN-STALE` in `check`; `stale_days` in `memex.toml`; `new` and `update` take `--due` and `--due-when` (SPEC §0, §4, §5.3, §7, §11.2, §11.7, §11.17, §11.18; design note `docs/due-and-stale.md`) | implement | judge | The six Planned rows of the §0 table are Implemented with conformance cases 258–262 (each checked to fail on the binary at bb4b345) and unit tests of the hint pattern and the last change; usage lines of existing cases that gain `--due` updated, nothing else in the suite changed; the `due` page, the `new`, `capture`, `promote`, `update` and `check` pages, `help entries`, `help config` and `help check-codes` carry the B18 note's text; CHANGELOG Unreleased lists the fields, `due`, the two warnings and `stale_days` under Added, the `--strict` outcome under Changed and the usage lines under Changed output; `memex due` measured on a 5,000-entry store | doing | |
 
 Rules of the ledger:
 
@@ -964,3 +965,14 @@ Open items for later blocks:
   `help writing`, `help concepts` and the `E-LINK` row of `help check-codes` say a link to a
   missing id instead of "a broken link"; (3) `help links` names the single alias and ASCII;
   (4) case 257's plain-text line gains `[[café-x]]`.
+- B18 dates and stale tasks (a colleague's brief of 2026-11-17, from two passes over the
+  operator's stores that found dates written in titles passing in silence and done tasks left
+  open). Design note: `docs/due-and-stale.md`, with the alternatives rejected. Decisions
+  written into SPEC.md (Planned in §0): `due` is a date only, on tasks and plans only (the
+  brief said any entry; only those two have a status that means "still owed"); `due_when` is
+  free text that never fires; `memex due` is a command, not `list --due`; parked is the
+  existing `blocked` status (statuses are fixed by §5.2, and a new one would be `E-STATUS` for
+  every older memex); the date-in-text hint lives in `memex due`, not in `check` (no third
+  severity); `W-OPEN-STALE` reads the last change from the `git log` summary currency already
+  runs; `update` gains `--due` and `--due-when` so that a moved date carries its reason in one
+  commit. No store format change.
