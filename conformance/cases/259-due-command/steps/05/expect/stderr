@@ -1,3 +1,1 @@
-memex: value for --days must be an integer from 0 to 36500, not "-1"
-memex due [--days N] [--hints] [--json]
-Run: memex help due
+memex: skipped tasks/2026-01-11-quoted-due.md: due is not valid; run memex check

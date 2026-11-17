@@ -35,6 +35,10 @@ func TestTextDate(t *testing.T) {
 		{"A plain title", "first by 2026-05-01, then due 2026-04-01", "2026-05-01"},
 		{"Café by 2026-05-01", "", "2026-05-01"},
 		{"Éby 2026-05-01", "", ""},
+		{"Rotate the key", "## Deadline 2026-01-15\n\nMoved.", ""},
+		{"Rotate the key", "## Due 2026-01-15 for the vendor\n", "2026-01-15"},
+		{"Rotate the key", "Run `due 2026-01-20` to see it.", ""},
+		{"Rotate the key", "Run `x` by 2026-01-20.", "2026-01-20"},
 	}
 	for _, c := range cases {
 		en := &store.Entry{Fields: entry.Fields{"title": c.title}, Body: c.body}

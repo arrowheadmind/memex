@@ -991,3 +991,17 @@ Open items for later blocks:
   `W-OPEN-STALE` 20 and 8 with the default 14 days. Found while testing: the pre-commit hook
   runs the `memex` on PATH, so a host with an older memex refuses to commit an entry with
   `due` (`E-FIELD-UNKNOWN`): every machine needs the new version before the first `due`.
+  Review round 1 (judge: a fresh Claude Opus 5.5 session in its own worktree, read-only;
+  Codex owed, not run) on c908485: pass with findings, none blocking; the judge's gate 178/0
+  and the five cases failing on bb4b345 confirmed. Applied once: (1) in a shallow clone a
+  parentless commit is the boundary, not a change (§7 "Last changed", unit test); (2) the hint
+  ignores inline code and heading lines that end in a date, the form `update` writes (§11.18,
+  four rows in the unit test); (3) `due` prints `memex: skipped <path>: due is not valid; run
+  memex check` for an invalid `due` or `due_when` instead of dropping it silently (§11.18,
+  case 259 step 05); (4) §4 says an invalid `stale_days` keeps the default; (5) §11.17 says
+  why a wrong type is exit 1 for `update` (as for `set`); (6) case 258 steps 13–16 pin the
+  refusal order of `--due` and `--due-when`, case 259 gains equal dates in two directories and
+  a `due_when` task whose body names a date (checked: dropping the `due_when` test from the
+  hint fails the case), and case 261 loses the task whose result depended on the clock of the
+  seed commit; (7) the `check` page says an uncommitted change counts as today; (8) `due`
+  opens the store once.

@@ -65,8 +65,14 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 		return nil, err
 	}
 	h.HasHEAD = true
+	// In a shallow clone a commit with no parents is the boundary, not a change: a path whose
+	// newest version comes from it has no last change (SPEC §7, W-OPEN-STALE).
+	shallow := false
+	if out, err := g.Run("rev-parse", "--is-shallow-repository"); err == nil && strings.TrimSpace(out) == "true" {
+		shallow = true
+	}
 	args := []string{"log", "--first-parent", "--diff-merges=first-parent", "--root", "--raw",
-		"--no-abbrev", "--no-renames", "--relative", "-z", "--format=%x01%H %cs", "HEAD", "--"}
+		"--no-abbrev", "--no-renames", "--relative", "-z", "--format=%x01%H %cs %P", "HEAD", "--"}
 	out, err := g.Run(append(args, dirs...)...)
 	if err != nil {
 		return nil, err
@@ -79,7 +85,11 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 	for i := 0; i < len(tokens); i++ {
 		t := strings.TrimPrefix(tokens[i], "\n")
 		if header, ok := strings.CutPrefix(t, "\x01"); ok {
-			_, date, _ = strings.Cut(header, " ")
+			f := strings.Fields(header) // hash, date, parents
+			date = ""
+			if len(f) >= 2 && (len(f) > 2 || !shallow) {
+				date = f[1]
+			}
 			continue
 		}
 		if !strings.HasPrefix(t, ":") || i+1 >= len(tokens) {

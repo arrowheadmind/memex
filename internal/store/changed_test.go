@@ -58,6 +58,46 @@ func TestReadHistoryChanged(t *testing.T) {
 	}
 }
 
+// In a shallow clone the boundary commit is not a change (SPEC §7, last changed): a path whose
+// newest version comes from it has no date, and one changed after it keeps its own.
+func TestReadHistoryChangedShallow(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	src, root := t.TempDir(), filepath.Join(t.TempDir(), "clone")
+	setGitEnv(t, t.TempDir())
+	for i, files := range []map[string]string{{"tasks/a.md": "a1", "tasks/b.md": "b1"}, {"tasks/c.md": "c1"}, {"tasks/b.md": "b2"}} {
+		for p, data := range files {
+			os.MkdirAll(filepath.Join(src, filepath.Dir(p)), 0o755)
+			os.WriteFile(filepath.Join(src, p), []byte(data), 0o644)
+		}
+		d := []string{"2026-01-01T12:00:00+00:00", "2026-01-02T12:00:00+00:00", "2026-01-03T12:00:00+00:00"}[i]
+		t.Setenv("GIT_COMMITTER_DATE", d)
+		g := gitx.New(src, 0)
+		if i == 0 {
+			g.Run("init", "-q")
+		}
+		for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "c"}} {
+			if _, err := g.Run(args...); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if out, err := exec.Command("git", "clone", "-q", "--depth", "2", "file://"+src, root).CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	h, err := ReadHistory(gitx.New(root, 0), []string{"tasks"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"tasks/a.md": "", "tasks/b.md": "2026-01-03", "tasks/c.md": ""}
+	for p, d := range want {
+		if h.Changed[p] != d {
+			t.Errorf("Changed[%s] = %q, want %q", p, h.Changed[p], d)
+		}
+	}
+}
+
 // stale_days (SPEC §4): 0 to 36500, default 14; anything else is E-MANIFEST.
 func TestManifestStaleDays(t *testing.T) {
 	cases := []struct {
