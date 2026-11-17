@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/arrowheadmind/memex/internal/commands"
 	"github.com/arrowheadmind/memex/internal/spec"
@@ -173,6 +175,22 @@ func runSave(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, 
 	o := commands.SaveOptions{Paths: a.positionals, AllowDelete: a.has("--allow-delete"), Fmt: a.has("--fmt")}
 	o.Message, o.MessageSet = a.value("-m")
 	return usage(commands.Save(env, o))(cmdErr)
+}
+
+func runMigrate(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	if len(a.positionals) > 0 {
+		return 0, cmdErr(unexpected(a.positionals[0], nil))
+	}
+	o := commands.MigrateOptions{To: spec.StoreFormat}
+	if v, ok := a.value("--to"); ok {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < spec.OldestStoreFormat || n > spec.StoreFormat || strings.HasPrefix(v, "+") {
+			return 0, cmdErr(fmt.Sprintf("value for --to must be a store format from %d to %d, not %q",
+				spec.OldestStoreFormat, spec.StoreFormat, v))
+		}
+		o.To = n
+	}
+	return commands.Migrate(env, o), nil
 }
 
 func runSync(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {

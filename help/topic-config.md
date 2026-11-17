@@ -54,15 +54,15 @@ every clone sees the same settings. Unknown keys are `E-MANIFEST`.
 
 | key | type | default | meaning |
 |---|---|---|---|
-| `format` | integer | none (required) | Store format; this memex reads format 1 |
+| `format` | integer | none (required) | Store format, 1 or 2; `init` writes 2. Format 2 allows `due`, `due_when` and `stale_days`; a memex that reads only format 1 refuses a format 2 store as a whole. `memex migrate` moves a store between them |
 | `name` | string | none | Store name, shown by `doctor` |
 | `require_repos` | boolean | `false` | Entries name their repositories: `new`, `capture` and `promote` refuse to create, and `update` to rewrite, an entry without `repos` unless `--no-repo` (which writes `repos = []`); `check` reports `W-NO-REPO`. `set`, `fmt`, `save`, `import`, and the source that `promote` marks promoted, are not affected |
-| `stale_days` | integer 0–36500 | `14` | Days an `open` or `in-progress` task may go without a commit before `check` reports `W-OPEN-STALE`; `0` turns it off. Older memex versions refuse the key: upgrade every machine first |
+| `stale_days` | integer 0–36500 | absent: off | Format 2 only. Days an `open` or `in-progress` task with neither `due` nor `due_when` may go without a commit before `check` reports `W-OPEN-STALE`; `0` or absent turns it off. `init` and `memex migrate` write `stale_days = 14` |
 
 Example:
 
 ```
-format = 1
+format = 2
 name = "projects"
 require_repos = true
 stale_days = 14

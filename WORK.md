@@ -1005,3 +1005,26 @@ Open items for later blocks:
   hint fails the case), and case 261 loses the task whose result depended on the clock of the
   seed commit; (7) the `check` page says an uncommitted change counts as today; (8) `due`
   opens the store once.
+  Codex review round 1 (on bb4b345..45b1b5d): FAIL, one blocking, five should fix, three
+  notes. Revision, once, before a fresh look at the design if it fails again:
+  (1, blocking) the fields are store format 2: this memex reads and writes 1 and 2, a format 1
+  store reads as before (`due`, `due_when` `E-FIELD-UNKNOWN` "needs store format 2; run memex
+  migrate", `stale_days` `E-MANIFEST` the same way), `init` and `import` write 2, and the new
+  `memex migrate [--to N]` (§11.19) moves a store to 2 or back to 1; an older memex fails fast
+  on a format 2 store. The answer (format 2, not a sidecar file) and what it costs are in the
+  design note, "Compatibility". (2) An absent `stale_days` is off; `init` and `migrate` write
+  14 (case 264). (3) In a shallow clone a task last changed at the boundary is reported once
+  the boundary is old enough, "or earlier" (case 268, unit test). (4) `due` checks every field
+  it reads and reports what it skips: stderr, a count line, `skipped` in the JSON (case 265,
+  unit test). (5) Control characters in `title`, `summary`, `due_when` are E-FIELD-VALUE in a
+  format 2 store and escaped in `due`'s text output (case 266, unit test). (6) `W-OPEN-STALE`
+  skips a task with `due` or `due_when` (case 267); no other exemption. (7) Today per machine,
+  in §2, the `due` page and the note. (8) Hints labelled as guesses, the two past-date
+  examples in case 269 and the unit test. (9) `scripts/due-bench.sh` checks exit codes and
+  output before timing, which found the made-up store's due tasks unreadable (fixed).
+  Cases 264–269 checked to fail on the binary at 45b1b5d with their stores at format 1 (that
+  binary refuses format 2 as a whole), 263 (`migrate`) fails there on every step. Existing
+  cases changed on purpose: the version line (format 2) in the runner and its tests; 035 and
+  204 use format 3 as the newer format; 090, 150, 203 and 244 expect `format = 2` and
+  `stale_days = 14` from `init`/`import`; 258–262 and the help fixture are format 2 stores
+  (261 messages gain the `--due` clause); 259 the hint labels and `skipped`.

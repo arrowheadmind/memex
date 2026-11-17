@@ -1,0 +1,3 @@
+tasks/2026-01-10-colours.md: E-FIELD-VALUE summary must not contain control characters (U+0000 to U+001F, U+007F to U+009F)
+tasks/2026-01-10-colours.md: E-FIELD-VALUE title must not contain control characters (U+0000 to U+001F, U+007F to U+009F)
+check: 2 errors, 0 warnings

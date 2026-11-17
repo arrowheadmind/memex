@@ -287,7 +287,7 @@ func memexVersion(memex, git string) (string, error) {
 		return "", err
 	}
 	res := s.run([]string{"version"}, nil)
-	m := regexp.MustCompile(`^memex (\S+) \(store format 1\)\n$`).FindStringSubmatch(res.stdout)
+	m := regexp.MustCompile(`^memex (\S+) \(store format 2\)\n$`).FindStringSubmatch(res.stdout)
 	if res.err != nil || res.exit != 0 || m == nil {
 		return "", fmt.Errorf("memex version: exit %d, output %q, %v", res.exit, res.stdout, res.err)
 	}

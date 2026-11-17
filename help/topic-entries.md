@@ -72,10 +72,13 @@ An empty array is left out, except `repos = []`, which says the entry concerns n
 in a store with `require_repos = true` that is what `--no-repo` writes, and an entry with no
 `repos` field at all is `W-NO-REPO`.
 
-`due` and `due_when` matter while a task is `open` or `in-progress` and a plan `draft` or
-`active`: `memex due` lists them and `check` reports a past date (`W-PAST-DUE`). A `blocked`
-task is parked: listed under `blocked` with its summary as the reason, never late. A date
-written only in a title or body is read by nobody; `memex due --hints` finds those.
+`due` and `due_when` need store format 2 (`memex migrate`; in a format 1 store they are
+`E-FIELD-UNKNOWN`). In a format 2 store, `title`, `summary` and `due_when` hold no control
+characters. `due` and `due_when` matter while a task is `open` or `in-progress` and a plan
+`draft` or `active`: `memex due` lists them and `check` reports a past date (`W-PAST-DUE`). A
+`blocked` task is parked: listed under `blocked` with its summary as the reason, never late. A
+task with `due` or `due_when` is never `W-OPEN-STALE`: it says when it is owed. A date written
+only in a title or body is read by nobody; `memex due --hints` guesses at those.
 
 ## Bodies
 

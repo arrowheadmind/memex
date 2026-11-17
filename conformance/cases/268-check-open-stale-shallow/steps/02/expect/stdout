@@ -1,0 +1,2 @@
+tasks/2026-01-01-open-task.md: W-OPEN-STALE open and unchanged since 2026-01-01 or earlier (the history is shallow), more than stale_days (13) days ago; record where it stands: memex update 2026-01-01-open-task --summary=<sentence> --body -, or close it: memex update 2026-01-01-open-task --status done --summary=<sentence> --body -, or park it: memex update 2026-01-01-open-task --status blocked --summary=<sentence> --body -, or say when it is owed: memex update 2026-01-01-open-task --due=<date> --summary=<sentence> --body -
+check: 0 errors, 1 warnings

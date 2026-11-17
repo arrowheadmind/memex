@@ -1,0 +1,3 @@
+memex: value for --to must be a store format from 1 to 2, not "3"
+memex migrate [--to N]
+Run: memex help migrate

@@ -38,7 +38,7 @@ func TestPattern(t *testing.T) {
 // fakeMemex prints the version, or commits a file to the store and prints the outcome line.
 const fakeMemex = `#!/bin/sh
 case "$1" in
-version) echo "memex 9.9.9 (store format 1)" ;;
+version) echo "memex 9.9.9 (store format 2)" ;;
 write)
   cd "$MEMEX_STORE" || exit 1
   printf 'x\n' > rules/new.md
@@ -70,7 +70,7 @@ func TestRunAllAgainstFake(t *testing.T) {
 	cases := filepath.Join(dir, "cases")
 
 	writeFile(t, filepath.Join(cases, "001-version/cmd"), "version\n", 0o644)
-	writeFile(t, filepath.Join(cases, "001-version/expect/stdout"), "memex <VERSION> (store format 1)\n", 0o644)
+	writeFile(t, filepath.Join(cases, "001-version/expect/stdout"), "memex <VERSION> (store format 2)\n", 0o644)
 	writeFile(t, filepath.Join(cases, "001-version/expect/exit"), "0\n", 0o644)
 
 	c := filepath.Join(cases, "002-write")
@@ -99,7 +99,7 @@ func TestRunAllAgainstFake(t *testing.T) {
 	writeFile(t, filepath.Join(o, "steps/01/store/.remove"), "memex.toml\n", 0o644)
 	writeFile(t, filepath.Join(o, "steps/01/git"), "add\n-A\n\ncommit\n-q\n-m\nedit\n\nnot-a-command\n", 0o644)
 	writeFile(t, filepath.Join(o, "steps/01/cmd"), "version\n", 0o644)
-	writeFile(t, filepath.Join(o, "steps/01/expect/stdout"), "memex <VERSION> (store format 1)\n", 0o644)
+	writeFile(t, filepath.Join(o, "steps/01/expect/stdout"), "memex <VERSION> (store format 2)\n", 0o644)
 	writeFile(t, filepath.Join(o, "steps/01/expect/exit"), "0\n", 0o644)
 	writeFile(t, filepath.Join(o, "steps/01/expect/git-exit"), "1\n", 0o644)
 	writeFile(t, filepath.Join(o, "steps/01/expect/git-stderr-contains"), "is not a git command\n", 0o644)
@@ -111,7 +111,7 @@ func TestRunAllAgainstFake(t *testing.T) {
 	f := filepath.Join(cases, "003-fails")
 	writeFile(t, filepath.Join(f, "store/a"), "a\n", 0o644)
 	writeFile(t, filepath.Join(f, "cmd"), "version\n", 0o644)
-	writeFile(t, filepath.Join(f, "expect/stdout"), "memex 1.0.0 (store format 1)\n", 0o644)
+	writeFile(t, filepath.Join(f, "expect/stdout"), "memex 1.0.0 (store format 2)\n", 0o644)
 	writeFile(t, filepath.Join(f, "expect/exit"), "1\n", 0o644)
 	writeFile(t, filepath.Join(f, "expect/store/a"), "a\n", 0o755)
 

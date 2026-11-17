@@ -50,7 +50,7 @@ func TestReadManifest(t *testing.T) {
 		}
 	}
 	for text, want := range map[string]string{
-		"format = 2\n": "store format 2 is newer than this memex reads (1); upgrade memex",
+		"format = 3\n": "store format 3 is newer than this memex reads (2); upgrade memex",
 		"format = 0\n": "store format 0 is older than this memex reads (1)",
 	} {
 		_, _, err := ReadManifest(WorkTree{writeTree(t, map[string]string{"memex.toml": text})})

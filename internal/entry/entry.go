@@ -471,3 +471,42 @@ const MaxReviewDays = 36500
 
 // MinContent is the smallest content measure a new body may have (SPEC §5.6).
 const MinContent = 80
+
+// ControlFreeFields are the one-line fields that `memex due` prints in plain text, and that a
+// store of format 2 or later refuses with a control character in them (SPEC §5.3).
+var ControlFreeFields = []string{"title", "summary", "due_when"}
+
+// ControlMessage completes the E-FIELD-VALUE message of a control character in one of
+// ControlFreeFields, after the field's name.
+const ControlMessage = "must not contain control characters (U+0000 to U+001F, U+007F to U+009F)"
+
+// HasControl reports whether s holds a control character: U+0000 to U+001F or U+007F to
+// U+009F.
+func HasControl(s string) bool {
+	return strings.ContainsFunc(s, unicode.IsControl)
+}
+
+// EscapeControl returns s with each control character written as \t, \r, \n or \u and four
+// hex digits, so that one line of plain output stays one line and cannot drive a terminal
+// (SPEC §11.18). It is for display only: other text is left as it is, backslashes included.
+func EscapeControl(s string) string {
+	if !HasControl(s) {
+		return s
+	}
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case r == '\n':
+			b.WriteString(`\n`)
+		case unicode.IsControl(r):
+			fmt.Fprintf(&b, `\u%04X`, r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}

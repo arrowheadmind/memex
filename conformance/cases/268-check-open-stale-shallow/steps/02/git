@@ -1,0 +1,10 @@
+commit
+-q
+-am
+the rule only
+
+clone
+-q
+--depth=1
+file://<STORE>
+<HOME>/depth1

@@ -16,7 +16,7 @@ store and no configuration. `memex --version` is the same.
 ## Output
 
 ```
-memex <version> (store format 1)
+memex <version> (store format 2)
 ```
 
 `<version>` is the release version, or `0.0.0-dev` for a build that is not a release.
@@ -32,12 +32,12 @@ memex <version> (store format 1)
 
 ```example
 $ memex version
-memex <VERSION> (store format 1)
+memex <VERSION> (store format 2)
 ```
 
 ```example
 $ memex --version
-memex <VERSION> (store format 1)
+memex <VERSION> (store format 2)
 ```
 
 ## Mistakes to avoid

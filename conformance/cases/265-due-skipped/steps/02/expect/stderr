@@ -1,0 +1,5 @@
+memex: skipped tasks/2026-01-10-unreadable.md: invalid TOML in the frontmatter at line 2; run memex check
+memex: skipped tasks/2026-01-10-bad-status.md: status is not valid; run memex check
+memex: skipped tasks/2026-01-10-bad-title.md: title is not valid; run memex check
+memex: skipped tasks/2026-01-10-no-status.md: missing required field "status"; run memex check
+memex: skipped tasks/2026-01-10-no-title.md: missing required field "title"; run memex check

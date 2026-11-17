@@ -1,12 +1,11 @@
-# memex <version> (store format 1)
+# memex <version> (store format 2)
 
 If you are an AI agent: run `memex help agents` now (60 lines), or `memex help --all` once for
 everything.
 
 memex is a command-line tool for a private, git-backed store of Markdown notes: the rules,
-mistakes, decisions, runbooks, facts, tasks, plans and investigations that one operator and
-their coding agents accumulate. The people and agents do the thinking; memex is the memory
-they share.
+mistakes, decisions, runbooks, facts, tasks, plans and investigations that one operator and their
+coding agents accumulate. The people and agents do the thinking; memex is the memory they share.
 
 ## The model
 
@@ -57,6 +56,7 @@ memex save                                              # after editing an entry
 | `version` | Print the version |
 | `update` | Append a dated section to an entry and replace its summary, in one commit |
 | `due` | List what open tasks and plans owe: past due, due soon, waiting, blocked |
+| `migrate` | Move the store to another store format, in one commit |
 
 ## Topics
 

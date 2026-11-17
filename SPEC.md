@@ -1,6 +1,6 @@
 # memex — specification
 
-**Store format version 1. Tool version: 0.5.1 (released 2026-11-04).**
+**Store format version 2. Tool version: 0.5.1 (released 2026-11-04).**
 
 memex is a command-line tool for a private, git-backed store of Markdown files. The store holds
 what one operator and their agents have learned: rules, mistakes, decisions, runbooks, current
@@ -70,6 +70,12 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 11.2 `new --due` and `--due-when` | Implemented |
 | 11.17 `update --due` and `--due-when` | Implemented |
 | 11.18 `due` | Implemented |
+| 4 Store format 2 and the formats a memex reads | Implemented |
+| 4 An absent `stale_days` is off | Implemented |
+| 5.3 Control characters in `title`, `summary` and `due_when` (format 2) | Implemented |
+| 7 `W-OPEN-STALE` exempts a task with `due` or `due_when`; a shallow clone's boundary date | Implemented |
+| 11.18 `due` reports what it skips, escapes control characters, labels hints as guesses | Implemented |
+| 11.19 `migrate` | Implemented |
 
 ---
 
@@ -120,7 +126,7 @@ the predecessor (brain-kit's `brainctl`, v2 and v3), and each names the failure 
 | **Body** | Everything in an entry after the frontmatter (§5.1). |
 | **Pointer file** | A file a coding tool loads automatically (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) whose entire content is a pointer to the store's `AGENT.md` (§12). |
 | **Workspace** | The configured directory tree of source repositories. It is used only by the pointer check and the leak scan (§12), and to list repository names when a store that requires repository attribution refuses a write (§5.5). |
-| **Today** | The current date in the local time zone, or `MEMEX_TODAY` if set (§3.3). |
+| **Today** | The current date in the local time zone, or `MEMEX_TODAY` if set (§3.3). It is the date of the machine that runs the command, so two machines on either side of midnight (or in different time zones) have different todays for those hours, and the findings and lists that depend on today (`W-PAST-DUE`, `W-OPEN-STALE`, `W-STALE-REFERENCE`, `W-RAW-OLD`, `memex due`) can differ between them until both reach the same date. A store has no time zone of its own; a check that must agree across machines sets `MEMEX_TODAY`. |
 
 ---
 
@@ -227,15 +233,21 @@ README.md           optional, free text, ignored by memex
 `memex.toml`:
 
 ```toml
-format = 1
+format = 2
 name = "example"
 require_repos = true
 stale_days = 14
 ```
 
-- `format` is an integer. memex refuses (exit 2) a store whose `format` is greater than the one it
-  implements. If it is lower, memex tells the operator to run the migration that ships with the
-  version that raised it.
+- `format` is an integer, the store format. This version reads and writes formats 1 and 2, and
+  `init` writes 2. memex refuses (exit 2) a store whose `format` is greater than the newest it
+  implements (`store format <n> is newer than this memex reads (<newest>); upgrade memex`), so
+  an older memex fails fast on a newer store as a whole instead of reading part of it. If it is
+  lower than the oldest it reads, memex tells the operator to run the migration that ships with
+  the version that raised it. Format 2 differs from 1 only in what it allows: `due` and
+  `due_when` (§5.3), `stale_days` (below), and no control characters in `title`, `summary` and
+  `due_when` (§5.3). A format 1 store reads, validates and is written exactly as before format
+  2 existed; `memex migrate` (§11.19) moves a store between the two.
 - `name` is a free string, shown by `doctor`. It is optional.
 - `require_repos` is a boolean, optional, default `false`. When `true`, an entry created by
   `new`, `capture` or `promote`, and an existing entry rewritten by `update`, must say which
@@ -243,11 +255,14 @@ stale_days = 14
   reports an entry that does neither (`W-NO-REPO`, §7). It is for a store that holds
   knowledge about source repositories, where an entry created outside any repository would
   otherwise lose its attribution silently.
-- `stale_days` is an integer from 0 to 36500, optional, default `14`: the number of days an
-  open task may go unchanged before `check` reports it (`W-OPEN-STALE`, §7). `0` turns the
-  finding off. A value that is not such an integer is `E-MANIFEST`, and the default 14
-  applies. It is a property of the store, not of the caller, because every session that
-  checks the store must see the same findings.
+- `stale_days` is an integer from 0 to 36500, optional, format 2 only: the number of days an
+  open task may go unchanged before `check` reports it (`W-OPEN-STALE`, §7). `0` or absent
+  turns the finding off, so that no store acquires a policy it did not write; `init` and
+  `memex migrate` write `stale_days = 14`. A value that is not such an integer is `E-MANIFEST`
+  and the finding is off. In a format 1 store the key is `E-MANIFEST`
+  (`stale_days needs store format 2; run memex migrate`) and the finding is off. It is a
+  property of the store, not of the caller, because every machine that checks the store must
+  apply the same threshold.
 - Unknown keys are an error.
 
 Type directories and `files/` MAY be absent: git doesn't track empty directories, and an
@@ -397,6 +412,13 @@ Listed in canonical order.
 - A field on a type not listed under "Allowed on" is an error.
 - There is no `updated` field (git records it), and no reverse-link field. Reverse links are
   computed (§11.6).
+- `due` and `due_when` need store format 2 (§4). In a format 1 store each one present is
+  `E-FIELD-UNKNOWN` (`field "<field>" needs store format 2; run memex migrate`) instead of being
+  validated, and is otherwise ignored, so that a format 1 store means what it meant before.
+- In a format 2 store, `title`, `summary` and `due_when` hold no control character (U+0000 to
+  U+001F, U+007F to U+009F): `memex due` prints them on lines a hook reads, and a control
+  character could end a line early or drive a terminal. A format 1 store is not checked for
+  them, and `memex due` escapes them in its text output (§11.18).
 - `due` is a date, never a time: today (§2) is a date, every other date in a store is a date,
   and a promise kept to the hour belongs in a calendar, not in a store. A TOML date-time is the
   `E-FIELD-VALUE` of a wrong kind. `due` and `due_when` may be given together: the condition
@@ -685,9 +707,9 @@ Errors:
 | `E-NOT-ENTRY` | Non-`.md` file or subdirectory in a type directory; unknown top-level item (§4) | Unknown top-level item: `unknown top-level item; it is not part of the store layout`. Subdirectory of a type directory: `subdirectory in a type directory; type directories are flat, attachments go in files/<id>/`. Other non-entry in a type directory: `not a .md file; type directories hold only entries, attachments go in files/<id>/`. A type directory that is a file: `not a directory; <dir>/ holds <type> entries`. `files` as a file: `not a directory; files/ holds attachments as files/<id>/`. `memex.toml`, `AGENT.md` or `README.md` that is not a regular file: `not a regular file` |
 | `E-ENCODING` | Not UTF-8, has a BOM, or contains CR | One finding per problem: `not valid UTF-8`, `begins with a byte-order mark`, `contains CR characters; use LF line endings` |
 | `E-FRONTMATTER` | Missing delimiters, or invalid TOML | `missing opening +++ line; the file must begin with the line +++`, `missing closing +++ line after the frontmatter`, `invalid TOML in the frontmatter at line <line>` |
-| `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type | `unknown field "<field>" (did you mean "<nearest>"?)` over the §5.3 names in canonical order; `field "<field>" is not allowed on a <type>; it is allowed on: <types>` with the "Allowed on" types of §5.3 separated by `, ` |
+| `E-FIELD-UNKNOWN` | Field not in §5.3, or not allowed on this type, or `due` or `due_when` in a format 1 store (§5.3) | `unknown field "<field>" (did you mean "<nearest>"?)` over the §5.3 names in canonical order; `field "<field>" is not allowed on a <type>; it is allowed on: <types>` with the "Allowed on" types of §5.3 separated by `, `; `field "<field>" needs store format 2; run memex migrate` |
 | `E-FIELD-MISSING` | Required field absent | `missing required field "<field>"` |
-| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `due_when must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed`; `<field> element "" is empty` |
+| `E-FIELD-VALUE` | Wrong kind or value outside its constraints | Wrong kind: `<field> must be a string`, `… must be a date written YYYY-MM-DD, unquoted`, `… must be an integer`, `… must be a boolean`, `… must be an array of strings`. Constraints: `title must be 1 to 300 characters on one line`; `due_when must be 1 to 300 characters on one line`; `summary must be one line of at most 500 characters`; `kind must be "prompt" or "report", not "<value>"`; `body_sha256 must be 64 lowercase hex digits`; `review_days must be between 1 and 36500`; `tags element "<value>" does not match ^[a-z0-9][a-z0-9-]*$`; `<field> element "<value>" contains a line feed`; `<field> element "" is empty`; in a format 2 store, `<field> must not contain control characters (U+0000 to U+001F, U+007F to U+009F)` for `title`, `summary` and `due_when` |
 | `E-STATUS` | Status not valid for the type | `status "<value>" is not valid for a <type> (did you mean "<nearest>"?); valid: <statuses>`, the type's statuses in §5.2 order separated by `, ` |
 | `E-CREATED` | `created` ≠ id date | `created <date> differs from the date in the id, <id date>` |
 | `E-SUPERSEDED` | `superseded` without `superseded_by`, or `superseded_by` without `superseded` | `status is superseded but superseded_by is missing; add it: memex set <id> superseded_by=<new>`; `superseded_by is set but status is "<value>"; either memex set <id> status=superseded, or memex set <id> superseded_by=` |
@@ -697,7 +719,7 @@ Errors:
 | `E-HASH` | `body_sha256` mismatch | `body does not match body_sha256; journal bodies are immutable, so restore the body, or capture the corrected text and supersede with: memex set <id> status=superseded superseded_by=<new>` |
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id | `alias "<value>" is also on <paths>` (the other entries); `alias "<value>" is the id of <paths>` |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` isn't an id | On `files/<x>`: `"<x>" is not the id of an entry; attachments go in files/<id>/`, written literally as `files/<id>/`; on a file directly under `files/`: `not a directory; attachments go in files/<id>/` |
-| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`, `require_repos`, `stale_days`; `missing key "format"`; `format must be an integer`; `name must be a string`; `require_repos must be a boolean`; `stale_days must be an integer from 0 to 36500` |
+| `E-MANIFEST` | `memex.toml` invalid | `invalid TOML at line <line>`; `unknown key "<key>" (did you mean "<nearest>"?)` over `format`, `name`, `require_repos`, `stale_days`; `missing key "format"`; `format must be an integer`; `name must be a string`; `require_repos must be a boolean`; `stale_days must be an integer from 0 to 36500`; `stale_days needs store format 2; run memex migrate` |
 
 Warnings:
 
@@ -708,7 +730,7 @@ Warnings:
 | `W-BROKEN-LINK` | A `[[…]]` shaped like a link that names no entry and is not `E-LINK` (§6, broken links) | When §6 finds the entry meant: `[[<target>]] on line <line> names no entry; link [[<target id>]] instead`; otherwise `[[<target>]] on line <line> names no entry; link the id of an entry, or put it in backticks if it is not a link`. In a locked journal body, an immutable finding (above): `[[<target>]] on line <line> names no entry; it means [[<target id>]], but a journal body is immutable, so this is not counted as a warning`, or without the entry meant `[[<target>]] on line <line> names no entry; a journal body is immutable, so this is not counted as a warning` |
 | `W-STALE-REFERENCE` | `reference` with `review_days`, where `verified + review_days < today` | `verified <date> is more than review_days (<n>) ago; check the facts, then: memex set <id> verified=<today>` |
 | `W-PAST-DUE` | A task with status `open` or `in-progress`, or a plan with status `draft` or `active` (§11.18, open), whose `due` is before today | Task: `due <date> has passed; if it is done: memex update <id> --status done --summary=<sentence> --body -; to move the date, saying why in the body: memex update <id> --due=<new> --summary=<sentence> --body -; to park it: memex update <id> --status blocked --summary=<sentence> --body -`. Plan (no status parks a plan): `due <date> has passed; if it is done: memex update <id> --status done --summary=<sentence> --body -; to move the date, saying why in the body: memex update <id> --due=<new> --summary=<sentence> --body -` |
-| `W-OPEN-STALE` | A task with status `open` or `in-progress` that was last changed (below) more than `stale_days` (§4) days before today. Not reported when `stale_days` is `0` | `<status> and unchanged since <date>, more than stale_days (<n>) days ago; record where it stands: memex update <id> --summary=<sentence> --body -, or close it: memex update <id> --status done --summary=<sentence> --body -, or park it: memex update <id> --status blocked --summary=<sentence> --body -` |
+| `W-OPEN-STALE` | A task with status `open` or `in-progress`, with neither `due` nor `due_when`, that was last changed (below) more than `stale_days` (§4) days before today. Not reported when `stale_days` is `0` or absent. A task with `due` or `due_when` says when it is owed: a future date or a condition is a decision to wait, and a past date is `W-PAST-DUE` | `<status> and unchanged since <since>, more than stale_days (<n>) days ago; record where it stands: memex update <id> --summary=<sentence> --body -, or close it: memex update <id> --status done --summary=<sentence> --body -, or park it: memex update <id> --status blocked --summary=<sentence> --body -, or say when it is owed: memex update <id> --due=<date> --summary=<sentence> --body -`, where `<since>` is the date, followed by ` or earlier (the history is shallow)` for a shallow clone's boundary (below) |
 | `W-RAW-OLD` | `raw` journal entry created more than 90 days ago | `raw since <created>, more than 90 days ago; review it, then: memex set <id> status=kept, or memex promote <id>` |
 | `W-PROMOTED-UNCITED` | `promoted` journal entry that no entry cites in `sources` | `promoted, but no entry lists "<id>" in sources` |
 | `W-NO-TERMS` | Entry with neither `tags` nor `keywords` | `no tags or keywords; add the words a reader would search with: memex set <id> keywords=<word>,<word>` |
@@ -788,8 +810,10 @@ newest version above), written as `YYYY-MM-DD` in the time zone offset that comm
 does not hold, and every task of a store with no commits or no git repository, has no last
 change and is not reported. In a shallow clone (`git rev-parse --is-shallow-repository`
 prints `true`) a commit with no parents is the clone's boundary, not a change: a task whose
-newest version comes from it has no last change either, so a shallow checkout reports only
-the tasks changed after its boundary, and none of the others. Git is the record, not a field: a field would have to be written
+newest version comes from it was last changed on the boundary's committer date or earlier.
+Its last change is taken as the boundary's date, which is never earlier than the true one,
+so a shallow checkout reports such a task only once the boundary itself is old enough, and
+then truly (the message says `or earlier`); it never reports one too soon. Git is the record, not a field: a field would have to be written
 by every edit, and a hand edit would forget it. Any commit that changes the file counts, a
 `memex set` of one field or a mass `memex fmt` included; a commit that only touches another
 file does not. It is a warning, never an immutable finding: a task's body can change.
@@ -1201,7 +1225,7 @@ changes (run memex save)` as well, because a fast-forward could overwrite an edi
   title. The predecessor created junk entries from `capture --help`.
 - **Help:** `memex help …`, `memex COMMAND --help` and `-h` print help to standard output and exit
   0. They never perform the command, and they work without a store. See §16.
-- **Version:** `memex version` and `memex --version` print `memex <version> (store format 1)`.
+- **Version:** `memex version` and `memex --version` print `memex <version> (store format 2)`, the newest store format it reads and writes.
 - **Exit codes:**
 
   | Code | Meaning |
@@ -1228,7 +1252,8 @@ memex init --pointers DIR [--force]
 
 **Store form.** `memex init PATH` creates the directory if needed, runs `git init` if it isn't a
 repository, and writes:
-- `memex.toml` (`name` defaults to the directory basename);
+- `memex.toml`: `format = 2`, `name = "<name>"` and `stale_days = 14`, one per line in that
+  order (`name` defaults to the directory basename);
 - `AGENT.md` (Appendix A);
 - the seven type directories, each with no files;
 - `files/`;
@@ -1799,7 +1824,7 @@ where `details` holds the `LEAK <path>` lines of the `leaks` check and is otherw
 | `git` | `git` is runnable; version ≥ 2.30 | PASS `version 2.30 or later`; FAIL `git is not runnable: <reason>`, `git <x>.<y> is older than 2.30`, or `cannot read the git version from "<output>"` |
 | `config` | The config file parses (or is absent), and `MEMEX_TODAY`, when set, is a date | PASS `config file parses` or `no config file`; FAIL with the §3 error message. With the config file failed, the store is resolved from `--store` and `MEMEX_STORE` only; with `MEMEX_TODAY` failed, `check` uses the local date |
 | `store` | The store resolves (§3.1) and `memex.toml` is valid | PASS `<root>`, followed by `, name "<name>"` when the manifest has a name; FAIL with the §3.1 message (an unreadable `memex.toml` is `store <root>: <reason>`, the form of an unreadable store directory) or the first `E-MANIFEST` finding as `memex.toml: E-MANIFEST <message>`. When it FAILs, `format` and every check up to `check` are omitted |
-| `format` | The store format is supported (§4) | PASS `format 1`; FAIL with the §4 refusal message. When it FAILs, every check up to `check` is omitted |
+| `format` | The store format is supported (§4) | PASS `format <n>`; FAIL with the §4 refusal message. When it FAILs, every check up to `check` is omitted |
 | `upstream` | The current branch has an upstream | PASS `<branch> tracks <upstream>`; WARN `branch <branch> has no upstream, so nothing is pushed; run git -C <root> push -u origin <branch>`, or `HEAD is not on a branch; run git -C <root> switch main`. When the store root is not the top of its own git repository (`git rev-parse --show-toplevel` fails or, symbolic links resolved, names another directory), WARN `<root> is not a git repository; run memex init <root>`, and `fetch-age`, `clean` and `hooks` are omitted |
 | `fetch-age` | Age of `FETCH_HEAD`'s mtime in the store's git directory. A fleet check can watch this through `--json` | PASS `last fetch <time>`; WARN `last fetch <time>, more than 8 hours ago; run memex sync`, or `never fetched; run memex sync` when the file does not exist. `<time>` is RFC 3339 UTC to the second |
 | `clean` | The store has no uncommitted changes, no unpushed commits and no rebase in progress | PASS `nothing uncommitted or unpushed`; WARN with one or more of `<n> uncommitted changes; run memex save` (`git status --porcelain --untracked-files=all` lines, `change` when 1), `<n> unpushed commits; run memex sync` (`commit` when 1; only with an upstream), `a rebase is in progress; finish it with git -C <root> rebase --continue, or --abort`, joined by `; ` |
@@ -1843,7 +1868,7 @@ Exit 1 if any check FAILs, else 0. A usage error is exit 2.
 memex version
 ```
 
-Prints one line, `memex <version> (store format 1)`, and exits 0. `memex --version` is the
+Prints one line, `memex <version> (store format 2)`, and exits 0. `memex --version` is the
 same. It needs no store and accepts no options other than `--help`/`-h`. `<version>` is the
 release version, or `0.0.0-dev` for a build that is not a release.
 
@@ -1944,10 +1969,18 @@ whenever it has printed its result.
      with the date; a `due_when` is shown before it as above.
   Then, when open entries are due after the horizon, the line
   `due after <horizon>: <k> (raise --days)`. Then, when tasks name a date only in their
-  text (below), the line `dates in text, no due: <h> (memex due --hints lists them)`, or with
-  `--hints` the section `dates in text, no due: <h>`, by id, each line
-  `<date> <status> <path> <title> (set it: memex set <id> due=<date>)`. When nothing at all
-  is printed, the output is the one line `nothing due`.
+  text (below), the line
+  `dates in text, no due, guessed from the wording: <h> (memex due --hints lists them)`, or
+  with `--hints` the section
+  `dates in text, no due, guessed from the wording: <h>; read each entry before setting its date`,
+  by id, each line `<date> <status> <path> <title> (if it is a deadline: memex set <id> due=<date>)`.
+  When nothing at all is printed, the output is the one line `nothing due`. Then, when tasks
+  or plans were skipped (below), the line `skipped, not valid: <k> (run memex check)`.
+- In the text output, each control character (U+0000 to U+001F, U+007F to U+009F) of a path,
+  title, `due_when` or summary is written as `\t`, `\r`, `\n`, or `\u` and four uppercase hex
+  digits for the others, so that each entry is one line and the output cannot drive a
+  terminal. The JSON output is the machine interface and keeps the values as they are (JSON
+  escapes them). A format 2 store refuses such characters at validation (§5.3).
 - **A date in the text.** A task with status `open`, `in-progress` or `blocked` that has
   neither `due` nor `due_when` names a date in its text when its title begins with a date
   `YYYY-MM-DD` not followed by a letter or digit, or when its title or its body outside
@@ -1959,23 +1992,34 @@ whenever it has printed its result.
   between two backticks (an inline code span) is ignored, and so is an ATX heading line
   that ends in a date, the form of the sections `memex update` writes (`## Deadline
   2026-01-15` records when the section was written, not a deadline). It is a hint,
-  not a finding: `check` does not report it, because a date in prose may be a fact about the
-  past, and only its author can say whether it is owed. These are the stores' own
+  not a finding, and a guess: `check` does not report it, because a date in prose may be a
+  fact about the past (`2026-01-15 incident follow-up`, `was completed by 2026-01-15` are both
+  hinted), and only its author can say whether it is owed, so the suggested `memex set` line
+  is to be run only after reading the entry. These are the stores' own
   conventions before `due` existed; `--hints` lists them so that they can be moved into the
   field once.
 - **JSON output:**
-  `{"today":"…","horizon":"…","past":[…],"upcoming":[…],"when":[…],"blocked":[…],"later":K,"hints":[…]}`,
+  `{"today":"…","horizon":"…","past":[…],"upcoming":[…],"when":[…],"blocked":[…],"later":K,"hints":[…],"skipped":[…]}`,
   where each entry of the four lists is
   `{"id":"…","type":"…","status":"…","path":"…","title":"…","summary":null,"due":null,"due_when":null}`,
   with `summary`, `due` and `due_when` null when absent, `later` is the number of open entries
   due after the horizon, and each hint is
   `{"id":"…","status":"…","path":"…","title":"…","date":"…"}`. The JSON lists the hints
-  whether or not `--hints` is given.
-- An entry that cannot be parsed is left out, with the `memex: skipped` line of §8.1 on
-  standard error, as in `list`. So is an entry whose `due` or `due_when` is present but not
-  valid (§5.3, the `E-FIELD-VALUE` of §7, such as a quoted date or a date-time written by
-  hand), with `memex: skipped <path>: <field> is not valid; run memex check`, `due` named
-  before `due_when`, so that a hook that runs `due` sees it.
+  whether or not `--hints` is given. Each element of `skipped` is
+  `{"path":"…","problem":"…"}`, in the order of the standard error lines below.
+- `due` validates what it reads before it classifies or prints a task or plan. One that cannot
+  be parsed is skipped with the `memex: skipped` line of §8.1 on standard error, as in `list`.
+  So is one with a field `due` reads that is missing or not valid, with
+  `memex: skipped <path>: <problem>; run memex check`, the first that applies:
+  `missing required field "status"`; `status is not valid` (not a string, or not one of the
+  type's statuses); `missing required field "title"`; `<field> is not valid` for `title`,
+  `summary`, `due`, `due_when` in that order (§5.3, the `E-FIELD-VALUE` of §7, such as a
+  quoted date or a date-time written by hand); in a format 1 store, `<field> needs store
+  format 2` for `due`, then `due_when`; in a format 2 store, `<field> must not contain control
+  characters (U+0000 to U+001F, U+007F to U+009F)` for `title`, `summary`, `due_when`. Every
+  skipped task or plan, the unparsable ones included, is counted on the `skipped` line and
+  listed in the JSON, so that a hook that runs `due` knows the list is incomplete. Entries of
+  other types are not read.
 - Exit 0, also when entries are past due; exit 2 for a usage or configuration error. A past
   date is a finding of `check` (`W-PAST-DUE`, §7), where `--strict` can make it fail.
 
@@ -1983,6 +2027,45 @@ whenever it has printed its result.
 `created`, and a caller that parses it must not find a different shape behind a flag; `due`
 groups by what to do (late, soon, waiting, parked) and has its own empty answer.
 
+
+### 11.19 `migrate`
+
+```
+memex migrate [--to N]
+```
+
+Moves the store to store format N (§4), 1 or 2, default 2, in one commit.
+
+1. `--to` must be `1` or `2`; another value is the usage error
+   `value for --to must be a store format from 1 to 2, not "<value>"`.
+2. It takes the lock and freshens as every write (§9.1). `memex.toml` with uncommitted
+   changes is refused (`memex.toml has uncommitted changes; run memex save first`, exit 1),
+   and so is a `memex.toml` with an `E-MANIFEST` finding, each finding first on standard
+   error as `memex: memex.toml: E-MANIFEST <message>`, then
+   `refused: memex.toml is not valid; fix it first (memex check lists the findings)`.
+3. A store already at N prints `store format <n> already; nothing to migrate` and the
+   `nothing to commit` outcome, exit 0.
+4. To 1: while any task or plan carries `due` or `due_when`, it is refused: for each one, by
+   path, `memex: <path>: carries <fields>; remove it first: memex set <id> <field>= …` on
+   standard error (`<fields>` is `due`, `due_when` or `due and due_when`), then
+   `refused: <k> entries carry due or due_when, which store format 1 does not allow; nothing
+   was changed`, exit 1.
+5. The new `memex.toml` is the old one with the line that sets `format` replaced by
+   `format = <N>`; moving to 2, `stale_days = 14` appended when the key is absent; moving to 1,
+   every line that sets `stale_days` removed. Every other line is kept byte for byte.
+6. The store is validated (§7) as it would be with the new `memex.toml`. An error that it does
+   not have now (a control character in a title, §5.3) refuses the migration: each such
+   finding as `memex: <path>: <code> <message>` on standard error, then
+   `refused: the store would not validate at format <N>; fix these entries first, nothing was
+   changed`, exit 1.
+7. It writes and commits `memex.toml` with the message `memex: migrate the store to format <N>`,
+   prints `store format <old> -> <N>` and the outcome (§9.4).
+
+A store is migrated once, from one machine, after every machine that uses it runs a memex
+that reads format 2: until then, an older memex there refuses the whole store (§4). A memex
+that reads format 2 keeps reading and writing format 1 stores, so upgrading memex comes first
+and changes nothing in a store; the migration is the one step that does. Moving back to 1 is
+the undo, possible once no entry carries a due date or condition.
 ---
 
 ## 12. Tool neutrality
@@ -2491,7 +2574,7 @@ implementation runs it through a runner that takes the path of the `memex` execu
 | `git` | Optional. git arguments, one per line, run as `git -C <store> <args>` with the runner's environment (the case's `env` included) after the previous step and before this step's `cmd`, so that a case can stage changes for `check --staged`, commit by hand or move `origin`. An empty line separates commands, which run in order; a command that starts with `-C <path>` runs elsewhere, as git applies successive `-C` options in turn. `<STORE>` and `<HOME>` are replaced as in `env`. A git command that fails fails the case, except the last one when `expect/git-exit` exists. |
 | `expect/git-exit` | Optional. The expected exit code of the step's last git command, for a git step that must fail (a commit the pre-commit hook refuses), or `0` for one that must succeed and whose standard error the case checks (a warning the hook prints). |
 | `expect/git-stderr-contains` | Optional. Lines that must each appear in that last git command's standard error; read only when `expect/git-exit` exists. |
-| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<SHA>` matches any 40 hex digits (a full object id, which a hand commit's date makes unpredictable); `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 1)`) |
+| `expect/stdout` | Exact expected standard output, after placeholder substitution: `<SHA7>` matches any 7 hex digits; `<SHA>` matches any 40 hex digits (a full object id, which a hand commit's date makes unpredictable); `<TIME>` matches any RFC 3339 timestamp; `<STORE>` is the temporary store's absolute path; `<HOME>` is the temporary home; `<VERSION>` is the version token of `memex version`'s output (`0.0.0-dev` in `memex 0.0.0-dev (store format 2)`) |
 | `expect/exit` | Expected exit code |
 | `expect/store/` | Optional. The exact expected store working tree after the command, excluding `.git` and `.memex`. Regular files are compared by relative path, bytes and executable bit. Directories are not compared: an empty directory is ignored on both sides, because a case directory kept in git cannot hold one |
 | `expect/commits` | Optional. Expected `git log --format=%s` of the store, newest first, without the `conformance: seed` commit |
@@ -2594,7 +2677,7 @@ from the behavior it describes.
 
 `help/overview.md`, at most 80 lines, in this order:
 
-1. **Version line:** `# memex <version> (store format 1)`.
+1. **Version line:** `# memex <version> (store format 2)`.
 2. **The agent line:** "If you are an AI agent: run `memex help agents` now (60 lines), or
    `memex help --all` once for everything."
 3. **What memex is:** two or three sentences.

@@ -58,6 +58,8 @@ type checker struct {
 	requireRepos bool
 	// staleDays is the manifest's stale_days (SPEC §4): W-OPEN-STALE's threshold, 0 for off.
 	staleDays int64
+	// format is the manifest's store format (SPEC §4): due and due_when need spec.DueFormat.
+	format int64
 	// targets records, for each entry path, the paths its links resolve to (for --staged).
 	targets map[string][]string
 }
@@ -93,6 +95,7 @@ func RunHistory(tree store.Tree, today time.Time, staged []string, hist *store.H
 		byAlias: map[string][]*parsed{}, locked: map[string]bool{}, targets: map[string][]string{}}
 	c.requireRepos = m.RequireRepos
 	c.staleDays = m.StaleDays
+	c.format = m.Format
 	c.findings = append(c.findings, mf...)
 	c.findings = append(c.findings, layout.Findings...)
 	for _, f := range layout.Files {
@@ -185,6 +188,7 @@ func (c *checker) parse(f store.File) (*parsed, error) {
 		return p, nil
 	}
 	fields, ps := entry.ParseFields(split, f.Type, f.ID)
+	ps = c.formatProblems(fields, ps)
 	for _, pr := range ps {
 		c.add(f.Path, pr.Code, "%s", pr.Message)
 	}
@@ -198,6 +202,38 @@ func (c *checker) parse(f store.File) (*parsed, error) {
 		c.byAlias[a] = append(c.byAlias[a], p)
 	}
 	return p, nil
+}
+
+// formatProblems applies the rules that depend on the store format (SPEC §4, §5.3) to the
+// fields ParseFields read and its problems. In a store before spec.DueFormat, due and
+// due_when are E-FIELD-UNKNOWN with the command that allows them, and are removed from
+// fields; from spec.DueFormat on, a control character in title, summary or due_when is
+// E-FIELD-VALUE.
+func (c *checker) formatProblems(fields entry.Fields, ps []entry.Problem) []entry.Problem {
+	if fields == nil {
+		return ps
+	}
+	if c.format < spec.DueFormat {
+		for _, name := range spec.DueFields {
+			if _, ok := fields[name]; !ok {
+				continue
+			}
+			delete(fields, name)
+			ps = slices.DeleteFunc(ps, func(pr entry.Problem) bool {
+				return pr.Code == "E-FIELD-VALUE" && strings.HasPrefix(pr.Message, name+" ")
+			})
+			ps = append(ps, entry.Problem{Code: "E-FIELD-UNKNOWN", Message: fmt.Sprintf(
+				"field %s needs store format %d; run memex migrate", q(name), spec.DueFormat)})
+		}
+		return ps
+	}
+	for _, name := range entry.ControlFreeFields {
+		if v, ok := fields[name].(string); ok && entry.HasControl(v) {
+			fields[name] = entry.Invalid{}
+			ps = append(ps, entry.Problem{Code: "E-FIELD-VALUE", Message: name + " " + entry.ControlMessage})
+		}
+	}
+	return ps
 }
 
 func paths(ps []*parsed, except *parsed) string {
@@ -484,14 +520,21 @@ func pastDueMessage(typ, id string, due time.Time) string {
 	return msg
 }
 
-// checkStale reports W-OPEN-STALE (SPEC §7): an open or in-progress task last changed more
-// than stale_days days before today. The last change is today when the file read differs from
-// HEAD's, and otherwise the committer date of the newest commit that changes it; a task HEAD
-// does not hold has none.
+// checkStale reports W-OPEN-STALE (SPEC §7): an open or in-progress task with neither due nor
+// due_when, last changed more than stale_days days before today. The last change is today
+// when the file read differs from HEAD's, and otherwise the committer date of the newest
+// commit that changes it; a task HEAD does not hold has none. In a shallow clone, a task whose
+// newest version is the boundary's was last changed on the boundary's date or earlier, so it
+// is reported once that date is old enough, and the message says "or earlier".
 func (c *checker) checkStale(p *parsed, hist *store.History) {
 	status := p.fields.String("status")
 	if c.staleDays == 0 || p.Type.Name != "task" || !spec.IsOpen(p.Type.Name, status) {
 		return
+	}
+	for _, name := range spec.DueFields {
+		if p.fields.Has(name) {
+			return // a dated or waiting task says when it is owed; W-PAST-DUE covers a past date
+		}
 	}
 	vs := hist.Versions[p.Path]
 	if len(vs) == 0 || string(vs[0]) != string(p.data) {
@@ -502,10 +545,15 @@ func (c *checker) checkStale(p *parsed, hist *store.History) {
 		return
 	}
 	if changed.AddDate(0, 0, int(c.staleDays)).Before(c.today) {
+		since := changed.Format(time.DateOnly)
+		if hist.Boundary[p.Path] {
+			since += " or earlier (the history is shallow)"
+		}
 		c.add(p.Path, "W-OPEN-STALE", "%s and unchanged since %s, more than stale_days (%d) days ago; "+
 			"record where it stands: memex update %s --summary=<sentence> --body -, "+
 			"or close it: memex update %s --status done --summary=<sentence> --body -, "+
-			"or park it: memex update %s --status %s --summary=<sentence> --body -",
-			status, changed.Format(time.DateOnly), c.staleDays, p.ID, p.ID, p.ID, spec.ParkedStatus)
+			"or park it: memex update %s --status %s --summary=<sentence> --body -, "+
+			"or say when it is owed: memex update %s --due=<date> --summary=<sentence> --body -",
+			status, since, c.staleDays, p.ID, p.ID, p.ID, spec.ParkedStatus, p.ID)
 	}
 }

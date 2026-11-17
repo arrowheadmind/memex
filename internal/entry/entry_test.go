@@ -167,3 +167,22 @@ func TestRenderEmptyRepos(t *testing.T) {
 		t.Errorf("Render = %q, want %q", got, want)
 	}
 }
+
+// EscapeControl keeps one entry on one line of plain output (SPEC §11.18, review finding 5).
+func TestEscapeControl(t *testing.T) {
+	cases := map[string]string{
+		"plain":                   "plain",
+		"a\tb\rc\nd":              `a\tb\rc\nd`,
+		"\x1b[31mred\x1b[0m":      `\u001B[31mred\u001B[0m`,
+		"del\x7f c1\u0085 é":      `del\u007F c1\u0085 é`,
+		`a backslash \ stays put`: `a backslash \ stays put`,
+	}
+	for in, want := range cases {
+		if got := EscapeControl(in); got != want {
+			t.Errorf("EscapeControl(%q) = %q, want %q", in, got, want)
+		}
+		if HasControl(want) {
+			t.Errorf("EscapeControl(%q) still has a control character", in)
+		}
+	}
+}

@@ -48,7 +48,7 @@ $ memex doctor
 PASS git version 2.30 or later
 PASS config config file parses
 PASS store <STORE>, name "example"
-PASS format format 1
+PASS format format 2
 PASS upstream main tracks origin/main
 PASS fetch-age last fetch <TIME>
 PASS clean nothing uncommitted or unpushed
