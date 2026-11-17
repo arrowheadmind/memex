@@ -1,0 +1,2 @@
+memex: rules/2026-01-10-warm-the-cache.md: E-FIELD-UNKNOWN field "due" is not allowed on a rule; it is allowed on: task, plan
+memex: refused: the result would not validate; nothing was changed

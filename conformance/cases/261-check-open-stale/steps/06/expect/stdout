@@ -1,0 +1,2 @@
+memex.toml: E-MANIFEST stale_days must be an integer from 0 to 36500
+check: 1 errors, 0 warnings

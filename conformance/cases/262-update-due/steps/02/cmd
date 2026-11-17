@@ -1,0 +1,7 @@
+update
+2026-01-10-rotate-the-backup-key
+--due-when=after the vault upgrade lands
+--heading=Waiting
+--summary=Waits for the vault upgrade, by the 31st at the latest.
+--body
+-

@@ -1,0 +1,7 @@
+new
+rule
+--title=A rule
+--summary=S.
+--due-when=after it
+--body
+-

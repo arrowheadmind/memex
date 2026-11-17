@@ -1,0 +1,4 @@
+memex: empty value for --due-when
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--due DATE]
+             [--due-when W] [--no-repo]
+Run: memex help update

@@ -1,0 +1,2 @@
+tasks/2026-01-01-in-progress-task.md: W-OPEN-STALE in-progress and unchanged since 2026-01-01, more than stale_days (13) days ago; record where it stands: memex update 2026-01-01-in-progress-task --summary=<sentence> --body -, or close it: memex update 2026-01-01-in-progress-task --status done --summary=<sentence> --body -, or park it: memex update 2026-01-01-in-progress-task --status blocked --summary=<sentence> --body -
+check: 0 errors, 1 warnings
