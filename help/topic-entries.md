@@ -58,6 +58,8 @@ In canonical order. A field not in this table, or on a type it is not allowed on
 | `parent` | string | no | plan, task | Id of an enclosing plan |
 | `sources` | array | no | all | Ids this entry was derived from |
 | `superseded_by` | string | iff `superseded` | all | Id of the replacing entry |
+| `due` | date | no | task, plan | The day the work is owed, `YYYY-MM-DD`, never a time; `memex due` lists it |
+| `due_when` | string | no | task, plan | The event the work waits for, 1–300 characters on one line; listed, never fired |
 | `verified` | date | yes | reference | When the facts were last checked against the live system |
 | `review_days` | integer 1–36500 | no | reference | Staleness threshold for `verified` |
 | `aliases` | array | no | all | Former names or paths that resolve to this entry |
@@ -69,6 +71,11 @@ set `created`, `body_sha256` and, unless told otherwise, `repos` from the curren
 An empty array is left out, except `repos = []`, which says the entry concerns no repository:
 in a store with `require_repos = true` that is what `--no-repo` writes, and an entry with no
 `repos` field at all is `W-NO-REPO`.
+
+`due` and `due_when` matter while a task is `open` or `in-progress` and a plan `draft` or
+`active`: `memex due` lists them and `check` reports a past date (`W-PAST-DUE`). A `blocked`
+task is parked: listed under `blocked` with its summary as the reason, never late. A date
+written only in a title or body is read by nobody; `memex due --hints` finds those.
 
 ## Bodies
 

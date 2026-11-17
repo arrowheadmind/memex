@@ -96,6 +96,8 @@ var Fields = []Field{
 	{"parent", KindString, "no", []string{"plan", "task"}},
 	{"sources", KindArray, "no", []string{AllTypes}},
 	{"superseded_by", KindString, "when status is superseded", []string{AllTypes}},
+	{"due", KindDate, "no", []string{"task", "plan"}},
+	{"due_when", KindString, "no", []string{"task", "plan"}},
 	{"verified", KindDate, "yes", []string{"reference"}},
 	{"review_days", KindInteger, "no", []string{"reference"}},
 	{"aliases", KindArray, "no", []string{AllTypes}},
@@ -159,6 +161,8 @@ var newOptions = []Option{
 	{Name: "--verified", Value: "DATE", Default: "today", Summary: "When the facts were checked (references only)"},
 	{Name: "--review-days", Value: "N", Summary: "Staleness threshold for verified (references only)"},
 	{Name: "--alias", Value: "A", Repeatable: true, Summary: "Former name or path that resolves to this entry"},
+	optDue,
+	optDueWhen,
 }
 
 var (
@@ -167,6 +171,8 @@ var (
 	optBody    = Option{Name: "--body", Value: "FILE", Required: true, Summary: "Body file, or - for standard input"}
 	optJSON    = Option{Name: "--json", Summary: "Print one JSON object instead of text"}
 	optAll     = Option{Name: "--all", Summary: "Make every status visible"}
+	optDue     = Option{Name: "--due", Value: "DATE", Summary: "Day the work is owed, YYYY-MM-DD (tasks and plans only)"}
+	optDueWhen = Option{Name: "--due-when", Value: "W", Summary: "Event the work waits for, one line (tasks and plans only)"}
 )
 
 var searchFilters = []Option{
@@ -223,7 +229,8 @@ var Commands = []Command{
 		Summary: "Create an entry of any type and commit it",
 		Usage: "memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…\n" +
 			"          [--repo R]… [--no-repo] [--host H]… [--always] [--kind K]\n" +
-			"          [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…",
+			"          [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…\n" +
+			"          [--due DATE] [--due-when W]",
 		Mutating:    true,
 		Options:     join([]Option{optTitle, optSummary, optBody}, newOptions),
 		Positionals: []Positional{{Name: "TYPE", Required: true}},
@@ -400,19 +407,33 @@ var Commands = []Command{
 		ExitCodes: []int{ExitOK, ExitUsage},
 	},
 	{
-		Name:     "update",
-		Summary:  "Append a dated section to an entry and replace its summary, in one commit",
-		Usage:    "memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]",
+		Name:    "update",
+		Summary: "Append a dated section to an entry and replace its summary, in one commit",
+		Usage: "memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--due DATE]\n" +
+			"             [--due-when W] [--no-repo]",
 		Mutating: true,
 		Options: []Option{
 			{Name: "--summary", Value: "S", Required: true, Summary: "The summary as it stands after this section; must differ from the current one"},
 			optBody,
 			{Name: "--heading", Value: "H", Default: "Status", Summary: "Heading of the new section, 1 to 100 characters; the date is appended"},
 			{Name: "--status", Value: "S", Summary: "New status, set in the same commit"},
+			{Name: "--due", Value: "DATE", Summary: "New due date, set in the same commit (tasks and plans only)"},
+			{Name: "--due-when", Value: "W", Summary: "New due_when condition, set in the same commit (tasks and plans only)"},
 			{Name: "--no-repo", Summary: "In a store with require_repos, the entry concerns no repository: write repos = []"},
 		},
 		Positionals: []Positional{{Name: "ID", Required: true}},
 		ExitCodes:   writeExits,
+	},
+	{
+		Name:    "due",
+		Summary: "List what open tasks and plans owe: past due, due soon, waiting, blocked",
+		Usage:   "memex due [--days N] [--hints] [--json]",
+		Options: []Option{
+			{Name: "--days", Value: "N", Default: "7", Summary: "Horizon in days from today; 0 lists only today"},
+			{Name: "--hints", Summary: "List tasks that name a date only in their text"},
+			optJSON,
+		},
+		ExitCodes: []int{ExitOK, ExitUsage},
 	},
 }
 
@@ -515,3 +536,18 @@ func LookupDirectory(dir string) *Type {
 	}
 	return nil
 }
+
+// OpenStatuses are, per type, the statuses in which an entry still owes its work: `memex due`
+// lists it and W-PAST-DUE reports a past date (SPEC §11.18, §7). Only tasks and plans carry
+// `due` (§5.3).
+var OpenStatuses = map[string][]string{"task": {"open", "in-progress"}, "plan": {"draft", "active"}}
+
+// ParkedType and ParkedStatus name the parked state of SPEC §11.18: a task whose work waits,
+// listed under "blocked" and exempt from W-PAST-DUE and W-OPEN-STALE.
+const (
+	ParkedType   = "task"
+	ParkedStatus = "blocked"
+)
+
+// IsOpen reports whether an entry of type typ with status status is open (SPEC §11.18).
+func IsOpen(typ, status string) bool { return slices.Contains(OpenStatuses[typ], status) }

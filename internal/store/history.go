@@ -38,7 +38,11 @@ func HistoryReason(err error, timeout time.Duration) string {
 // is where every path starts.
 type History struct {
 	Versions map[string][][]byte
-	HasHEAD  bool
+	// Changed is, for each path with versions, the committer date (YYYY-MM-DD, in the offset
+	// the commit records) of the newest commit that changes it: the last change of SPEC §7,
+	// W-OPEN-STALE.
+	Changed map[string]string
+	HasHEAD bool
 }
 
 // ReadHistory reads the history of the files under dirs with one `git log` over HEAD's
@@ -46,7 +50,7 @@ type History struct {
 // not in a git repository, or has no commits (HEAD is an unborn branch), has an empty
 // history; a HEAD that does not resolve otherwise is an error (SPEC §7, summary currency).
 func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
-	h := &History{Versions: map[string][][]byte{}}
+	h := &History{Versions: map[string][][]byte{}, Changed: map[string]string{}}
 	if _, err := g.Run("rev-parse", "--git-dir"); err != nil {
 		return h, nil
 	}
@@ -62,7 +66,7 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 	}
 	h.HasHEAD = true
 	args := []string{"log", "--first-parent", "--diff-merges=first-parent", "--root", "--raw",
-		"--no-abbrev", "--no-renames", "--relative", "-z", "--format=%x01%H", "HEAD", "--"}
+		"--no-abbrev", "--no-renames", "--relative", "-z", "--format=%x01%H %cs", "HEAD", "--"}
 	out, err := g.Run(append(args, dirs...)...)
 	if err != nil {
 		return nil, err
@@ -70,11 +74,16 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 	closed := map[string]bool{}
 	objects := map[string][]string{} // path -> blob ids, newest first
 	var order []string
+	date := "" // the committer date of the commit whose records follow
 	tokens := strings.Split(out, "\x00")
 	for i := 0; i < len(tokens); i++ {
 		t := strings.TrimPrefix(tokens[i], "\n")
+		if header, ok := strings.CutPrefix(t, "\x01"); ok {
+			_, date, _ = strings.Cut(header, " ")
+			continue
+		}
 		if !strings.HasPrefix(t, ":") || i+1 >= len(tokens) {
-			continue // a commit header, or the empty token after the last record
+			continue // the empty token after the last record
 		}
 		// :<old mode> <new mode> <old blob> <new blob> <status>, then the path.
 		meta := strings.Fields(t[1:])
@@ -90,6 +99,7 @@ func ReadHistory(g *gitx.Git, dirs []string) (*History, error) {
 		}
 		if _, seen := objects[p]; !seen {
 			order = append(order, p)
+			h.Changed[p] = date
 		}
 		objects[p] = append(objects[p], meta[3])
 		if status == "A" {

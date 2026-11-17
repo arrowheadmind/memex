@@ -8,6 +8,7 @@ Create an entry of any type and commit it.
 memex new TYPE --title=T --summary=S --body FILE|- [--status S] [--tag X]… [--keyword K]…
           [--repo R]… [--no-repo] [--host H]… [--always] [--kind K]
           [--parent ID] [--source ID]… [--verified DATE] [--review-days N] [--alias A]…
+          [--due DATE] [--due-when W]
 ```
 
 ## Description
@@ -42,6 +43,8 @@ lock, freshens, and reads its entries before it reads the `--body` file or stand
 | `--verified` | DATE | today | When the facts were checked (references only) |
 | `--review-days` | N | | Staleness threshold for `verified` (references only) |
 | `--alias` | A | | Former name or path that resolves to this entry; repeatable |
+| `--due` | DATE | | Day the work is owed, YYYY-MM-DD (tasks and plans only); `memex due` lists it |
+| `--due-when` | W | | Event the work waits for, one line (tasks and plans only) |
 
 ## Output
 

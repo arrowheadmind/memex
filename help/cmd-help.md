@@ -57,6 +57,7 @@ import  Convert brain v3 stores into a new store, or add what is new to an exist
 help  Print help
 version  Print the version
 update  Append a dated section to an entry and replace its summary, in one commit
+due  List what open tasks and plans owe: past due, due soon, waiting, blocked
 agents  Rules of engagement for language-model agents
 concepts  The model and the reasoning behind it
 entries  Types, statuses, frontmatter fields and body outlines

@@ -165,3 +165,18 @@ func runPreflight(env *commands.Env, a *args, cmdErr func(string) *usageError) (
 	}
 	return code, nil
 }
+
+func runDue(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
+	o := commands.DueOptions{Days: commands.DefaultDueDays, Hints: a.has("--hints"), JSON: a.has("--json")}
+	if v, ok := a.value("--days"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 || strings.HasPrefix(v, "+") || n > maxDueDays {
+			return 0, cmdErr(fmt.Sprintf("value for --days must be an integer from 0 to %d, not %q", maxDueDays, v))
+		}
+		o.Days = n
+	}
+	return commands.Due(env, o), nil
+}
+
+// maxDueDays bounds --days so that the horizon stays a four-digit year, a hundred years.
+const maxDueDays = 36500

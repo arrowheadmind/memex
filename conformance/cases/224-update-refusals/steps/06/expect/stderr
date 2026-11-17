@@ -1,3 +1,4 @@
 memex: unknown status "finished" for a task; valid: open, in-progress, blocked, done, dropped
-memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--due DATE]
+             [--due-when W] [--no-repo]
 Run: memex help update

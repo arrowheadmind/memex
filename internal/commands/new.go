@@ -30,12 +30,17 @@ type NewOptions struct {
 	Status, Kind, Parent, Verified, ReviewDays   string
 	Tags, Keywords, Repos, Hosts, Sources, Alias []string
 	NoRepo, Always                               bool
+	// Due and DueWhen are --due and --due-when; DueSet and DueWhenSet tell an empty value
+	// from an absent option (SPEC §11.2: both are usage errors when empty).
+	Due, DueWhen       string
+	DueSet, DueWhenSet bool
 }
 
 // typeOptions are the new options that set a field allowed only on some types.
 var typeOptions = []struct{ option, field string }{
 	{"--always", "always"}, {"--kind", "kind"}, {"--parent", "parent"},
 	{"--verified", "verified"}, {"--review-days", "review_days"},
+	{"--due", "due"}, {"--due-when", "due_when"},
 }
 
 func (o *NewOptions) given(option string) bool {
@@ -50,6 +55,10 @@ func (o *NewOptions) given(option string) bool {
 		return o.Verified != ""
 	case "--review-days":
 		return o.ReviewDays != ""
+	case "--due":
+		return o.DueSet
+	case "--due-when":
+		return o.DueWhenSet
 	}
 	return false
 }
@@ -84,6 +93,21 @@ func (o *NewOptions) checkUsage() *UsageError {
 		if _, err := strconv.ParseInt(o.ReviewDays, 10, 64); err != nil || strings.HasPrefix(o.ReviewDays, "+") {
 			return &UsageError{fmt.Sprintf("value for --review-days must be an integer, not %q", o.ReviewDays)}
 		}
+	}
+	return checkDueUsage(o.Due, o.DueSet, o.DueWhen, o.DueWhenSet)
+}
+
+// checkDueUsage validates --due and --due-when, which new and update share (SPEC §11.2,
+// §11.7 step 1): a malformed date, the empty one included, and an empty condition are usage
+// errors. A condition that is too long or holds an LF is left to validation.
+func checkDueUsage(due string, dueSet bool, when string, whenSet bool) *UsageError {
+	if dueSet {
+		if _, ok := config.ParseDate(due); !ok {
+			return &UsageError{fmt.Sprintf("value for --due must be a date written YYYY-MM-DD, not %q", due)}
+		}
+	}
+	if whenSet && when == "" {
+		return &UsageError{"empty value for --due-when"}
 	}
 	return nil
 }
@@ -320,6 +344,12 @@ func (o *NewOptions) build(w *writing, res *resolver, title, summary, body strin
 	if o.ReviewDays != "" {
 		n, _ := strconv.ParseInt(o.ReviewDays, 10, 64)
 		f["review_days"] = n
+	}
+	if d, ok := config.ParseDate(o.Due); o.DueSet && ok {
+		f["due"] = d
+	}
+	if o.DueWhenSet {
+		f["due_when"] = o.DueWhen
 	}
 	setArray("aliases", o.Alias)
 	if o.Type.Name == "journal" {

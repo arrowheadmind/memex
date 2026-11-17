@@ -35,10 +35,18 @@ type Manifest struct {
 	Format       int64
 	Name         string
 	RequireRepos bool // SPEC §4, §5.5
+	// StaleDays is the manifest's stale_days (SPEC §4): W-OPEN-STALE's threshold, 0 for off.
+	StaleDays int64
 }
 
 // ManifestFile is the manifest's path.
 const ManifestFile = "memex.toml"
+
+// DefaultStaleDays and MaxStaleDays are stale_days' default and bound (SPEC §4).
+const (
+	DefaultStaleDays = 14
+	MaxStaleDays     = 36500
+)
 
 // ReadManifest parses memex.toml from t. A format other than spec.StoreFormat is a
 // *FormatError; anything else wrong is an E-MANIFEST finding.
@@ -64,7 +72,7 @@ func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 		}
 		return &Manifest{}, []Finding{bad("%s", msg)}, nil
 	}
-	m := &Manifest{}
+	m := &Manifest{StaleDays: DefaultStaleDays}
 	var fs []Finding
 	keys := make([]string, 0, len(raw))
 	for k := range raw {
@@ -76,6 +84,10 @@ func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 		case int64:
 			if k == "format" {
 				m.Format = v
+				continue
+			}
+			if k == "stale_days" && v >= 0 && v <= MaxStaleDays {
+				m.StaleDays = v
 				continue
 			}
 		case string:
@@ -96,9 +108,11 @@ func ParseManifest(data []byte) (*Manifest, []Finding, error) {
 			fs = append(fs, bad("name must be a string"))
 		case "require_repos":
 			fs = append(fs, bad("require_repos must be a boolean"))
+		case "stale_days":
+			fs = append(fs, bad("stale_days must be an integer from 0 to %d", MaxStaleDays))
 		default:
 			msg := "unknown key " + entry.Quote(k)
-			if near, ok := spec.Nearest(k, []string{"format", "name", "require_repos"}); ok {
+			if near, ok := spec.Nearest(k, []string{"format", "name", "require_repos", "stale_days"}); ok {
 				msg += " (did you mean " + entry.Quote(near) + "?)"
 			}
 			fs = append(fs, bad("%s", msg))

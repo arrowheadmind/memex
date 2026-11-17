@@ -26,7 +26,7 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `E-HASH` | A journal body changed | Restore the body, or capture the correction and `memex set <id> status=superseded superseded_by=<new>` |
 | `E-ALIAS` | The same alias on two entries, or an alias equal to an id | Remove the duplicate alias |
 | `E-FILES-OWNER` | `files/<x>/` where `<x>` is not an id, or a loose file under `files/` | Move it under `files/<id>/` |
-| `E-MANIFEST` | `memex.toml` invalid | Fix `format` (integer), `name` (string) and `require_repos` (boolean); no other keys |
+| `E-MANIFEST` | `memex.toml` invalid | Fix `format` (integer), `name` (string), `require_repos` (boolean) and `stale_days` (integer 0 to 36500); no other keys |
 | `E-POINTER` | (`--workspace`) A `CLAUDE.md`, `CLAUDE.local.md`, `.claude/CLAUDE.md`, `AGENTS.md` or `GEMINI.md` under the workspace that is not the pointer line, or is a symbolic link | `memex capture --from <path>` for any knowledge in it, then `memex init --pointers <dir> --force` (or delete the file) |
 
 ## Warnings
@@ -37,6 +37,8 @@ Every message starts with what is wrong and ends with the fix when the fix is a 
 | `W-ALIAS-LINK` | A link resolved through an alias | Link the id the message gives; in a committed journal, none: an immutable finding, counted apart |
 | `W-BROKEN-LINK` | A `[[…]]` shaped like a link (ASCII letters, digits, `-`, `_`, `.`, `/`, with a `-`, `_` or `/`) that names no entry: `[[tasks/<id>]]`, `[[<id>.md]]`, an id longer than 120 characters, a former name | Link the id the message gives, or find the entry and link its id; backticks if it is not a link; in a committed journal, none: an immutable finding, counted apart |
 | `W-STALE-REFERENCE` | `verified + review_days` is in the past | Re-check the facts, then `memex set <id> verified=<today>` |
+| `W-PAST-DUE` | An open task (`open`, `in-progress`) or plan (`draft`, `active`) whose `due` is before today | Close it (`memex update <id> --status done …`), move the date saying why (`memex update <id> --due=<new> …`), or park a task (`--status blocked`); the message has the commands |
+| `W-OPEN-STALE` | An `open` or `in-progress` task whose newest commit is more than `stale_days` (14) days old | Record where it stands (`memex update <id> …`), close it, or park it (`--status blocked`); `stale_days = 0` in `memex.toml` turns it off |
 | `W-RAW-OLD` | A `raw` journal entry older than 90 days | `memex set <id> status=kept`, or `memex promote <id>` |
 | `W-PROMOTED-UNCITED` | A `promoted` journal entry no entry cites in `sources` | Add it to the derived entry's `sources`, or set `kept` |
 | `W-NO-TERMS` | Neither `tags` nor `keywords` | `memex set <id> keywords=<word>,<word>` |

@@ -12,15 +12,16 @@ memex check [--staged] [--workspace] [--strict] [--errors-only] [--limit N] [--i
 
 Checks every entry's name, encoding, frontmatter, fields, status, links, aliases and hash, and
 the store layout, and prints one line per finding. Errors are what must be fixed; warnings are
-hygiene (no summary, no terms, stale reference, old raw journal entry, a line that looks like
-a credential). The pre-commit hook runs `check --staged` on what is about to be committed, so
-an error never lands. `--workspace` also scans the configured `workspace` (§12): pointer files
-that are not the pointer (`E-POINTER`), repositories without one (`W-NO-POINTER`) and files in
-coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; `check` takes no lock.
-`W-STALE-SUMMARY` is the one finding that reads git history (first-parent, plus the working
-tree or, with `--staged`, the index): a task or plan whose summary was not rewritten when a
-section was added to its body or when it was closed or reopened. A history git cannot read is
-exit 2, `memex: check needs the store's git history: <git's first error line>`.
+hygiene (no summary, no terms, stale reference, old raw journal, a past `due`, a line that
+looks like a credential). The pre-commit hook runs `check --staged` on what is about to be
+committed, so an error never lands. `--workspace` also scans the `workspace` (§12): pointer
+files that are not the pointer (`E-POINTER`), repositories without one (`W-NO-POINTER`) and
+files in coding tools' own memory (`W-LEAK`), with absolute paths. Read-only; takes no lock.
+Two findings read git history (first-parent, plus the working tree or, with `--staged`, the
+index): `W-STALE-SUMMARY`, a task or plan whose summary was not rewritten when a section was
+added or it was closed or reopened, and `W-OPEN-STALE`, an open task with no commit for more
+than `stale_days` (14) days. A history git cannot read is exit 2,
+`memex: check needs the store's git history: <git's first error line>`.
 A short body or an alias link in a committed journal cannot be fixed, because the body is
 immutable: it is an immutable finding, counted on the summary line and listed only with
 `--immutable`.

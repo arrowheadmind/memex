@@ -244,6 +244,10 @@ func fieldValue(def *spec.Field, v any) (any, *Problem) {
 			if n := utf8.RuneCountInString(s); n < 1 || n > 300 || strings.Contains(s, "\n") {
 				return bad("must be 1 to 300 characters on one line")
 			}
+		case "due_when":
+			if n := utf8.RuneCountInString(s); n < 1 || n > 300 || strings.Contains(s, "\n") {
+				return bad("must be 1 to 300 characters on one line")
+			}
 		case "summary":
 			if utf8.RuneCountInString(s) > 500 || strings.Contains(s, "\n") {
 				return bad("must be one line of at most 500 characters")

@@ -7,6 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/arrowheadmind/memex/internal/config"
 	"github.com/arrowheadmind/memex/internal/entry"
 	"github.com/arrowheadmind/memex/internal/spec"
 	"github.com/arrowheadmind/memex/internal/write"
@@ -17,6 +18,15 @@ type UpdateOptions struct {
 	ID, Summary, Body, Heading, Status string
 	StatusSet                          bool // --status was given, possibly empty
 	NoRepo                             bool
+	// Due and DueWhen are --due and --due-when (SPEC §11.17 step 8), already checked by
+	// CheckDueUsage; DueSet and DueWhenSet say whether they were given.
+	Due, DueWhen       string
+	DueSet, DueWhenSet bool
+}
+
+// CheckDueUsage is the command-line check of --due and --due-when (SPEC §11.7 step 1).
+func CheckDueUsage(due string, dueSet bool, when string, whenSet bool) *UsageError {
+	return checkDueUsage(due, dueSet, when, whenSet)
 }
 
 // DefaultHeading is the heading of an update section without --heading (SPEC §11.17).
@@ -102,6 +112,14 @@ func Update(e *Env, o UpdateOptions) (int, *UsageError) {
 	}
 	if noRepo {
 		f["repos"] = []string{}
+	}
+	// --due and --due-when are set as given; on a type that does not allow them, validation
+	// refuses the result with E-FIELD-UNKNOWN (SPEC §11.17 step 8).
+	if d, ok := config.ParseDate(o.Due); o.DueSet && ok {
+		f["due"] = d
+	}
+	if o.DueWhenSet {
+		f["due_when"] = o.DueWhen
 	}
 	body := strings.TrimRightFunc(en.Body, unicode.IsSpace)
 	if body != "" {

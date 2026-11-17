@@ -5,7 +5,8 @@ Append a dated section to an entry and replace its summary, in one commit.
 ## Usage
 
 ```
-memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--no-repo]
+memex update ID --summary=S --body FILE|- [--heading=H] [--status S] [--due DATE]
+             [--due-when W] [--no-repo]
 ```
 
 ## Description
@@ -17,7 +18,7 @@ plan, and to close one: `--status done` sets the status in the same commit. The 
 headings), after the current body; `--heading` defaults to `Status`. `--summary` must differ
 from the current summary: write the summary as it stands after this section. Journal entries
 are refused (immutable bodies), and so is an entry with uncommitted edits, a deleted file too.
-`status=superseded` also needs `superseded_by`, which only `memex set` sets.
+`status=superseded` needs `superseded_by` (only `memex set` sets it); `--due` moves a date.
 
 ```
 memex update 2026-01-10-rotate-the-backup-key --status done \
@@ -34,6 +35,8 @@ EOF
 | `--body` | FILE | | Text of the new section: a file, or `-` for standard input (required) |
 | `--heading` | H | Status | Heading of the new section, 1 to 100 characters on one line (no LF or CR); the date is appended |
 | `--status` | S | | New status, set in the same commit; one of the type's statuses, never empty |
+| `--due` | DATE | | New due date, set in the same commit (tasks and plans only); the section says why it moved |
+| `--due-when` | W | | New due_when condition, set in the same commit (tasks and plans only) |
 | `--no-repo` | | | In a store with `require_repos`, the entry concerns no repository: write `repos = []` |
 
 ## Output

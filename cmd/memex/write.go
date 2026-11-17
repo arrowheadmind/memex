@@ -23,6 +23,8 @@ func newOptions(a *args) commands.NewOptions {
 	o.Parent, _ = a.value("--parent")
 	o.Verified, _ = a.value("--verified")
 	o.ReviewDays, _ = a.value("--review-days")
+	o.Due, o.DueSet = a.value("--due")
+	o.DueWhen, o.DueWhenSet = a.value("--due-when")
 	return o
 }
 
@@ -154,6 +156,11 @@ func runUpdate(env *commands.Env, a *args, cmdErr func(string) *usageError) (int
 			return 0, cmdErr(problem)
 		}
 		o.Heading = h
+	}
+	o.Due, o.DueSet = a.value("--due")
+	o.DueWhen, o.DueWhenSet = a.value("--due-when")
+	if uerr := commands.CheckDueUsage(o.Due, o.DueSet, o.DueWhen, o.DueWhenSet); uerr != nil {
+		return 0, cmdErr(uerr.Problem)
 	}
 	return usage(commands.Update(env, o))(cmdErr)
 }

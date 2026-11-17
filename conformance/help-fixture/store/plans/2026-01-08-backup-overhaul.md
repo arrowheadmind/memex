@@ -5,6 +5,7 @@ created = 2026-01-08
 summary = "Move every host to restic, with a tested restore and a yearly key rotation."
 tags = ["backup"]
 keywords = ["restic", "restore"]
+due_when = "after the restore test is documented"
 +++
 
 ## Context
