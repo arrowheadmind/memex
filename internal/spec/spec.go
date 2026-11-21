@@ -326,10 +326,11 @@ var Commands = []Command{
 	{
 		Name:     "save",
 		Summary:  "Commit direct edits to the store",
-		Usage:    "memex save [-m MSG] [PATHS…] [--allow-delete] [--fmt]",
+		Usage:    "memex save [-m MSG] [PATHS…] [--all] [--allow-delete] [--fmt]",
 		Mutating: true,
 		Options: []Option{
 			{Name: "-m", Value: "MSG", Default: "memex: save <n> files", Summary: "Commit message"},
+			{Name: "--all", Summary: "With no PATHS, save every changed file, even when more than one has changes"},
 			{Name: "--allow-delete", Summary: "Allow committing deleted entries"},
 			{Name: "--fmt", Summary: "Rewrite the selected entries into canonical form first"},
 		},

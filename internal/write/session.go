@@ -171,6 +171,9 @@ func (s *Session) findUpstream() *upstream {
 	return u
 }
 
+// HasHead reports whether the store has a commit; a store that init has just made has none.
+func (s *Session) HasHead() bool { return s.head() != "" }
+
 // HasUpstream reports whether the current branch has an upstream.
 func (s *Session) HasUpstream() bool { return s.up != nil }
 

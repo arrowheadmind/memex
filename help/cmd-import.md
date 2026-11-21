@@ -19,8 +19,8 @@ the same bytes. With `--into`, `DIR` is an existing store with a clean working t
 an earlier import and curated since: only the units it does not hold yet (matched by their
 aliases, then by id) are added, with links mapped to the store's ids; nothing present is
 rewritten or re-dated, and the report goes to `import-report-<today>.json` next to the old
-one. Neither form commits: review, then `memex save -m "import"`. `memex help importing`
-describes the mapping and the report.
+one. Neither form commits: review, then `memex save -m "import"` (with `--all` after
+`--into`). `memex help importing` describes the mapping and the report.
 
 ## Options
 

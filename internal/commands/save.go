@@ -14,6 +14,7 @@ type SaveOptions struct {
 	Message     string
 	MessageSet  bool
 	Paths       []string
+	All         bool
 	AllowDelete bool
 	Fmt         bool
 }
@@ -66,6 +67,9 @@ func Save(e *Env, o SaveOptions) (int, *UsageError) {
 	if o.MessageSet && strings.TrimSpace(o.Message) == "" {
 		return 0, &UsageError{"empty value for -m; give a commit message, or leave -m out"}
 	}
+	if o.All && len(o.Paths) > 0 {
+		return 0, &UsageError{"give PATHS or --all, not both"}
+	}
 	w, code, ok := e.beginWriteFor(true, false)
 	if !ok {
 		return code, nil
@@ -75,6 +79,14 @@ func Save(e *Env, o SaveOptions) (int, *UsageError) {
 		panic(err)
 	}
 	selected := all
+	if len(o.Paths) == 0 && !o.All && len(all) > 1 && w.s.HasHead() {
+		// Another session may share this checkout: its half-done edit is not ours to commit.
+		for _, c := range all {
+			fmt.Fprintf(e.Stderr, "memex: changed: %s\n", c.path)
+		}
+		return w.refuse(spec.ExitFailure, "%d files have changes and no paths were given; save yours with memex save PATH…, "+
+			"or all of them with memex save --all; nothing was changed", len(all)), nil
+	}
 	if len(o.Paths) > 0 {
 		selected = nil
 		for _, arg := range o.Paths {

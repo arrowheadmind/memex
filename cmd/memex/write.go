@@ -163,7 +163,7 @@ func runFmt(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *
 }
 
 func runSave(env *commands.Env, a *args, cmdErr func(string) *usageError) (int, *usageError) {
-	o := commands.SaveOptions{Paths: a.positionals, AllowDelete: a.has("--allow-delete"), Fmt: a.has("--fmt")}
+	o := commands.SaveOptions{Paths: a.positionals, All: a.has("--all"), AllowDelete: a.has("--allow-delete"), Fmt: a.has("--fmt")}
 	o.Message, o.MessageSet = a.value("-m")
 	return usage(commands.Save(env, o))(cmdErr)
 }

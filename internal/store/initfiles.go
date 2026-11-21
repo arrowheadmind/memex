@@ -22,7 +22,7 @@ const AgentMD = "# Agent instructions\n" +
 	"  `memex capture --title=\"<task>\" --summary=\"<one sentence>\" --body - <<'EOF' … EOF`.\n" +
 	"- Never write knowledge into a coding tool's own memory or rules files.\n" +
 	"  Knowledge lives here only.\n" +
-	"- Edit entries directly when needed, then run `memex save`.\n" +
+	"- Edit entries directly when needed, then run `memex save <path>`.\n" +
 	"\n" +
 	"Operator-specific instructions follow.\n"
 

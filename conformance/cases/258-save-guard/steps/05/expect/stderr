@@ -1,0 +1,3 @@
+memex: give PATHS or --all, not both
+memex save [-m MSG] [PATHS…] [--all] [--allow-delete] [--fmt]
+Run: memex help save

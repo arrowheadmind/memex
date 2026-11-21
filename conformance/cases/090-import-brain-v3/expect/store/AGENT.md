@@ -9,7 +9,7 @@ This store is the shared memory for this operator's work. It is managed with `me
   `memex capture --title="<task>" --summary="<one sentence>" --body - <<'EOF' … EOF`.
 - Never write knowledge into a coding tool's own memory or rules files.
   Knowledge lives here only.
-- Edit entries directly when needed, then run `memex save`.
+- Edit entries directly when needed, then run `memex save <path>`.
 
 Operator-specific instructions follow.
 

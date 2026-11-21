@@ -8,6 +8,8 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ### Added
 
+- `memex save --all`: with no paths, save every changed file (see Changed).
+
 - `check` reports `W-BROKEN-LINK` for a `[[…]]` that is shaped like a link (letters, digits,
   `-`, `_`, `.` and `/`, with a `-`, `_` or `/`) but names no entry and is not `E-LINK`:
   `[[tasks/<id>]]`, `[[<id>.md]]`, an id longer than 120 characters, a former name. The
@@ -19,6 +21,12 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 
 ### Changed
 
+- A bare `memex save` refuses (exit 1, nothing committed) when more than one file has
+  changes, and lists them on standard error: name your files with `memex save PATH…`, or give
+  the new `--all` to save them all. One changed file, and the first save of a store with no
+  commits, are saved as before. Two sessions sharing one checkout no longer commit each other's
+  edits.
+- The `AGENT.md` that `init` and `import` write says `memex save <path>`.
 - `check --strict` exits 1 on a store whose only new findings are `W-BROKEN-LINK` outside
   locked journal bodies, where before it exited 0; `doctor`'s `check` row counts them.
 

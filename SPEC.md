@@ -64,6 +64,7 @@ implements it and passes its conformance cases. Nothing Planned may be described
 | 7 `W-NO-REPO` names `set <id> repos=[]` | Implemented |
 | 5.3 An empty array element is an error | Implemented |
 | 6, 7 `W-BROKEN-LINK` | Implemented |
+| 9.3 A bare `save` with several changes is refused without `--all` | Implemented |
 
 ---
 
@@ -1069,15 +1070,26 @@ Exactly:
 ### 9.3 Direct edits
 
 **Editing is first-class.** People and agents MAY edit entries with any editor.
-`memex save [-m MSG] [PATHS…] [--allow-delete] [--fmt]` commits them through §9.1, steps 1–2
-and 5–8. With no paths it takes every added, modified, deleted or untracked file under the
-store except `.memex/` and anything `.gitignore` excludes. `--fmt` first rewrites the selected
+`memex save [-m MSG] [PATHS…] [--all] [--allow-delete] [--fmt]` commits them through §9.1, steps 1–2
+and 5–8. With PATHS it takes the changed files at or under each path. With no paths it takes
+every added, modified, deleted or untracked file under the store except `.memex/` and anything
+`.gitignore` excludes, but only when there is at most one such file, `--all` is given, or HEAD
+does not exist yet; otherwise it writes `memex: changed: <path>` to standard error for each
+file in code-point order, then `memex: <n> files have changes and no paths were given; save
+yours with memex save PATH…, or all of them with memex save --all; nothing was changed`, and
+exits 1 having changed nothing. `--all` with PATHS is a usage error. `--fmt` first rewrites the selected
 entries into canonical form (§11.9) and commits that together with the edits; without it, a
 non-canonical entry is committed as is and `check` reports `W-CANONICAL`.
 
 **Deletions:**
 - A deleted entry is refused (exit 1), unless `--allow-delete` is given.
 - A deleted file under `files/` is allowed.
+
+**Why a bare `save` with several changes is refused:** agents and people share one checkout
+of a store, and a bare `save` that took every change committed another session's half-done
+edit under the wrong message. Naming the paths keeps each session to its own files; the
+refusal lists the files, so the choice takes one more command. Rejected: committing only the
+files this process's session touched, which memex cannot know without tracking editors.
 
 **Rejected alternative:** the predecessor ran each write in a throwaway git worktree, to protect
 shared append-only files. With one file per entry, two writers touch the same file only when

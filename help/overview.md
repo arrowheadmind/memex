@@ -31,7 +31,7 @@ memex preflight "rotate the backup key on alpha"       # before work: sync, Alwa
 memex capture --title="Rotated the backup key on alpha" \
   --summary="The runbook works; restic wants the short key id." --body notes/body.md
 memex update <id> --summary="<where it stands now>" --body notes/progress.md   # task progress
-memex save                                              # after editing an entry by hand
+memex save <path>                                       # after editing an entry by hand
 ```
 
 ## Commands
