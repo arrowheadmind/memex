@@ -11,7 +11,7 @@ separate from everything else memex does.
   `HEAD`; a dirty working tree is refused without `@REV`). The first SRC is the primary brain;
   further ones are secondary brains inside application repositories.
 - **Fresh output.** `DIR` must not exist. memex creates it as `init` would and writes every
-  file, but does not commit: you review, then `memex save -m "import"`.
+  file, but does not commit: you review, then `memex save --all -m "import"`.
 - **Deterministic.** The same revisions produce byte-identical output, whatever the
   directories; re-run it against later revisions to bring over what was written in between.
 - **Lossless, and accounted for.** Every line of every recognized source file is attributed
