@@ -4,17 +4,9 @@ Notable changes to memex, newest first. The version is the git tag (IMPLEMENTATI
 "Packaging"); a build that is not a release reports `0.0.0-dev`. A change to the shape of
 text output is an interface change and is listed under "Changed output" (SPEC.md §17.3).
 
-## 0.5.2 (2026-11-21)
+## Unreleased
 
 ### Added
-
-- `memex save --all`: with no paths, save every changed file (see Changed).
-
-- `check` reports `W-BROKEN-LINK` for a `[[…]]` that is shaped like a link (letters, digits,
-  `-`, `_`, `.` and `/`, with a `-`, `_` or `/`) but names no entry and is not `E-LINK`:
-  `[[tasks/<id>]]`, `[[<id>.md]]`, an id longer than 120 characters, a former name. The
-  message names the entry meant when there is exactly one. In a committed, intact journal
-  body it is an immutable finding, counted apart and listed with `check --immutable`.
 
 - Store format 2. This memex reads and writes formats 1 and 2; `init` and `import` write 2.
   Format 2 adds `due`, `due_when` and `stale_days`, and refuses control characters in
@@ -42,19 +34,8 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
 - `stale_days` in a format 2 `memex.toml` (0 to 36500; absent or 0 turns `W-OPEN-STALE` off;
   `init` and `migrate` write 14).
 
-- `SECURITY.md`: what matters most for memex's security, and how to report a vulnerability
-  privately (security@arrowheadmind.com); linked from the README.
-
 ### Changed
 
-- A bare `memex save` refuses (exit 1, nothing committed) when more than one file has
-  changes, and lists them on standard error: name your files with `memex save PATH…`, or give
-  the new `--all` to save them all. One changed file, and the first save of a store with no
-  commits, are saved as before. Two sessions sharing one checkout no longer commit each other's
-  edits.
-- The `AGENT.md` that `init` and `import` write says `memex save <path>`.
-- `check --strict` exits 1 on a store whose only new findings are `W-BROKEN-LINK` outside
-  locked journal bodies, where before it exited 0; `doctor`'s `check` row counts them.
 - `check --staged` validates the whole store when `memex.toml` is staged (so the pre-commit
   hook catches a format change that makes a committed entry invalid).
 - A brain v3 import makes a summary with a control character one plain line.
@@ -68,6 +49,32 @@ text output is an interface change and is listed under "Changed output" (SPEC.md
   `help --all` ends with the `due` and `migrate` pages.
 - `memex version`, `memex help` and `help --json` say `store format 2`; `doctor`'s `format`
   row says the store's own format.
+
+## 0.5.2 (2026-11-21)
+
+### Added
+
+- `memex save --all`: with no paths, save every changed file (see Changed).
+
+- `check` reports `W-BROKEN-LINK` for a `[[…]]` that is shaped like a link (letters, digits,
+  `-`, `_`, `.` and `/`, with a `-`, `_` or `/`) but names no entry and is not `E-LINK`:
+  `[[tasks/<id>]]`, `[[<id>.md]]`, an id longer than 120 characters, a former name. The
+  message names the entry meant when there is exactly one. In a committed, intact journal
+  body it is an immutable finding, counted apart and listed with `check --immutable`.
+
+- `SECURITY.md`: what matters most for memex's security, and how to report a vulnerability
+  privately (security@arrowheadmind.com); linked from the README.
+
+### Changed
+
+- A bare `memex save` refuses (exit 1, nothing committed) when more than one file has
+  changes, and lists them on standard error: name your files with `memex save PATH…`, or give
+  the new `--all` to save them all. One changed file, and the first save of a store with no
+  commits, are saved as before. Two sessions sharing one checkout no longer commit each other's
+  edits.
+- The `AGENT.md` that `init` and `import` write says `memex save <path>`.
+- `check --strict` exits 1 on a store whose only new findings are `W-BROKEN-LINK` outside
+  locked journal bodies, where before it exited 0; `doctor`'s `check` row counts them.
 
 ## 0.5.1 (2026-11-04)
 
