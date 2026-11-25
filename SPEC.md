@@ -1,6 +1,6 @@
 # memex — specification
 
-**Store format version 2. Tool version: 0.5.2 (released 2026-11-21).**
+**Store format version 2. Tool version: 0.6.0 (released 2026-11-25).**
 
 memex is a command-line tool for a private, git-backed store of Markdown files. The store holds
 what one operator and their agents have learned: rules, mistakes, decisions, runbooks, current
